@@ -1,13 +1,15 @@
 import * as React from 'react';
-import { View } from 'react-native';
+import { View, TouchableOpacity, Text } from 'react-native';
 import styled from 'styled-components/native';
-import { PaperProvider, TouchableRipple, TouchableRippleProps } from 'react-native-paper';
+import { Modal, Portal, Button, PaperProvider } from 'react-native-paper';
 
 interface PropsBola { idB: boolean; }
 
 interface PropsLinha { idL: boolean; }
 
-const Container = styled(View)`
+// ADICIONAR ESTILOS DA CAROLINDA E DA AMOR DPS
+
+const Container = styled(TouchableOpacity)`
   flex-direction: row;
   align-items: center;
   position: relative;
@@ -30,11 +32,33 @@ const MarcoLinha = styled(View)<PropsLinha>`
   position: relative;
 `;
 
+const ModalContentContainer = styled(View)`
+  background-color: white;
+  padding: 20px;
+  margin: 40px;
+  border-radius: 8px;
+  margin-top: 60%;
+  height: 200px; 
+  width: 65%;  
+  margin-left: 18%;
+`;
+
 export default function LinhaDoTempo() {
+const [visible, setVisible] = React.useState(false);
+
+const modalVisibility = () => {
+  if (visible == false) setVisible(true);
+  else setVisible(false);
+};
+
   return (
     <PaperProvider>
-        <View style={{ padding: 20, gap: 30 }}>
-        <Container>
+        <View style={{ 
+          padding: 20, 
+          gap: 30,  
+          alignItems: 'center',
+          position: 'relative', }}>
+        <Container onPress={modalVisibility}>
             <MarcoBola idB={true}/>
             <MarcoLinha idL={true}/>
             <MarcoBola idB={true}/>
@@ -44,6 +68,13 @@ export default function LinhaDoTempo() {
             <MarcoBola idB={false}/>
         </Container>
         </View>
+        <Portal>
+          <Modal visible={visible}>
+            <ModalContentContainer>
+              <Text>Inserir como vamos mostrar os marcos</Text>
+            </ModalContentContainer>
+          </Modal>
+      </Portal>
     </PaperProvider>
   );
 }
