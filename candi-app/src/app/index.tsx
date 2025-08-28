@@ -4,6 +4,7 @@ import { PaperProvider } from 'react-native-paper';
 import { AppTheme } from '../theme';
 import * as Kadwa from '@expo-google-fonts/kadwa';
 import LoginSignupBackground from '@/components/LoginSignupBackground';
+import HomeBackground from '@/components/HomeBackground';
 
 export default function Index() {
   return (
