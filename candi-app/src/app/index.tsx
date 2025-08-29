@@ -3,6 +3,7 @@ import { View, Text } from 'react-native';
 import { PaperProvider } from 'react-native-paper';
 import { AppTheme } from '../theme';
 import * as Kadwa from '@expo-google-fonts/kadwa';
+import CommunityShortcut from '@/components/Community-Shortcut';
 
 export default function Index() {
   return (
@@ -12,6 +13,7 @@ export default function Index() {
             Oioi Candi!! CHZ
         </Text>
       </View>
+      <CommunityShortcut/>
     </PaperProvider>
   );
 }
