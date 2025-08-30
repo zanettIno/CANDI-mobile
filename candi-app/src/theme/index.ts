@@ -6,6 +6,13 @@ declare global {
     interface ThemeColors {
       tertiary: string;
       quaternary: string;
+      cardBackground: string;
+      placeholderBackground: string;
+      placeholderText: string;
+      nameText: string;
+      roleText: string;
+      phoneText: string;
+      shadow: string;
     }
   }
 }
@@ -41,6 +48,14 @@ export const AppTheme = {
     tertiary: '#759AAB', 
     background: '#f6f6f6',  
     textColor: '#767680',     
+
+    cardBackground: '#FFFFFF',
+    placeholderBackground: '#EAEAEA',
+    placeholderText: '#888',
+    nameText: '#333',
+    roleText: '#666',
+    phoneText: '#555',
+    shadow: '#000',
   },
 
   fonts: configureFonts({ config: fontConfig }),

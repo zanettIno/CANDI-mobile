@@ -8,7 +8,7 @@ export default function Index() {
   return (
     <PaperProvider theme={AppTheme}>
       <View>
-        <Text style={{ color: AppTheme.colors.textColor, fontSize: 20, margin: 20,  fontFamily: AppTheme.fonts.bodyMedium.fontFamily}} >
+        <Text style={{ color: AppTheme.colors.textColor, margin: 20,  fontFamily: AppTheme.fonts.bodyMedium.fontFamily}} >
             Oioi Candi!! CHZ
         </Text>
       </View>
