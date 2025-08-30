@@ -13,22 +13,9 @@ const demoData: CarouselItem[] = [
 export default function Index() {
   return (
     <PaperProvider theme={AppTheme}>
-<<<<<<< HEAD
       <View>
         <Text style={{ color: AppTheme.colors.textColor, margin: 20,  fontFamily: AppTheme.fonts.bodyMedium.fontFamily}} >
             Oioi Candi!! CHZ
-=======
-      <View style={{ flex: 1, paddingTop: 50, backgroundColor: AppTheme.colors.background }}>
-        <Text
-          style={{
-            color: AppTheme.colors.textColor,
-            fontSize: 20,
-            margin: 20,
-            fontFamily: AppTheme.fonts.bodyMedium.fontFamily,
-          }}
-        >
-          Oioi Candi!! CHZ
->>>>>>> 2bcb8de8381bd890952e515df9ef5ef0a5a98ddf
         </Text>
 
         <Carousel
