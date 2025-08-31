@@ -39,8 +39,10 @@ export const AppTheme = {
     primary: '#FFC4C4',      
     secondary: '#CFFFE5',   
     tertiary: '#759AAB', 
+    tertiaryLight: '#8cb2c4ff',
+    tertinaryTextColor: '#545F71',
     background: '#f6f6f6',  
-    textColor: '#767680',     
+    textColor: '#767680', 
   },
 
   fonts: configureFonts({ config: fontConfig }),
