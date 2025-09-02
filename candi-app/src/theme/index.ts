@@ -42,7 +42,7 @@ export const AppTheme = {
     tertiaryLight: '#8cb2c4ff',
     tertinaryTextColor: '#545F71',
     background: '#f6f6f6',  
-    textColor: '#767680', 
+    textColor: '#413F42', 
   },
 
   fonts: configureFonts({ config: fontConfig }),
