@@ -46,9 +46,9 @@ export const AppTheme = {
     primary: '#FFC4C4',      
     secondary: '#CFFFE5',   
     tertiary: '#759AAB', 
-    background: '#f6f6f6',  
-    textColor: '#767680',     
-
+    tertiaryLight: '#8cb2c4ff',
+    tertinaryTextColor: '#545F71',
+    background: '#f6f6f6',      
     cardBackground: '#FFFFFF',
     placeholderBackground: '#EAEAEA',
     placeholderText: '#888',
@@ -56,6 +56,7 @@ export const AppTheme = {
     roleText: '#666',
     phoneText: '#555',
     shadow: '#000',
+    textColor: '#413F42', 
   },
 
   fonts: configureFonts({ config: fontConfig }),

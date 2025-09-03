@@ -36,6 +36,7 @@
     "react-native-reanimated-carousel": "^4.0.3",
     "react-native-safe-area-context": "5.4.0",
     "react-native-screens": "~4.11.1",
+    "react-native-svg": "^15.12.1",
     "react-native-web": "~0.20.0",
     "styled-components": "^6.1.19"
   },
