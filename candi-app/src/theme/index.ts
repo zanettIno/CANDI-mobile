@@ -39,7 +39,7 @@ const fontConfig = {
 };
 export const AppTheme = {
   ...MD3LightTheme, 
-  roundness: 8, 
+  roundness: 50, 
   colors: {
     ...MD3LightTheme.colors, 
     
