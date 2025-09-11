@@ -8,6 +8,7 @@ import InputEmail from '../components/Inputs/inputEmail';
 import InputPassword from '../components/Inputs/inputPassword';
 import ButtonCustom from '../components/Buttons/buttonCustom';
 import { useRouter } from 'expo-router';
+import BottomSheet from '@/components/AgendaDetails';
 
 export default function Index() {
   const [email, setEmail] = useState('');
@@ -74,7 +75,6 @@ export default function Index() {
                 </Text>
               </TouchableOpacity>
             </View>
-
           </View>
         </LoginSignupBackground>
       </SafeAreaView>

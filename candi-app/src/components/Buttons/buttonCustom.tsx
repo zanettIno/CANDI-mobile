@@ -1,6 +1,7 @@
 import React from 'react';
 import { TouchableOpacity, Text, ActivityIndicator } from 'react-native';
 import styled from 'styled-components/native';
+import { AppTheme } from '../../theme';
 
 interface ButtonCustomProps {
   title: string;
@@ -18,6 +19,8 @@ const StyledButton = styled(TouchableOpacity)<{
   background-color: ${props => {
     if (props.disabled) return '#cccccc';
     switch (props.variant) {
+      case 'tertiary':
+        return AppTheme.colors.tertinaryTextColor;
       case 'secondary':
         return '#f0f0f0';
       case 'outline':
