@@ -14,6 +14,7 @@ import ButtonCustom from '../components/Buttons/buttonCustom';
 import { useRouter } from 'expo-router';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import InputName from '@/components/Inputs/inputName';
+import TermsModal from '@/components/Modals/TermsModal';
 
 export default function Cadastro() {
   const [name, setName] = useState('');
@@ -23,12 +24,41 @@ export default function Cadastro() {
   const [birthDate, setBirthDate] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  
+  const [termsModalVisible, setTermsModalVisible] = useState(false);
 
   const router = useRouter();
 
   const handleBack = () => router.back();
-  const handleRegister = () => router.push('/'); 
-  
+
+
+  const handleRegisterClick = () => {
+      setTermsModalVisible(true);
+  };
+
+  const handleTermsAccept = () => {
+    setTermsModalVisible(false);
+    processRegistration();
+  };
+
+  const processRegistration = () => {
+    // Aqui você adicionaria a lógica de cadastro
+    // Por exemplo: chamada para API, salvamento no banco, etc.
+    console.log('Processando cadastro...', {
+      name,
+      email,
+      phone,
+      cancerType,
+      birthDate,
+      password
+    });
+    
+    router.push('/');
+  };
+
+  const handleTermsDismiss = () => {
+    setTermsModalVisible(false);
+  };
 
   const handleBirthDateChange = (date: Date | null, text: string) => {
     setBirthDate(text);
@@ -45,9 +75,9 @@ export default function Cadastro() {
           <LoginSignupBackground>
             <View style={styles.contentWrapper}>
 
-            <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={28} color="#FFF" />
-            </TouchableOpacity>
+              <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+                <Ionicons name="arrow-back" size={28} color="#FFF" />
+              </TouchableOpacity>
 
               <View style={styles.logoContainer}>
                 <Image
@@ -63,7 +93,7 @@ export default function Cadastro() {
               </View>
 
               <View style={styles.formContainer}>
-                 <InputName
+                <InputName
                   value={name}
                   onChangeText={setName}
                   placeholder="Nome"
@@ -109,13 +139,19 @@ export default function Cadastro() {
 
               <ButtonCustom
                 title="Cadastrar"
-                onPress={handleRegister}
+                onPress={handleRegisterClick} 
                 variant="primary"
               />
 
             </View>
           </LoginSignupBackground>
         </ScrollView>
+
+        <TermsModal
+          visible={termsModalVisible}
+          onDismiss={handleTermsDismiss}
+          onAccept={handleTermsAccept}
+        />
       </SafeAreaView>
     </PaperProvider>
   );
@@ -162,3 +198,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 });
+
