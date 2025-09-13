@@ -1,12 +1,14 @@
 import * as React from 'react';
-import { View, Text, Image } from 'react-native';
+import { View, TouchableOpacity } from 'react-native';
 import { PaperProvider } from 'react-native-paper';
-import WhiteCandiLogo from '@/components/WhiteCandiLogo';
+import CandiLogo from '@/components/WhiteCandiLogo';
 import CCalendar from '@/components/Calendar';
 import BottomSheet from '@/components/AgendaDetails';
 import styled from 'styled-components/native';
 import ButtonCustom from '../../../components/Buttons/buttonCustom';
 import { AppTheme } from '../../../theme';
+import { MaterialIcons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 
 const Container = styled(View)`
     flex: 1;
@@ -25,7 +27,13 @@ export default function HomeAgenda() {
   return (
     <PaperProvider>
     <Container>
-      <WhiteCandiLogo bottom={'20%'}/>
+      <TouchableOpacity onPress={() => {
+        router.navigate('/screens/agenda/relatorio');
+      }}>
+        <MaterialIcons name="library-books" size={200} color="#545f71" />
+      </TouchableOpacity>
+      <CandiLogo bottom={'20%'} version={require('../../../../assets/images/rosa_clarinho.png')}/>
+      
       <CCalendar/>
         <ContainerButtons>
           <ButtonCustom

@@ -2,7 +2,7 @@ import { Image, View } from 'react-native';
 import { PaperProvider } from 'react-native-paper';
 import { useWindowDimensions } from 'react-native';
 
-export default function WhiteCandiLogo({bottom}) {
+export default function CandiLogo({bottom, version}) {
     const { width, height } = useWindowDimensions();
   return (
     <PaperProvider>
@@ -15,7 +15,7 @@ export default function WhiteCandiLogo({bottom}) {
                 height: '100%',
                 width: '100%',
                 resizeMode: 'contain'}} 
-                    source={require('../../../assets/images/logoCandiAlt.png')}/>
+                    source={version}/>
 
         </View>
     </PaperProvider>
