@@ -29,18 +29,20 @@ export default function RootLayout() {
 
   return (
     <PaperProvider theme={AppTheme}>
-      <Tabs screenOptions={{ tabBarActiveTintColor: '#FFBE98', tabBarInactiveTintColor: '#CED5D7', headerShown: false }}>
+      <Tabs screenOptions={{ tabBarActiveTintColor: '#FFC4C4', tabBarInactiveTintColor: '#CED5D7', headerShown: false }}>
       <Tabs.Screen
         name="homeCommunity"
         options={{
           title: 'Comunidade',
           tabBarIcon: ({ color }) => <MaterialIcons name="people" size={30} color={color} />,
         }}
+        
       />
         <Tabs.Screen
         name="homeAgenda"
         options={{
           title: 'Agenda',
+          
           tabBarIcon: ({ color }) => <MaterialIcons name="bookmark" size={30} color={color} />,
         }}
       />
@@ -55,6 +57,7 @@ export default function RootLayout() {
         name="homeDiary"
         options={{
           title: 'Diario',
+          
           tabBarIcon: ({ color }) => <MaterialIcons name="edit" size={30} color={color} />,
         }}
       />
