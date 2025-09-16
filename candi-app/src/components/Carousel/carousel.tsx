@@ -4,6 +4,8 @@ import Carousel from 'react-native-reanimated-carousel';
 import { AppTheme } from '../../theme';
 
 const { height: screenHeight, width: screenWidth } = Dimensions.get('window');
+const itemWidth = screenWidth * 0.8;
+const itemHeight = itemWidth * 0.6; 
 
 export type CarouselItem = {
   title: string;
@@ -35,7 +37,7 @@ const CarouselComponent: React.FC<Props> = ({ data, onItemPress }) => {
     <Carousel
       loop
       width={screenWidth}
-      height={screenHeight * 0.3}
+      height={screenHeight * 0.25}
       autoPlay={false}
       data={data}
       scrollAnimationDuration={500}
@@ -51,14 +53,14 @@ const CarouselComponent: React.FC<Props> = ({ data, onItemPress }) => {
 
 const styles = StyleSheet.create({
   itemContainer: {
-    width: '100%',
-    height: 220,
+    width: itemWidth,
+    height: itemHeight,
     borderRadius: AppTheme.roundness,
     overflow: 'hidden',
   },
   image: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
     resizeMode: 'cover',
   },
   placeholder: {
