@@ -56,7 +56,8 @@ export const AppTheme = {
     roleText: '#666',
     phoneText: '#555',
     shadow: '#000',
-    textColor: '#413F42', 
+    textColor: '#413F42',
+    dotsColor: '#CCCCCC' 
   },
 
   fonts: configureFonts({ config: fontConfig }),
