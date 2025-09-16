@@ -17,6 +17,7 @@
     "@expo-google-fonts/kadwa": "^0.4.0",
     "@expo/vector-icons": "^14.1.0",
     "@gorhom/bottom-sheet": "^5.2.6",
+    "@react-native-community/slider": "^5.0.1",
     "@react-navigation/native": "^7.1.6",
     "eas-cli": "^16.17.4",
     "expo": "~53.0.20",
