@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useState } from 'react';
-import { Text, View, SafeAreaView, StatusBar, Image, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { Text, View, StatusBar, Image, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { PaperProvider } from 'react-native-paper';
 import { AppTheme } from '../theme';
 import LoginSignupBackground from '../components/LoginSignupBackground';
@@ -15,6 +15,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import InputName from '@/components/Inputs/inputName';
 import TermsModal from '@/components/Modals/TermsModal';
+import BackIconButton from '@/components/BackIconButton';
 
 export default function Cadastro() {
   const [name, setName] = useState('');
@@ -28,9 +29,6 @@ export default function Cadastro() {
   const [termsModalVisible, setTermsModalVisible] = useState(false);
 
   const router = useRouter();
-
-  const handleBack = () => router.back();
-
 
   const handleRegisterClick = () => {
       setTermsModalVisible(true);
@@ -66,22 +64,20 @@ export default function Cadastro() {
 
   return (
     <PaperProvider theme={AppTheme}>
-      <SafeAreaView style={[styles.container, { backgroundColor: AppTheme.colors.background }]}>
+      <View style={[styles.container, { backgroundColor: AppTheme.colors.background }]}>
         <StatusBar barStyle="light-content" backgroundColor={AppTheme.colors.primary} />
         <ScrollView 
           contentContainerStyle={styles.scrollContent} 
-          showsVerticalScrollIndicator={false}
-        >
+          showsVerticalScrollIndicator={false}>
+            
           <LoginSignupBackground>
             <View style={styles.contentWrapper}>
-
-              <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-                <Ionicons name="arrow-back" size={28} color="#FFF" />
-              </TouchableOpacity>
+              
+             <BackIconButton color={AppTheme.colors.cardBackground} bottom={-30} left={-10}/>
 
               <View style={styles.logoContainer}>
                 <Image
-                  source={require('../../assets/images/logoCandiAlt.png')}
+                  source={require('../../assets/images/rosa_clarinho.png')}
                   style={styles.logo}
                 />
               </View>
@@ -152,7 +148,7 @@ export default function Cadastro() {
           onDismiss={handleTermsDismiss}
           onAccept={handleTermsAccept}
         />
-      </SafeAreaView>
+      </View>
     </PaperProvider>
   );
 }
@@ -172,12 +168,11 @@ const styles = StyleSheet.create({
   },
   logoContainer: { 
     alignItems: 'center', 
-    marginBottom: 40, 
-    marginTop: 10, 
+    bottom: 57
   },
   logo: { 
-    width: 120, 
-    height: 120, 
+    width: 200, 
+    height: 200, 
     resizeMode: 'contain' 
   },
   welcomeContainer: { 

@@ -20,7 +20,7 @@ const Container = styled(View)`
 
 const ContainerButtons = styled(View)`
     position: absolute;
-    top: 58%;
+    top: 62%;
 `;
 
 export default function HomeAgenda() {
@@ -30,9 +30,13 @@ export default function HomeAgenda() {
       <TouchableOpacity onPress={() => {
         router.navigate('/screens/agenda/relatorio');
       }}>
-        <MaterialIcons name="library-books" size={200} color="#545f71" />
+        <MaterialIcons name="library-books" size={40} color={AppTheme.colors.background} style={{
+          top: 55,
+          zIndex: 2,
+          left: 160
+        }}/>
       </TouchableOpacity>
-      <CandiLogo bottom={'20%'} version={require('../../../../assets/images/rosa_clarinho.png')}/>
+      <CandiLogo bottom={'30%'} left={null} version={require('../../../../assets/images/rosa_clarinho.png')}/>
       
       <CCalendar/>
         <ContainerButtons>
@@ -43,7 +47,7 @@ export default function HomeAgenda() {
             <ButtonCustom
               title="Sintomas"
               onPress={() => { console.log("foi") }}
-              variant="tertiary"/>
+              variant="secondary"/>
         </ContainerButtons>
           <BottomSheet/>
     </Container>
