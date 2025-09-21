@@ -46,7 +46,7 @@ export default function HomeAgenda() {
               variant="primary"/>
             <ButtonCustom
               title="Sintomas"
-              onPress={() => { console.log("foi") }}
+              onPress={() => router.push('/screens/agenda/sintomasView')}
               variant="secondary"/>
         </ContainerButtons>
           <BottomSheet/>

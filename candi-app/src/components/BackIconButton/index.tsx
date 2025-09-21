@@ -1,22 +1,33 @@
-import * as React from 'react';
-import { Image, TouchableOpacity, View } from 'react-native';
-import { PaperProvider } from 'react-native-paper';
-import { useWindowDimensions } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import React from "react";
+import { TouchableOpacity, StyleSheet } from "react-native";
+import { MaterialIcons } from "@expo/vector-icons";
+import { router } from "expo-router";
 
-export default function BackIconButton({color, bottom, left}) {
-    const { width, height } = useWindowDimensions();
+type BackIconButtonProps = {
+  color: string;
+  bottom?: number;
+  left?: number;
+  onPress?: () => void;
+};
+
+export default function BackIconButton({
+  color,
+  bottom = 0,
+  left = 0,
+  onPress,
+}: BackIconButtonProps) {
   return (
-    <PaperProvider>
-      <View>
-        <TouchableOpacity onPress={() => { router.back(); }}>
-            <MaterialIcons name="chevron-left" size={50} color={color} style={{
-              left: left,
-              bottom: bottom
-            }}/>
-        </TouchableOpacity>
-      </View>
-    </PaperProvider>
+    <TouchableOpacity
+      onPress={onPress ? onPress : () => router.back()}
+      style={[styles.button, { bottom, left }]}
+    >
+      <MaterialIcons name="chevron-left" size={40} color={color} />
+    </TouchableOpacity>
   );
 }
+
+const styles = StyleSheet.create({
+  button: {
+    position: "absolute",
+  },
+});
