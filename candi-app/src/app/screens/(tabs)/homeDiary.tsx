@@ -33,7 +33,7 @@ const DiaryScreen = () => {
   const navigation = useNavigation();
 
  const handleFabPress = () => {
-    router.push('/screens/diary/passagemRead');
+    router.push('/screens/diary/passagemAdd');
   };
 
   const handleHeartPress = () => {
@@ -44,7 +44,7 @@ const DiaryScreen = () => {
     <View style={styles.screen}>
       <View style={styles.topIcons}>
         <TouchableOpacity onPress={handleHeartPress} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <AntDesign name="hearto" size={26} color="#fff" />
+          <AntDesign name="hearto" size={26} color= "#FFC4C4" />
         </TouchableOpacity>
       </View>
 
@@ -70,7 +70,7 @@ const DiaryScreen = () => {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: AppTheme.colors.primary,
+    backgroundColor: AppTheme.colors.background,
     position: 'relative',
   },
   topIcons: {

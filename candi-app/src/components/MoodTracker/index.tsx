@@ -65,8 +65,8 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: AppTheme.colors.cardBackground,
     borderRadius: 24,
-    borderWidth: 1.5,
-    borderColor: AppTheme.colors.tertiary,
+    borderWidth: 3,
+    borderColor: AppTheme.colors.primary,
     padding: 20,
     marginHorizontal: 16,
     elevation: 3,
@@ -95,7 +95,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   button: {
-    backgroundColor: AppTheme.colors.tertiary,
+    backgroundColor: AppTheme.colors.primary,
     borderRadius: AppTheme.roundness, 
     elevation: 0,
     alignSelf: 'center',
