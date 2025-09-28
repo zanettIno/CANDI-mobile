@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { TextInput, View, TouchableOpacity } from 'react-native';
 import styled from 'styled-components/native';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -16,13 +16,13 @@ const Container = styled(View)`
   margin: 16px;
 `;
 
-const StyledTextInput = styled(TextInput)`
+const StyledTextInput = styled(TextInput)<{ isValid?: boolean }>`
   background-color: #f5f5f5;
   border-radius: 50px;
   padding: 16px 50px 16px 16px;
   font-size: 20px;
   color: #545F71;
-  border: 1px solid transparent;
+  border: 1px solid ${props => props.isValid === false ? '#ff6b6b' : 'transparent'};
 `;
 
 const IconContainer = styled(TouchableOpacity)`
@@ -38,15 +38,18 @@ const InputName: React.FC<InputNameProps> = ({
   placeholder = "Nome",
   style
 }) => {
+  const isValidName = (name: string) => /^[A-Za-zÀ-ÿ\s]+$/.test(name);
+
   return (
     <Container style={style}>
       <StyledTextInput
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        keyboardType="name"
-        autoCapitalize="none"
+        keyboardType="default"
+        autoCapitalize="words"
         autoCorrect={false}
+        isValid={value ? isValidName(value) : undefined}
       />
       <IconContainer>
         <MaterialIcons name="person" size={24} color="#545f71" />

@@ -49,6 +49,7 @@ const InputConfirmPassword: React.FC<InputConfirmPasswordProps> = ({
     setIsPasswordVisible(!isPasswordVisible);
   };
 
+  // VALIDAÇÃO: verifica se a senha confere com a original
   const getMatchingStatus = () => {
     if (!value || !originalPassword) return undefined;
     return value === originalPassword;
@@ -66,7 +67,6 @@ const InputConfirmPassword: React.FC<InputConfirmPasswordProps> = ({
         autoCapitalize="none"
         autoCorrect={false}
         isMatching={isMatching}
-        
       />
       <IconContainer onPress={togglePasswordVisibility}>
         <MaterialIcons 
@@ -80,4 +80,3 @@ const InputConfirmPassword: React.FC<InputConfirmPasswordProps> = ({
 };
 
 export default InputConfirmPassword;
-
