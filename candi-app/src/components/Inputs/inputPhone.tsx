@@ -58,6 +58,7 @@ const InputPhone: React.FC<InputPhoneProps> = ({
     onChangeText(formatted);
   };
 
+  // VALIDAÇÃO: telefone válido (10 ou 11 números)
   const isValidPhone = (phone: string) => {
     const digits = phone.replace(/\D/g, '');
     return digits.length === 10 || digits.length === 11;

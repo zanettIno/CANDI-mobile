@@ -38,6 +38,7 @@ const InputName: React.FC<InputNameProps> = ({
   placeholder = "Nome",
   style
 }) => {
+  // VALIDAÇÃO: nome não vazio e apenas letras e espaços
   const isValidName = (name: string) => /^[A-Za-zÀ-ÿ\s]+$/.test(name);
 
   return (

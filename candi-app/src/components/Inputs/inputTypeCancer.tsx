@@ -60,6 +60,7 @@ const InputTypeCancer: React.FC<InputTypeCancerProps> = ({
     closeMenu();
   };
 
+  // VALIDAÇÃO: campo obrigatório
   const isValid = !!value;
 
   return (

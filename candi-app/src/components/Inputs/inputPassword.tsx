@@ -44,6 +44,7 @@ const InputPassword: React.FC<InputPasswordProps> = ({
     setIsPasswordVisible(!isPasswordVisible);
   };
 
+  // VALIDAÇÃO: no mínimo 8 caracteres, letra maiúscula, número e caracter especial
   const isValidPassword = (password: string) => 
     /^(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/.test(password);
 

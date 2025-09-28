@@ -67,6 +67,7 @@ const InputBirth: React.FC<InputBirthProps> = ({
     return null;
   };
 
+  // VALIDACAO: data não pode ser futura
   const isValidDate = (date: Date | null) => {
     if (!date) return false;
     const today = new Date();

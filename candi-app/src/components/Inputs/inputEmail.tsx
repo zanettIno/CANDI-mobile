@@ -38,6 +38,7 @@ const InputEmail: React.FC<InputEmailProps> = ({
   placeholder = "Email",
   style
 }) => {
+  // VALIDAÇÃO: email válido
   const isValidEmail = (email: string) => {
     const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return regex.test(email);
