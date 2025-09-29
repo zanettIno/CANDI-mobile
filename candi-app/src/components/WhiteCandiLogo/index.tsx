@@ -2,14 +2,15 @@ import { Image, View } from 'react-native';
 import { PaperProvider } from 'react-native-paper';
 import { useWindowDimensions } from 'react-native';
 
-export default function CandiLogo({bottom, version}) {
+export default function CandiLogo({bottom, version, left}) {
     const { width, height } = useWindowDimensions();
   return (
     <PaperProvider>
         <View style={{
             height: width - 650,
             width: height - 650,
-            bottom: bottom}}>
+            bottom: bottom,
+            left: left}}>
 
             <Image style={{
                 height: '100%',

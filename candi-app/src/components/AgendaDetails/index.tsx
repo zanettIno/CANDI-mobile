@@ -1,9 +1,22 @@
 import { useState } from 'react';
-import { View, TouchableOpacity, Dimensions, ScrollView } from 'react-native';
+import { View, TouchableOpacity, Dimensions, ScrollView, Text } from 'react-native';
 import styled from 'styled-components/native';
 import { AppTheme } from '../../theme';
+import AppointmentTimeline from '../appointmentTimeline';
+import ButtonCustom from '../Buttons/buttonCustom';
+import { router } from 'expo-router';
 
 const { height: height } = Dimensions.get('window');
+
+const meses = ['JANEIRO', 'FEVEREIRO', 'MARCO', 
+               'ABRIL', 'MAIO', 'JUNHO', 
+               'JULHO', 'AGOSTO', 'SETEMBRO', 
+               'OUTUBRO', 'NOVEMBRO' , 'DEZEMBRO']
+
+const hoje = new Date();
+const ano = hoje.getFullYear();
+const mes = hoje.getMonth() + 1;
+const dia = hoje.getDate();
 
 const ContainerDetails = styled(ScrollView)`
     position: absolute;
@@ -29,15 +42,22 @@ const Macaneta = styled(View)`
 `;
 
 const ContainerInfo = styled(View)`
-    flex: 1;
+  flex: 1;
   padding-left: 20px;
   padding-right: 20px;
 `;
 
-export default function HomeAgenda() {
+const ContainerMedicamentos = styled(View)`
+  flex: 1;
+  height: 120px;
+  border-radius: 16px;
+  background-color: ${AppTheme.colors.tertiary};
+`;
+
+export default function BottomSheet() {
     const [expandido, setExpandido] = useState(false);
 
-    const altDetails = expandido ? height * 0.57 : height * 0.15;
+    const altDetails = expandido ? height * 0.57 : height * 0.10;
 
     const toggleSheet = () => {
         setExpandido(!expandido);
@@ -49,11 +69,30 @@ export default function HomeAgenda() {
                 <Macaneta/>
             </UpDown>
             {setExpandido && <ContainerInfo>
-                
-            {
-                // Vai ir MUITA coisa aq dentro, might see it later on
-            }
+                    <Text style={{
+                        fontFamily: AppTheme.fonts.titleLarge.fontFamily,
+                        fontSize: AppTheme.fonts.titleLarge.fontSize,
+                        color: AppTheme.colors.tertiary}}>
+                        HOJE, {dia} DE {meses[mes-1]}
+                    </Text>
+                    <AppointmentTimeline/>
 
+                    <Text style={{
+                        fontFamily: AppTheme.fonts.titleLarge.fontFamily,
+                        fontSize: AppTheme.fonts.titleLarge.fontSize,
+                        color: AppTheme.colors.tertiary,
+                        paddingVertical: '6%'}}>
+                        MEDICAMENTOS
+                    </Text>
+
+                    <ContainerMedicamentos>
+                        
+                    </ContainerMedicamentos>
+
+                    <ButtonCustom
+                        title="Medicamentos"
+                        onPress={() => router.push('/screens/agenda/medicamentosView')}
+                        variant="secondary"/>
             </ContainerInfo>}
         </ContainerDetails>
     );

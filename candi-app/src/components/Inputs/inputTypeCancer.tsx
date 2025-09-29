@@ -17,12 +17,12 @@ const Container = styled(View)`
   margin: 16px;
 `;
 
-const StyledInputLike = styled.TouchableOpacity`
+const StyledInputLike = styled.TouchableOpacity<{ isValid?: boolean }>`
   background-color: #f5f5f5;
   border-radius: 50px;
   padding: 16px 50px 16px 16px;
   font-size: 20px;
-  border: 1px solid transparent;
+  border: 1px solid ${props => props.isValid === false ? '#ff6b6b' : 'transparent'};
   justify-content: center;
 `;
 
@@ -39,24 +39,9 @@ const IconContainer = styled(View)`
 `;
 
 const cancerTypes = [
-  "Mama",
-  "Próstata",
-  "Pulmão",
-  "Cólon e Reto",
-  "Estômago",
-  "Fígado",
-  "Colo do Útero",
-  "Esôfago",
-  "Bexiga",
-  "Linfoma não Hodgkin",
-  "Leucemia",
-  "Rim",
-  "Pâncreas",
-  "Tireoide",
-  "Sistema Nervoso Central",
-  "Ovário",
-  "Melanoma",
-  "Outros",
+  "Mama", "Próstata", "Pulmão", "Cólon e Reto", "Estômago", "Fígado", "Colo do Útero",
+  "Esôfago", "Bexiga", "Linfoma não Hodgkin", "Leucemia", "Rim", "Pâncreas", "Tireoide",
+  "Sistema Nervoso Central", "Ovário", "Melanoma", "Outros",
 ];
 
 const InputTypeCancer: React.FC<InputTypeCancerProps> = ({
@@ -75,13 +60,16 @@ const InputTypeCancer: React.FC<InputTypeCancerProps> = ({
     closeMenu();
   };
 
+  // VALIDAÇÃO: campo obrigatório
+  const isValid = !!value;
+
   return (
     <Container style={style}>
       <Menu
         visible={visible}
         onDismiss={closeMenu}
         anchor={
-          <StyledInputLike onPress={openMenu} activeOpacity={0.8}>
+          <StyledInputLike onPress={openMenu} activeOpacity={0.8} isValid={isValid}>
             <InputText>{value || placeholder}</InputText>
             <IconContainer>
               <MaterialIcons name="favorite" size={24} color="#545f71" />
