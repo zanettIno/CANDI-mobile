@@ -77,7 +77,7 @@ export default function LoginSignupBackground({ children }) {
         <SecondLayer>
           <SecondWaves
             color={AppTheme.colors.secondary} 
-            layerHeight={height / 4}
+            layerHeight={height / 3.9}
             position="bottom"
           />
         </SecondLayer>
@@ -85,7 +85,7 @@ export default function LoginSignupBackground({ children }) {
         <ThirdLayer>
           <ThirdWaves
             color={AppTheme.colors.primary} 
-            layerHeight={height / 5}
+            layerHeight={height / 4.2}
             position="bottom"
           />
         </ThirdLayer>

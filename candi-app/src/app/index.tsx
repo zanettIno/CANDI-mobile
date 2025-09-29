@@ -7,6 +7,7 @@ import LoginSignupBackground from '../components/LoginSignupBackground';
 import InputEmail from '../components/Inputs/inputEmail';
 import InputPassword from '../components/Inputs/inputPassword';
 import ButtonCustom from '../components/Buttons/buttonCustom';
+import CandiLogo from '@/components/WhiteCandiLogo';
 import { useRouter } from 'expo-router';
 
 export default function Index() {
@@ -41,11 +42,13 @@ export default function Index() {
 
   return (
     <PaperProvider theme={AppTheme}>
-      <SafeAreaView style={[styles.container, { backgroundColor: AppTheme.colors.background }]}>
+      <View style={[styles.container, { backgroundColor: AppTheme.colors.background }]}>
         <StatusBar barStyle="light-content" backgroundColor={AppTheme.colors.primary} />
         <LoginSignupBackground>
           <View style={styles.contentWrapper}>
-
+            
+            <CandiLogo bottom={15} left={70} version={require('../../assets/images/rosa_clarinho.png')}/>
+         
             <View style={styles.welcomeContainer}>
               <Text style={[styles.welcomeTitle, { color: AppTheme.colors.textColor }]}>
                 Bem vindo!
@@ -91,10 +94,9 @@ export default function Index() {
                 </Text>
               </TouchableOpacity>
             </View>
-
           </View>
         </LoginSignupBackground>
-      </SafeAreaView>
+      </View>
     </PaperProvider>
   );
 }

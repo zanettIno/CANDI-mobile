@@ -7,7 +7,7 @@ import { AppTheme } from '../../../theme';
 import EmergencyContactCard, { EmergencyContact } from '../../../components/EmergencyContactCard';
 import Timeline from '../../../components/Timeline';
 import CommunityShortcut from "../../../components/Community-Shortcut";
-import CarouselComponent from "../../../components/Carousel/carousel";
+//import CarouselComponent from "../../../components/Carousel/carousel";
 
 export default function HomeScreen() {
   const contacts: EmergencyContact[] = [
@@ -60,7 +60,9 @@ export default function HomeScreen() {
         <Timeline onPress={showTimelineModal} />
 
         <View>
-          <CarouselComponent data={carouselData} />
+          {
+            // <CarouselComponent data={carouselData} />
+          }
         </View>
 
         <View style={styles.section}>

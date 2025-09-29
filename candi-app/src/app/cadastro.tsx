@@ -14,7 +14,10 @@ import InputName from '../components/Inputs/inputName';
 import ButtonCustom from '../components/Buttons/buttonCustom';
 import TermsModal from '../components/Modals/TermsModal';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import InputName from '@/components/Inputs/inputName';
+import TermsModal from '@/components/Modals/TermsModal';
+import BackIconButton from '@/components/BackIconButton';
 
 export default function Cadastro() {
   const [name, setName] = useState('');
@@ -44,7 +47,7 @@ export default function Cadastro() {
   const handleBirthDateChange = (date: Date | null, text: string) => {
     setBirthDate(text);
   };
-
+  
   const handleRegisterClick = () => {
     // Validações
     const newErrors = {
@@ -93,19 +96,18 @@ export default function Cadastro() {
 
   return (
     <PaperProvider theme={AppTheme}>
-      <SafeAreaView style={[styles.container, { backgroundColor: AppTheme.colors.background }]}>
+      <View style={[styles.container, { backgroundColor: AppTheme.colors.background }]}>
         <StatusBar barStyle="light-content" backgroundColor={AppTheme.colors.primary} />
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+
           <LoginSignupBackground>
             <View style={styles.contentWrapper}>
-
-              <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-                <Ionicons name="arrow-back" size={28} color="#FFF" />
-              </TouchableOpacity>
+              
+             <BackIconButton color={AppTheme.colors.cardBackground} bottom={-30} left={-10}/>
 
               <View style={styles.logoContainer}>
                 <Image
-                  source={require('../../assets/images/logoCandiAlt.png')}
+                  source={require('../../assets/images/rosa_clarinho.png')}
                   style={styles.logo}
                 />
               </View>
@@ -183,18 +185,21 @@ export default function Cadastro() {
           onDismiss={handleTermsDismiss}
           onAccept={handleTermsAccept}
         />
-      </SafeAreaView>
+      </View>
     </PaperProvider>
   );
 }
 
 const styles = StyleSheet.create({
+
   container: { flex: 1 },
   scrollContent: { flexGrow: 1 },
   contentWrapper: { flex: 1, justifyContent: 'flex-start', paddingHorizontal: 20, paddingTop: 20 },
   logoContainer: { alignItems: 'center', marginBottom: 40, marginTop: 10 },
   logo: { width: 120, height: 120, resizeMode: 'contain' },
   welcomeContainer: { marginBottom: 20 },
+
+
   welcomeTitle: {
     fontFamily: AppTheme.fonts.headlineMedium.fontFamily,
     fontSize: AppTheme.fonts.displaySmall.fontSize,

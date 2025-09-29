@@ -6,7 +6,7 @@ export default function ContatosAdd() {
   return (
     <PaperProvider>
       <View>
-        
+        <Text>oiiii2</Text>
       </View>
     </PaperProvider>
   );
