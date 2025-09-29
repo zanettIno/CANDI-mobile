@@ -1,107 +1,140 @@
 import * as React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { TextInput, Button } from 'react-native-paper';
-import { MaterialIcons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
-import { AppTheme } from '../../theme'; 
+import { AppTheme } from '../../theme';
 
-const MoodTracker: React.FC = () => {
-  const [moodValue, setMoodValue] = React.useState(2); 
+const moodStates = [
+  { emoji: '😞', color: '#d9534f' },
+  { emoji: '😐', color: '#f0ad4e' },
+  { emoji: '🙂', color: '#5cb85c' },
+  { emoji: '😊', color: '#42b6a7' },
+  { emoji: '😄', color: '#337ab7' },
+];
+
+interface MoodTrackerProps {
+  onSave: (data: { moodValue: number; observation: string }) => void;
+}
+
+const MoodTracker: React.FC<MoodTrackerProps> = ({ onSave }) => {
+  const [moodValue, setMoodValue] = React.useState(2);
   const [observation, setObservation] = React.useState('');
 
-  const handleSave = () => {
-    console.log({
-      mood: moodValue,
-      observation: observation,
-    });
+  const handlePressSave = () => {
+    onSave({ moodValue, observation });
     setMoodValue(2);
     setObservation('');
   };
 
+  const currentMood = moodStates[Math.round(moodValue)];
+
   return (
     <View style={styles.card}>
-      <Text style={styles.title}>Como você está se sentindo hoje?</Text>
+      <Text style={styles.subtitle}>Como você está se sentindo hoje?</Text>
       
-      <View style={styles.sliderContainer}>
-        <MaterialIcons name="sentiment-very-dissatisfied" size={28} color={AppTheme.colors.tertiary} />
+      <View style={styles.compactSliderContainer}>
+        <View style={[styles.emojiContainer, { borderColor: currentMood.color }]}>
+          <Text style={styles.emoji}>{currentMood.emoji}</Text>
+        </View>
         <Slider
           style={styles.slider}
           minimumValue={0}
-          maximumValue={4}
+          maximumValue={moodStates.length - 1}
           step={1}
           value={moodValue}
           onValueChange={setMoodValue}
-          minimumTrackTintColor={AppTheme.colors.secondary} 
-          maximumTrackTintColor="#E0E0E0" 
-          thumbTintColor={AppTheme.colors.secondary} 
+          minimumTrackTintColor={currentMood.color}
+          maximumTrackTintColor="#E0E0E0"
+          thumbTintColor={currentMood.color}
         />
-        <MaterialIcons name="sentiment-very-satisfied" size={28} color={AppTheme.colors.tertiary} />
       </View>
-      
+
       <TextInput
-        label="Observação"
+        mode="outlined"
         value={observation}
         onChangeText={setObservation}
-        mode="flat"
+        placeholder="Observação..."
         style={styles.input}
-        underlineColor={AppTheme.colors.tertiary}
-        activeUnderlineColor={AppTheme.colors.primary}
-        // placeholder="Escreva um pouco sobre seu sentimento..."
+        outlineStyle={styles.inputOutline}
+        activeOutlineColor={AppTheme.colors.primary}
+        dense
       />
 
       <Button
         mode="contained"
-        onPress={handleSave}
+        onPress={handlePressSave}
         style={styles.button}
-        labelStyle={styles.buttonText}
+        labelStyle={styles.buttonLabel}
+        disabled={!observation.trim()}
       >
-        Salvar sentimento
+        Salvar
       </Button>
+
+     
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: AppTheme.colors.cardBackground,
-    borderRadius: 24,
-    borderWidth: 1.5,
-    borderColor: AppTheme.colors.tertiary,
+    backgroundColor: AppTheme.colors.cardBackground, 
+    marginHorizontal: 24, 
+    borderRadius: 24, 
     padding: 20,
-    marginHorizontal: 16,
-    elevation: 3,
-    shadowColor: AppTheme.colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
+    marginVertical: 16,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
-    shadowRadius: 3,
+    shadowRadius: 2,
   },
-  title: {
-    ...AppTheme.fonts.titleMedium,
-    color: AppTheme.colors.textColor,
+  subtitle: {
+    ...AppTheme.fonts.bodyMedium,
+    color: AppTheme.colors.onSurfaceVariant,
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 12,
   },
-  sliderContainer: {
-    flexDirection: 'row',
+  compactSliderContainer: {
     alignItems: 'center',
-    marginBottom: 10,
+  },
+  emojiContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 3,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+    backgroundColor: AppTheme.colors.background,
+  },
+  emoji: {
+    fontSize: 30,
   },
   slider: {
-    flex: 1,
-    marginHorizontal: 8,
+    width: '100%',
+    height: 30,
   },
   input: {
-    backgroundColor: 'transparent',
-    marginBottom: 16,
+    backgroundColor: AppTheme.colors.background,
+    marginTop: 12,
+    marginBottom: 12,
+    fontSize: 14,
+    height: 45,
+  },
+  inputOutline: {
+    borderRadius: 12,
+    borderWidth: 0,
   },
   button: {
-    backgroundColor: AppTheme.colors.tertiary,
-    borderRadius: AppTheme.roundness, 
-    elevation: 0,
+    borderRadius: 12,
     alignSelf: 'center',
+    backgroundColor: AppTheme.colors.tertiary,
+    width: '100%',
   },
-  buttonText: {
+  buttonLabel: {
     ...AppTheme.fonts.labelLarge,
+    fontWeight: '600',
+    marginHorizontal: 24,
     color: AppTheme.colors.cardBackground,
   },
 });
