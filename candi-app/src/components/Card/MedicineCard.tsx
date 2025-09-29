@@ -52,7 +52,7 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: AppTheme.colors.cardBackground,
-    borderRadius: AppTheme.roundness,
+    borderRadius: 16,
     padding: 16,
     marginBottom: 12,
     shadowColor: AppTheme.colors.shadow,
@@ -85,7 +85,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   optionsIcon: {
-    fontSize: AppTheme.fonts.titleMedium.fontSize, // Ajustado para ser visível
+    fontSize: AppTheme.fonts.titleMedium.fontSize, 
     color: AppTheme.colors.placeholderText,
     fontWeight: 'bold',
   },

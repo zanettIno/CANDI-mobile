@@ -73,7 +73,7 @@ const SymptomCard: React.FC<SymptomCardProps> = ({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: AppTheme.colors.cardBackground,
-    borderRadius: AppTheme.roundness,
+    borderRadius: 16,
     padding: 16,
     marginBottom: 12,
     shadowColor: AppTheme.colors.shadow,
@@ -116,7 +116,7 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   optionsIcon: {
-    fontSize: AppTheme.fonts.titleMedium.fontSize, // Ajustado para ser visível
+    fontSize: AppTheme.fonts.titleMedium.fontSize,
     color: AppTheme.colors.placeholderText,
     fontWeight: 'bold',
   },

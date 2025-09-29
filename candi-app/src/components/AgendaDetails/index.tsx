@@ -4,6 +4,7 @@ import styled from 'styled-components/native';
 import { AppTheme } from '../../theme';
 import AppointmentTimeline from '../appointmentTimeline';
 import ButtonCustom from '../Buttons/buttonCustom';
+import { router } from 'expo-router';
 
 const { height: height } = Dimensions.get('window');
 
@@ -89,8 +90,8 @@ export default function BottomSheet() {
                     </ContainerMedicamentos>
 
                     <ButtonCustom
-                        title="Registrar medicamento"
-                        onPress={() => { console.log("foi") }}
+                        title="Medicamentos"
+                        onPress={() => router.push('/screens/agenda/medicamentosView')}
                         variant="secondary"/>
             </ContainerInfo>}
         </ContainerDetails>
