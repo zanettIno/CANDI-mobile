@@ -16,13 +16,13 @@ const Container = styled(View)`
   margin: 16px;
 `;
 
-const StyledTextInput = styled(TextInput)`
+const StyledTextInput = styled(TextInput)<{ isValid?: boolean }>`
   background-color: #f5f5f5;
   border-radius: 50px;
   padding: 16px 50px 16px 16px;
   font-size: 20px;
   color: #545f71;
-  border: 1px solid transparent;
+  border: 1px solid ${props => props.isValid === false ? '#ff6b6b' : 'transparent'};
 `;
 
 const IconContainer = styled(TouchableOpacity)`
@@ -39,10 +39,7 @@ const InputPhone: React.FC<InputPhoneProps> = ({
   style
 }) => {
   const formatPhoneNumber = (text: string) => {
-    // Remove todos os caracteres não numéricos
     const cleaned = text.replace(/\D/g, '');
-    
-    // Aplica a máscara (XX) XXXXX-XXXX
     if (cleaned.length <= 11) {
       const match = cleaned.match(/^(\d{0,2})(\d{0,5})(\d{0,4})$/);
       if (match) {
@@ -61,6 +58,12 @@ const InputPhone: React.FC<InputPhoneProps> = ({
     onChangeText(formatted);
   };
 
+  // VALIDAÇÃO: telefone válido (10 ou 11 números)
+  const isValidPhone = (phone: string) => {
+    const digits = phone.replace(/\D/g, '');
+    return digits.length === 10 || digits.length === 11;
+  };
+
   return (
     <Container style={style}>
       <StyledTextInput
@@ -69,6 +72,7 @@ const InputPhone: React.FC<InputPhoneProps> = ({
         placeholder={placeholder}
         keyboardType="phone-pad"
         maxLength={15}
+        isValid={value ? isValidPhone(value) : undefined}
       />
       <IconContainer>
         <MaterialIcons name="phone" size={24} color="#545f71" />
@@ -78,4 +82,3 @@ const InputPhone: React.FC<InputPhoneProps> = ({
 };
 
 export default InputPhone;
-
