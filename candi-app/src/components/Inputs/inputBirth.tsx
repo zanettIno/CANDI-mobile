@@ -54,10 +54,9 @@ const InputBirth: React.FC<InputBirthProps> = ({
   };
 
   const parseDate = (text: string): Date | null => {
-    if (text.length !== 10) return null; // só tenta converter quando tiver DD/MM/AAAA
+    if (text.length !== 10) return null;
     const [day, month, year] = text.split("/").map(Number);
     const date = new Date(year, month - 1, day);
-    // valida se a data realmente existe
     if (
       date.getFullYear() === year &&
       date.getMonth() === month - 1 &&
@@ -68,10 +67,18 @@ const InputBirth: React.FC<InputBirthProps> = ({
     return null;
   };
 
+  // VALIDACAO: data não pode ser futura
+  const isValidDate = (date: Date | null) => {
+    if (!date) return false;
+    const today = new Date();
+    return date <= today;
+  };
+
   const handleChangeText = (text: string) => {
     const formatted = formatDate(text);
     const date = parseDate(formatted);
-    onChangeText(date, formatted); // devolve a data e a string
+    const validDate = isValidDate(date) ? date : null; // se inválido, devolve null
+    onChangeText(validDate, formatted);
   };
 
   return (
@@ -81,7 +88,12 @@ const InputBirth: React.FC<InputBirthProps> = ({
         onChangeText={handleChangeText}
         placeholder={placeholder}
         keyboardType="numeric"
-        maxLength={10} // DD/MM/AAAA
+        maxLength={10}
+        style={{
+          borderColor: value && !isValidDate(parseDate(value))
+            ? "#ff6b6b"
+            : "transparent"
+        }}
       />
       <IconContainer>
         <MaterialIcons name="calendar-today" size={24} color="#545f71" />

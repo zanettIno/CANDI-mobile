@@ -16,13 +16,13 @@ const Container = styled(View)`
   margin: 16px;
 `;
 
-const StyledTextInput = styled(TextInput)`
+const StyledTextInput = styled(TextInput)<{ isValid?: boolean }>`
   background-color: #f5f5f5;
   border-radius: 50px;
   padding: 16px 50px 16px 16px;
   font-size: 20px;
   color: #545F71;
-  border: 1px solid transparent;
+  border: 1px solid ${props => props.isValid === false ? '#ff6b6b' : 'transparent'};
 `;
 
 const IconContainer = styled(TouchableOpacity)`
@@ -44,6 +44,10 @@ const InputPassword: React.FC<InputPasswordProps> = ({
     setIsPasswordVisible(!isPasswordVisible);
   };
 
+  // VALIDAÇÃO: no mínimo 8 caracteres, letra maiúscula, número e caracter especial
+  const isValidPassword = (password: string) => 
+    /^(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/.test(password);
+
   return (
     <Container style={style}>
       <StyledTextInput
@@ -53,6 +57,7 @@ const InputPassword: React.FC<InputPasswordProps> = ({
         secureTextEntry={!isPasswordVisible}
         autoCapitalize="none"
         autoCorrect={false}
+        isValid={value ? isValidPassword(value) : undefined}
       />
       <IconContainer onPress={togglePasswordVisibility}>
         <MaterialIcons 
@@ -66,4 +71,3 @@ const InputPassword: React.FC<InputPasswordProps> = ({
 };
 
 export default InputPassword;
-

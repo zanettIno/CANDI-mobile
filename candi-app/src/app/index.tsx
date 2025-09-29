@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useState } from 'react';
-import { Text, View, TouchableOpacity, SafeAreaView, StatusBar, Image, StyleSheet } from 'react-native';
+import { Text, View, TouchableOpacity, SafeAreaView, StatusBar, Image, StyleSheet, Alert } from 'react-native';
 import { PaperProvider } from 'react-native-paper';
 import { AppTheme } from '../theme';
 import LoginSignupBackground from '../components/LoginSignupBackground';
@@ -13,9 +13,31 @@ import { useRouter } from 'expo-router';
 export default function Index() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [emailValid, setEmailValid] = useState(true);
+  const [passwordValid, setPasswordValid] = useState(true);
+
   const router = useRouter();
 
-  const handleLogin = () => router.push('/screens/(tabs)/home');
+  const handleLogin = () => {
+    // Validações
+    const emailIsValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    const passwordIsValid = /^(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/.test(password);
+
+    setEmailValid(emailIsValid);
+    setPasswordValid(passwordIsValid);
+
+    if (!emailIsValid) {
+      Alert.alert("Erro", "Por favor, insira um email válido.");
+      return;
+    }
+    if (!passwordIsValid) {
+      Alert.alert("Erro", "Senha inválida. Deve conter no mínimo 8 caracteres, incluindo letra maiúscula, número e caracter especial.");
+      return;
+    }
+
+    router.push('/screens/(tabs)/home');
+  };
+
   const handleSignUp = () => router.push('/cadastro');
 
   return (
@@ -26,7 +48,7 @@ export default function Index() {
           <View style={styles.contentWrapper}>
             
             <CandiLogo bottom={15} left={70} version={require('../../assets/images/rosa_clarinho.png')}/>
-          
+         
             <View style={styles.welcomeContainer}>
               <Text style={[styles.welcomeTitle, { color: AppTheme.colors.textColor }]}>
                 Bem vindo!
@@ -41,11 +63,13 @@ export default function Index() {
                 value={email}
                 onChangeText={setEmail}
                 placeholder="Email"
+                style={{ borderColor: emailValid ? 'transparent' : '#ff6b6b', borderWidth: 1, borderRadius: 50 }}
               />
               <InputPassword
                 value={password}
                 onChangeText={setPassword}
                 placeholder="Senha"
+                style={{ borderColor: passwordValid ? 'transparent' : '#ff6b6b', borderWidth: 1, borderRadius: 50 }}
               />
             </View>
 
@@ -80,8 +104,6 @@ export default function Index() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   contentWrapper: { flex: 1, justifyContent: 'flex-start', paddingHorizontal: 20, paddingTop: 60 },
-  logoContainer: { alignItems: 'center', marginBottom: 80, marginTop: 40 },
-  logo: { width: 120, height: 120, resizeMode: 'contain' },
   welcomeContainer: { marginBottom: 40 },
   welcomeTitle: {
     fontFamily: AppTheme.fonts.headlineMedium.fontFamily,
@@ -98,10 +120,6 @@ const styles = StyleSheet.create({
     fontSize: AppTheme.fonts.bodyMedium.fontSize,
   },
   signUpContainer: { alignItems: 'center', marginTop: 16, flex: 1, justifyContent: 'flex-end', paddingBottom: 40 },
-  signUpText: {
-    fontFamily: AppTheme.fonts.bodyLarge.fontFamily,
-    fontSize: AppTheme.fonts.bodyLarge.fontSize,
-  },
   signUpLink: {
     fontFamily: AppTheme.fonts.bodyLarge.fontFamily,
     fontSize: AppTheme.fonts.bodyLarge.fontSize,
