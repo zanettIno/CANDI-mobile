@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useState } from 'react';
-import { Text, View, SafeAreaView, StatusBar, Image, ScrollView, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { Text, View, StatusBar, Image, ScrollView, StyleSheet, Alert, Dimensions } from 'react-native';
 import { PaperProvider } from 'react-native-paper';
 import { AppTheme } from '../theme';
 import LoginSignupBackground from '../components/LoginSignupBackground';
@@ -14,10 +14,13 @@ import InputName from '../components/Inputs/inputName';
 import ButtonCustom from '../components/Buttons/buttonCustom';
 import TermsModal from '../components/Modals/TermsModal';
 import { useRouter } from 'expo-router';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import InputName from '@/components/Inputs/inputName';
-import TermsModal from '@/components/Modals/TermsModal';
 import BackIconButton from '@/components/BackIconButton';
+
+const { width } = Dimensions.get('window');
+
+// LEMBRAR DE TROCAR O IP DA MAQUINA
+// const endpoint = `http://${process.env.IP}:3000/auth/login`; 
+const endpoint = `http://192.168.68.122:3000/auth/register`;
 
 export default function Cadastro() {
   const [name, setName] = useState('');
@@ -29,6 +32,8 @@ export default function Cadastro() {
   const [confirmPassword, setConfirmPassword] = useState('');
 
   const [termsModalVisible, setTermsModalVisible] = useState(false);
+
+  const [loading, setLoading] = useState(false);
 
   const [errors, setErrors] = useState({
     name: false,
@@ -42,14 +47,12 @@ export default function Cadastro() {
 
   const router = useRouter();
 
-  const handleBack = () => router.back();
-
   const handleBirthDateChange = (date: Date | null, text: string) => {
     setBirthDate(text);
   };
   
-  const handleRegisterClick = () => {
-    // Validações
+  const handleRegisterClick = async () => {
+
     const newErrors = {
       name: name.trim() === '',
       email: !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),
@@ -62,32 +65,56 @@ export default function Cadastro() {
 
     setErrors(newErrors);
 
-    // Se houver algum erro, mostra alerta
     const hasError = Object.values(newErrors).some(err => err);
     if (hasError) {
       Alert.alert("Erro", "Por favor, preencha corretamente todos os campos.");
       return;
     }
 
-    setTermsModalVisible(true);
-  };
-
-  const handleTermsAccept = () => {
-    setTermsModalVisible(false);
     processRegistration();
   };
 
-  const processRegistration = () => {
-    console.log('Processando cadastro...', {
-      name,
-      email,
-      phone,
-      cancerType,
-      birthDate,
-      password
-    });
+  const processRegistration = async () => {
 
-    router.push('/');
+    setTermsModalVisible(false);
+    setLoading(true);
+
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: name,
+          email: email,
+          phone: phone,
+          //cancerType: cancerType,
+          cancerType: 1,
+          birthDate: birthDate,
+          password: password,
+        }),
+      });
+    
+      const data = await response.json();
+    
+      if (response.ok) {
+        Alert.alert("Sucesso", "Cadastro realizado! Faça login para continuar.");
+        router.push('/'); 
+      } else {
+        const errorMessage = data.message || "Erro ao tentar cadastrar. Verifique os dados.";
+        Alert.alert("Erro de Cadastro", errorMessage);
+      }
+    } catch (error) {
+          console.error("Erro na requisição de cadastro:", error);
+          Alert.alert("Erro", "Não foi possível conectar ao servidor. Verifique sua conexão.");
+        } finally {
+          setLoading(false);
+        }
+  };
+
+  const handleTermsAccept = () => {
+    processRegistration();
   };
 
   const handleTermsDismiss = () => {
@@ -98,18 +125,25 @@ export default function Cadastro() {
     <PaperProvider theme={AppTheme}>
       <View style={[styles.container, { backgroundColor: AppTheme.colors.background }]}>
         <StatusBar barStyle="light-content" backgroundColor={AppTheme.colors.primary} />
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent} 
+          showsVerticalScrollIndicator={false}
+        >
           <LoginSignupBackground>
             <View style={styles.contentWrapper}>
               
-             <BackIconButton color={AppTheme.colors.cardBackground} bottom={-30} left={-10}/>
-
               <View style={styles.logoContainer}>
+                <BackIconButton 
+                left={'-3%'}
+                bottom={'50%'}
+                color={AppTheme.colors.cardBackground} 
+                onPress={() => router.back()}/>
+
                 <Image
                   source={require('../../assets/images/rosa_clarinho.png')}
                   style={styles.logo}
                 />
+                
               </View>
 
               <View style={styles.welcomeContainer}>
@@ -171,9 +205,10 @@ export default function Cadastro() {
               </View>
 
               <ButtonCustom
-                title="Cadastrar"
+                title={loading ? "Cadastrando..." : "Cadastrar"}
                 onPress={handleRegisterClick}
                 variant="primary"
+                disabled={loading}
               />
 
             </View>
@@ -191,19 +226,41 @@ export default function Cadastro() {
 }
 
 const styles = StyleSheet.create({
-
-  container: { flex: 1 },
-  scrollContent: { flexGrow: 1 },
-  contentWrapper: { flex: 1, justifyContent: 'flex-start', paddingHorizontal: 20, paddingTop: 20 },
-  logoContainer: { alignItems: 'center', marginBottom: 40, marginTop: 10 },
-  logo: { width: 120, height: 120, resizeMode: 'contain' },
-  welcomeContainer: { marginBottom: 20 },
-
-
+  container: { 
+    flex: 1 
+  },
+  scrollContent: { 
+    flexGrow: 1,
+    paddingBottom: 40 
+  },
+  contentWrapper: { 
+    flex: 1, 
+    justifyContent: 'flex-start', 
+    paddingHorizontal: 20, 
+    paddingTop: 20 
+  },
+  logoContainer: { 
+    alignItems: 'center', 
+    marginBottom: '15%',
+    marginTop: 50,
+    width: '100%',
+    height: width * 0.20
+  },
+  logo: { 
+    width: '60%',
+    height: '100%',
+    resizeMode: 'contain' 
+  },
+  welcomeContainer: { 
+    marginBottom: 40,
+    marginLeft: 0
+  },
   welcomeTitle: {
     fontFamily: AppTheme.fonts.headlineMedium.fontFamily,
     fontSize: AppTheme.fonts.displaySmall.fontSize,
   },
-  formContainer: { marginBottom: 16 },
-  backButton: { marginBottom: 20, width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
+  formContainer: { 
+    marginBottom: 16,
+    bottom: 30
+  },
 });

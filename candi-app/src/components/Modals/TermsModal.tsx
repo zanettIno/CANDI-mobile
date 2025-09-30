@@ -99,6 +99,7 @@ const TermsModal: React.FC<TermsModalProps> = ({ visible, onDismiss, onAccept })
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={true}
               >
+                
                 <Text style={styles.contentText}>
                   Os termos de uso do aplicativo Candi descrevem as condições de uso do serviço,
                   responsabilidades do usuário, tratamento de dados e limitações de responsabilidade.

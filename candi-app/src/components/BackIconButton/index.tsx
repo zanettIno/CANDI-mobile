@@ -21,7 +21,7 @@ export default function BackIconButton({
       onPress={onPress ? onPress : () => router.back()}
       style={[styles.button, { bottom, left }]}
     >
-      <MaterialIcons name="chevron-left" size={40} color={color} />
+      <MaterialIcons name="chevron-left" size={50} color={color} />
     </TouchableOpacity>
   );
 }

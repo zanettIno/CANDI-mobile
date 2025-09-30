@@ -57,7 +57,8 @@ export const AppTheme = {
     phoneText: '#555',
     shadow: '#000',
     textColor: '#413F42',
-    dotsColor: '#CCCCCC' 
+    dotsColor: '#CCCCCC',
+    formFieldColor: '#eeeeeeff' 
   },
 
   fonts: configureFonts({ config: fontConfig }),
