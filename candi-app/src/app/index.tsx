@@ -1,25 +1,31 @@
 import * as React from 'react';
 import { useState } from 'react';
-import { Text, View, TouchableOpacity, SafeAreaView, StatusBar, Image, StyleSheet, Alert } from 'react-native';
+import { Text, View, TouchableOpacity, StatusBar, Image, StyleSheet, Alert, Dimensions } from 'react-native';
 import { PaperProvider } from 'react-native-paper';
 import { AppTheme } from '../theme';
 import LoginSignupBackground from '../components/LoginSignupBackground';
 import InputEmail from '../components/Inputs/inputEmail';
 import InputPassword from '../components/Inputs/inputPassword';
 import ButtonCustom from '../components/Buttons/buttonCustom';
-import CandiLogo from '@/components/WhiteCandiLogo';
 import { useRouter } from 'expo-router';
+
+const { width } = Dimensions.get('window');
 
 export default function Index() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [emailValid, setEmailValid] = useState(true);
   const [passwordValid, setPasswordValid] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const router = useRouter();
 
-  const handleLogin = () => {
-    // Validações
+   const handleLogin = async () => {
+
+    // LEMBRAR DE TROCAR O IP DA MAQUINA
+    // const endpoint = `http://${process.env.IP}:3000/auth/login`; 
+    const endpoint = `http://192.168.68.122:3000/auth/login`; 
+
     const emailIsValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     const passwordIsValid = /^(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/.test(password);
 
@@ -35,7 +41,36 @@ export default function Index() {
       return;
     }
 
-    router.push('/screens/(tabs)/home');
+    setLoading(true);
+
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email,
+          password: password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        const token = data.access_token;
+        Alert.alert("Sucesso", "Login realizado!");
+        router.push('/screens/(tabs)/home'); 
+      } else {
+        const errorMessage = data.message || "Email ou senha incorretos. Tente novamente.";
+        Alert.alert("Erro de Login", errorMessage);
+      }
+    } catch (error) {
+      console.error("Erro na requisição de login:", error);
+      Alert.alert("Erro", "Não foi possível conectar ao servidor. Verifique sua conexão.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSignUp = () => router.push('/cadastro');
@@ -47,7 +82,12 @@ export default function Index() {
         <LoginSignupBackground>
           <View style={styles.contentWrapper}>
             
-            <CandiLogo bottom={15} left={70} version={require('../../assets/images/rosa_clarinho.png')}/>
+            <View style={styles.logoContainer}>
+              <Image
+                source={require('../../assets/images/rosa_clarinho.png')}
+                style={styles.logo}
+              />
+            </View>
          
             <View style={styles.welcomeContainer}>
               <Text style={[styles.welcomeTitle, { color: AppTheme.colors.textColor }]}>
@@ -103,7 +143,24 @@ export default function Index() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  contentWrapper: { flex: 1, justifyContent: 'flex-start', paddingHorizontal: 20, paddingTop: 60 },
+  contentWrapper: { 
+    flex: 1, 
+    justifyContent: 'flex-start', 
+    paddingHorizontal: 20, 
+    paddingTop: 20 
+  },
+  logoContainer: { 
+    alignItems: 'center', 
+    marginBottom: '15%',
+    marginTop: 50,
+    width: '100%',
+    height: width * 0.20
+  },
+  logo: { 
+    width: '60%',
+    height: '100%',
+    resizeMode: 'contain' 
+  },
   welcomeContainer: { marginBottom: 40 },
   welcomeTitle: {
     fontFamily: AppTheme.fonts.headlineMedium.fontFamily,
@@ -119,7 +176,13 @@ const styles = StyleSheet.create({
     fontFamily: AppTheme.fonts.bodyMedium.fontFamily,
     fontSize: AppTheme.fonts.bodyMedium.fontSize,
   },
-  signUpContainer: { alignItems: 'center', marginTop: 16, flex: 1, justifyContent: 'flex-end', paddingBottom: 40 },
+  signUpContainer: { 
+    alignItems: 'center', 
+    marginTop: 16, 
+    flex: 1, 
+    justifyContent: 'flex-end', 
+    paddingBottom: '25%' 
+  },
   signUpLink: {
     fontFamily: AppTheme.fonts.bodyLarge.fontFamily,
     fontSize: AppTheme.fonts.bodyLarge.fontSize,

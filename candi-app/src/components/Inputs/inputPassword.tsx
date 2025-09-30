@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { TextInput, View, TouchableOpacity } from 'react-native';
 import styled from 'styled-components/native';
 import { MaterialIcons } from '@expo/vector-icons';
+import { AppTheme } from '@/theme';
 
 interface InputPasswordProps {
   value: string;
@@ -17,7 +18,7 @@ const Container = styled(View)`
 `;
 
 const StyledTextInput = styled(TextInput)<{ isValid?: boolean }>`
-  background-color: #f5f5f5;
+  background-color: ${AppTheme.colors.formFieldColor};
   border-radius: 50px;
   padding: 16px 50px 16px 16px;
   font-size: 20px;

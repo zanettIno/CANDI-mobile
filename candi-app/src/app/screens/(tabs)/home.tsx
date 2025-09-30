@@ -3,11 +3,11 @@ import { useState } from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { PaperProvider, Modal, Portal } from 'react-native-paper';
 import { AppTheme } from '../../../theme';
-
+import { StatusBar } from 'expo-status-bar';
 import EmergencyContactCard, { EmergencyContact } from '../../../components/EmergencyContactCard';
 import Timeline from '../../../components/Timeline';
 import CommunityShortcut from "../../../components/Community-Shortcut";
-//import CarouselComponent from "../../../components/Carousel/carousel";
+import CarouselComponent from "../../../components/Carousel/carousel";
 
 export default function HomeScreen() {
   const contacts: EmergencyContact[] = [
@@ -47,22 +47,19 @@ export default function HomeScreen() {
           <Text>Inserir como vamos mostrar os marcos</Text>
         </Modal>
       </Portal>
-      
+      <StatusBar style="dark"/>
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.header}>
           <Text style={styles.greeting}>
-            OLÁ, <Text style={styles.username}>MAICON</Text>
+            OLÁ, CAROLINDA S2
           </Text>
+        
+          <Text style={styles.subtitle}>Veja quanto falta para o fim do seu tratamento!</Text>
+          <Timeline onPress={showTimelineModal} />
         </View>
 
-        <Text style={styles.subtitle}>Veja quanto falta para o fim do seu tratamento!</Text>
-        
-        <Timeline onPress={showTimelineModal} />
-
         <View>
-          {
-            // <CarouselComponent data={carouselData} />
-          }
+          <CarouselComponent data={carouselData} />
         </View>
 
         <View style={styles.section}>
@@ -90,17 +87,18 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   greeting: {
-    fontSize: AppTheme.fonts.headlineLarge.fontSize,
-    fontFamily: AppTheme.fonts.headlineLarge.fontFamily,
+    fontFamily: AppTheme.fonts.titleLarge.fontFamily,
+    fontSize: AppTheme.fonts.titleLarge.fontSize + 8,
+    paddingTop: '8%',
     color: AppTheme.colors.textColor,
     lineHeight: AppTheme.fonts.headlineLarge.fontSize * 1.1,
-  },
-  username: {
-    fontWeight: 'bold', 
+    fontStyle: AppTheme.fonts.headlineLarge.fontStyle,
+    fontWeight: 'bold',
   },
   subtitle: {
     paddingHorizontal: 20,
-    marginTop: "2%",
+    marginBottom: '1%',
+    marginTop: '5%',
     fontSize: AppTheme.fonts.bodyMedium.fontSize,
     fontFamily: AppTheme.fonts.bodyMedium.fontFamily,
   },
@@ -114,7 +112,7 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   sectionCommunity: {
-    marginTop: 90,
+    marginTop: '7%',
     paddingHorizontal: 20,
   },
   modalContainer: {

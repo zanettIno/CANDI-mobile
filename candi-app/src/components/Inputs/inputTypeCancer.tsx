@@ -3,6 +3,7 @@ import { View } from "react-native";
 import styled from "styled-components/native";
 import { Menu } from "react-native-paper";
 import { MaterialIcons } from "@expo/vector-icons";
+import { AppTheme } from "@/theme";
 
 interface InputTypeCancerProps {
   value: string;
@@ -18,7 +19,7 @@ const Container = styled(View)`
 `;
 
 const StyledInputLike = styled.TouchableOpacity<{ isValid?: boolean }>`
-  background-color: #f5f5f5;
+  background-color: ${AppTheme.colors.formFieldColor};
   border-radius: 50px;
   padding: 16px 50px 16px 16px;
   font-size: 20px;
@@ -72,7 +73,9 @@ const InputTypeCancer: React.FC<InputTypeCancerProps> = ({
           <StyledInputLike onPress={openMenu} activeOpacity={0.8} isValid={isValid}>
             <InputText>{value || placeholder}</InputText>
             <IconContainer>
-              <MaterialIcons name="favorite" size={24} color="#545f71" />
+              <MaterialIcons name="favorite" size={24} color="#545f71" style={{
+                top: '70%'
+              }}/>
             </IconContainer>
           </StyledInputLike>
         }

@@ -84,7 +84,7 @@ return (
   <View style={styles.screen}>
     <View style={styles.topIcons}>
       <TouchableOpacity onPress={handleHeartPress}>
-        <AntDesign name="hearto" size={26} color="#FFC4C4" />
+        <AntDesign name="heart" size={26} color="#FFC4C4" />
       </TouchableOpacity>
     </View>
 
@@ -115,17 +115,18 @@ const styles = StyleSheet.create({
   },
   topIcons: {
     position: "absolute",
-    top: 36,
-    right: 24,
-    zIndex: 100,
+    top: '10%',
+    right: '6%',
+    zIndex: 5,
   },
   header: {
-    paddingTop: 80,
+    paddingTop: '16%',
     paddingHorizontal: 24,
     marginBottom: 8,
   },
   title: {
-    ...AppTheme.fonts.headlineSmall,
+    fontFamily: AppTheme.fonts.titleLarge.fontFamily,
+    fontSize: AppTheme.fonts.titleLarge.fontSize + 8,
     color: AppTheme.colors.textColor,
     marginBottom: 4,
   },
@@ -134,6 +135,7 @@ const styles = StyleSheet.create({
     color: AppTheme.colors.textColor,
     opacity: 0.7,
     marginBottom: 12,
+    marginTop: '-2%'
   },
   recordsContainer: {
     flex: 1, 
