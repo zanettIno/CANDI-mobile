@@ -1,39 +1,80 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { PaperProvider } from 'react-native-paper';
 import { AppTheme } from '../../../theme/index'; 
 import MedicineCard from '../../../components/Card/MedicineCard'; 
 import AddButton from '../../../components/Buttons/AddButton';
 import BackIconButton from '@/components/BackIconButton';
-import { router, useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL } from '../../../constants/api';
+
+// Interface para os dados que vêm da API
+interface ApiMedicine {
+  medicine_id: string;
+  medicine_name: string;
+  medicine_dosage: string;
+  medicine_posology: string;
+  medicine_period: string;
+  created_at: string;
+}
 
 export default function MedicamentosView() {
-
   const router = useRouter();
-  // Dummy data for demonstration
-  const medicines = [
-    {
-      name: 'Dipirona',
-      dosage: '600 mg',
-      frequency: '1x ao dia',
-      startDate: '17/03/2025',
-      endDate: '24/03/2025',
-    },
-    {
-      name: 'Dipirona',
-      dosage: '600 mg',
-      frequency: '1x ao dia',
-      startDate: '17/03/2025',
-      endDate: '24/03/2025',
-    },
-  ];
+  
+  const [medicines, setMedicines] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // useFocusEffect para atualizar a lista sempre que a tela ganhar foco
+  useFocusEffect(
+    useCallback(() => {
+      const fetchMedicinesForUser = async () => {
+        setIsLoading(true);
+        try {
+          const token = await AsyncStorage.getItem('accessToken');
+          if (!token) throw new Error("Não autenticado");
+
+          const userResponse = await fetch(`${API_BASE_URL}/auth/me`, {
+            headers: { 'Authorization': `Bearer ${token}` },
+          });
+          if (!userResponse.ok) throw new Error("Falha ao buscar usuário");
+          const userData = await userResponse.json();
+          const userEmail = userData.profile_email;
+
+          if (!userEmail) throw new Error("E-mail do usuário não encontrado");
+
+          const medicinesResponse = await fetch(`${API_BASE_URL}/schedule/medicines/by-email/${userEmail}`, {
+            headers: { 'Authorization': `Bearer ${token}` },
+          });
+          if (!medicinesResponse.ok) throw new Error("Falha ao buscar medicamentos");
+          
+          const medicinesData: ApiMedicine[] = await medicinesResponse.json();
+
+          // Transforma os dados da API para o formato que o seu MedicineCard espera
+          const formattedMedicines = medicinesData.map(med => ({
+            name: med.medicine_name,
+            dosage: med.medicine_dosage,
+            frequency: med.medicine_posology, // Mapeando posology para frequency
+            startDate: new Date(med.created_at).toLocaleDateString('pt-BR'), // Usando a data de criação como data de início
+            endDate: med.medicine_period, // Mapeando period para endDate
+          }));
+          
+          setMedicines(formattedMedicines);
+
+        } catch (error) {
+          console.error("Erro no processo de busca de medicamentos:", error);
+          setMedicines([]); 
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      fetchMedicinesForUser();
+    }, [])
+  );
 
   const handleOptionsPress = () => {
     console.log('Options pressed');
-  };
-
-  const handleAddMedicine = () => {
-    console.log('Add medicine pressed');
   };
 
   return (
@@ -49,11 +90,9 @@ export default function MedicamentosView() {
               onPress={() => router.push("/screens/(tabs)/homeAgenda")}  
             />
           </View>
-
         </View>
 
         <View style={styles.contentCard}>
-          {/* Tabs */}
           <View style={styles.tabsContainer}>
             <TouchableOpacity style={styles.activeTab}>
               <Text style={styles.activeTabText}>Medicamentos</Text>
@@ -68,17 +107,23 @@ export default function MedicamentosView() {
           <AddButton text="Adicionar medicamento" onPress={() => router.push('/screens/agenda/medicamentosAdd')} style={styles.addButton} />
 
           <ScrollView style={styles.cardsContainer}>
-            {medicines.map((medicine, index) => (
-              <MedicineCard
-                key={index}
-                name={medicine.name}
-                dosage={medicine.dosage}
-                frequency={medicine.frequency}
-                startDate={medicine.startDate}
-                endDate={medicine.endDate}
-                onOptionsPress={handleOptionsPress}
-              />
-            ))}
+            {isLoading ? (
+              <ActivityIndicator size="large" color={AppTheme.colors.secondary} style={{ marginTop: 50 }} />
+            ) : medicines.length > 0 ? (
+              medicines.map((medicine, index) => (
+                <MedicineCard
+                  key={index}
+                  name={medicine.name}
+                  dosage={medicine.dosage}
+                  frequency={medicine.frequency}
+                  startDate={medicine.startDate}
+                  endDate={medicine.endDate}
+                  onOptionsPress={handleOptionsPress}
+                />
+              ))
+            ) : (
+              <Text style={styles.noItemsText}>Nenhum medicamento registado.</Text>
+            )}
           </ScrollView>
         </View>
       </View>
@@ -115,14 +160,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  timeText: {
-    fontSize: AppTheme.fonts.bodyMedium.fontSize,
-    fontWeight: AppTheme.fonts.bodyMedium.fontWeight,
-    fontFamily: AppTheme.fonts.bodyMedium.fontFamily,
-    color: AppTheme.colors.nameText,
-  },
-
-
   contentCard: {
     flex: 1,
     backgroundColor: AppTheme.colors.cardBackground,
@@ -174,4 +211,10 @@ const styles = StyleSheet.create({
   cardsContainer: {
     flex: 1,
   },
+  noItemsText: {
+    textAlign: 'center',
+    marginTop: 50,
+    fontSize: 16,
+    color: AppTheme.colors.placeholderText,
+  }
 });

@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { View, Text, ScrollView, SafeAreaView } from 'react-native';
+import { View, Text, ScrollView, SafeAreaView, Alert } from 'react-native';
 import { PaperProvider } from 'react-native-paper';
 import styled from 'styled-components/native';
 import { AppTheme } from '../../../theme/index';
@@ -11,6 +11,9 @@ import { ObservationInput } from '@/components/Inputs/FormInputMedicine/Observat
 import { RegisterMedicineButton } from '@/components/Buttons/RegisterMedicineButton';
 import BackIconButton from '@/components/BackIconButton';
 import { useRouter } from 'expo-router';
+// 1. Imports necessários para a lógica
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL } from '../../../constants/api';
 
 const Container = styled(SafeAreaView)`
   flex: 1;
@@ -74,23 +77,78 @@ export default function MedicamentosAdd() {
   const [period, setPeriod] = React.useState('');
   const [observation, setObservation] = React.useState('');
   const [loading, setLoading] = React.useState(false);
+  
+  // 2. Estado para guardar o e-mail do usuário logado
+  const [userEmail, setUserEmail] = React.useState<string | null>(null);
 
   const router = useRouter();
 
+  // 3. useEffect para buscar o e-mail do usuário ao carregar a tela
+  React.useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const token = await AsyncStorage.getItem('accessToken');
+        if (!token) {
+          Alert.alert("Erro de Autenticação", "Sessão inválida. Por favor, faça login novamente.");
+          router.push('/');
+          return;
+        }
+
+        const response = await fetch(`${API_BASE_URL}/auth/me`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+
+        if (response.ok) {
+          const userData = await response.json();
+          setUserEmail(userData.profile_email);
+        } else {
+          throw new Error("Falha ao autenticar o usuário.");
+        }
+      } catch (e) {
+        console.error("Erro ao carregar dados do usuário:", e);
+      }
+    };
+    fetchUserData();
+  }, []);
+
+  // 4. Lógica para adicionar o medicamento, agora com chamada à API
   const handleAddMedicine = async () => {
+    if (!userEmail) {
+      Alert.alert('Aguarde', 'A carregar dados do usuário...');
+      return;
+    }
+
     setLoading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const token = await AsyncStorage.getItem('accessToken');
+      const endpoint = `${API_BASE_URL}/schedule/medicines`;
 
-      setMedicineName('');
-      setDosage('');
-      setPosology('');
-      setPeriod('');
-      setObservation('');
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          email: userEmail,
+          medicine_name: medicineName,
+          medicine_dosage: dosage,
+          medicine_posology: posology,
+          medicine_period: period,
+          medicine_obs: observation,
+        }),
+      });
 
-      console.log('Medicamento adicionado com sucesso!');
+      if (response.ok) {
+        Alert.alert('Sucesso', 'Medicamento adicionado com sucesso!');
+        router.back(); // Volta para a tela de listagem
+      } else {
+        const errorData = await response.json();
+        Alert.alert('Erro', errorData.message || 'Não foi possível adicionar o medicamento.');
+      }
     } catch (error) {
       console.error('Erro ao adicionar medicamento:', error);
+      Alert.alert('Erro', 'Ocorreu um erro de rede. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -102,17 +160,17 @@ export default function MedicamentosAdd() {
     <PaperProvider>
       <Container>
         <Header>
-            <BackIconButton 
-              color={AppTheme.colors.cardBackground} 
-              onPress={() => router.back()} 
-            />
-          </Header>
+          <BackIconButton 
+            color={AppTheme.colors.cardBackground} 
+            onPress={() => router.back()} 
+          />
+        </Header>
 
-          <FormContainer>
-            <HeaderTitle>NOVO MEDICAMENTO</HeaderTitle>
-            <HeaderSubtitle>
-              Preencha o formulário para cadastrar um novo medicamento
-            </HeaderSubtitle>
+        <FormContainer>
+          <HeaderTitle>NOVO MEDICAMENTO</HeaderTitle>
+          <HeaderSubtitle>
+            Preencha o formulário para cadastrar um novo medicamento
+          </HeaderSubtitle>
           
           <FormScrollView showsVerticalScrollIndicator={false}>
             <FirstFieldLabel>Nome do medicamento</FirstFieldLabel>
@@ -152,7 +210,7 @@ export default function MedicamentosAdd() {
 
             <RegisterMedicineButton
               onPress={handleAddMedicine}
-              disabled={!isFormValid}
+              disabled={!isFormValid || !userEmail} // Botão fica desativado enquanto não tiver o e-mail
               loading={loading}
               style={{ marginTop: 24 }}
             />

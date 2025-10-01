@@ -51,9 +51,10 @@ export default function SintomasView() {
             date: new Date(symptom.created_at).toLocaleDateString('pt-BR'),
             reminderStatus: 'Ativo', 
             otherInfo: 'Sim',      
-          
-          setSymptoms(formattedSymptoms);
+          })); // <-- CORREÇÃO: Fechar o objeto e o .map() aqui
 
+          setSymptoms(formattedSymptoms); // <-- Esta linha fica fora
+        
         } catch (error) {
           console.error("Erro no processo de busca de sintomas:", error);
           setSymptoms([]); 
