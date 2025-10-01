@@ -8,36 +8,24 @@ import InputEmail from '../components/Inputs/inputEmail';
 import InputPassword from '../components/Inputs/inputPassword';
 import ButtonCustom from '../components/Buttons/buttonCustom';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL } from 'constants/api'; 
+
 
 const { width } = Dimensions.get('window');
 
 export default function Index() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [emailValid, setEmailValid] = useState(true);
-  const [passwordValid, setPasswordValid] = useState(true);
   const [loading, setLoading] = useState(false);
 
   const router = useRouter();
 
-   const handleLogin = async () => {
+  const handleLogin = async () => {
+    const endpoint = `${API_BASE_URL}/auth/login`; 
 
-    // LEMBRAR DE TROCAR O IP DA MAQUINA
-    // const endpoint = `http://${process.env.IP}:3000/auth/login`; 
-    const endpoint = `http://192.168.68.122:3000/auth/login`; 
-
-    const emailIsValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-    const passwordIsValid = /^(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/.test(password);
-
-    setEmailValid(emailIsValid);
-    setPasswordValid(passwordIsValid);
-
-    if (!emailIsValid) {
-      Alert.alert("Erro", "Por favor, insira um email válido.");
-      return;
-    }
-    if (!passwordIsValid) {
-      Alert.alert("Erro", "Senha inválida. Deve conter no mínimo 8 caracteres, incluindo letra maiúscula, número e caracter especial.");
+    if (!email || !password) {
+      Alert.alert("Erro", "Por favor, preencha o e-mail e a senha.");
       return;
     }
 
@@ -57,8 +45,9 @@ export default function Index() {
 
       const data = await response.json();
 
-      if (response.ok) {
-        const token = data.access_token;
+      if (response.ok && data.accessToken) {
+        await AsyncStorage.setItem('accessToken', data.accessToken);
+        
         Alert.alert("Sucesso", "Login realizado!");
         router.push('/screens/(tabs)/home'); 
       } else {
@@ -88,7 +77,7 @@ export default function Index() {
                 style={styles.logo}
               />
             </View>
-         
+          
             <View style={styles.welcomeContainer}>
               <Text style={[styles.welcomeTitle, { color: AppTheme.colors.textColor }]}>
                 Bem vindo!
@@ -103,13 +92,11 @@ export default function Index() {
                 value={email}
                 onChangeText={setEmail}
                 placeholder="Email"
-                style={{ borderColor: emailValid ? 'transparent' : '#ff6b6b', borderWidth: 1, borderRadius: 50 }}
               />
               <InputPassword
                 value={password}
                 onChangeText={setPassword}
                 placeholder="Senha"
-                style={{ borderColor: passwordValid ? 'transparent' : '#ff6b6b', borderWidth: 1, borderRadius: 50 }}
               />
             </View>
 
@@ -122,9 +109,10 @@ export default function Index() {
             </View>
 
             <ButtonCustom
-              title="Entrar"
+              title={loading ? "Entrando..." : "Entrar"}
               onPress={handleLogin}
               variant="primary"
+              disabled={loading}
             />
 
             <View style={styles.signUpContainer}>

@@ -15,18 +15,20 @@ import ButtonCustom from '../components/Buttons/buttonCustom';
 import TermsModal from '../components/Modals/TermsModal';
 import { useRouter } from 'expo-router';
 import BackIconButton from '@/components/BackIconButton';
+import { API_BASE_URL } from 'constants/api'; 
+
 
 const { width } = Dimensions.get('window');
 
 // LEMBRAR DE TROCAR O IP DA MAQUINA
 // const endpoint = `http://${process.env.IP}:3000/auth/login`; 
-const endpoint = `http://192.168.68.122:3000/auth/register`;
+const endpoint = `${API_BASE_URL}/auth/register`;
 
 export default function Cadastro() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [cancerType, setCancerType] = useState('');
+  const [cancerType, setCancerType] = useState<number | null>(null);
   const [birthDate, setBirthDate] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -57,7 +59,7 @@ export default function Cadastro() {
       name: name.trim() === '',
       email: !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),
       phone: phone.replace(/\D/g, '').length < 10,
-      cancerType: cancerType.trim() === '',
+      cancerType: cancerType === null,
       birthDate: !/^(\d{2})\/(\d{2})\/(\d{4})$/.test(birthDate),
       password: !/^(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/.test(password),
       confirmPassword: confirmPassword !== password || confirmPassword === ''
@@ -80,6 +82,8 @@ export default function Cadastro() {
     setLoading(true);
 
     try {
+      const [day, month, year] = birthDate.split('/');
+      const formattedBirthDateForAPI = `${year}-${month}-${day}`;
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
@@ -89,9 +93,8 @@ export default function Cadastro() {
           name: name,
           email: email,
           phone: phone,
-          //cancerType: cancerType,
-          cancerType: 1,
-          birthDate: birthDate,
+          cancer_type_id: cancerType,
+          birth_date: formattedBirthDateForAPI,
           password: password,
         }),
       });
@@ -176,7 +179,7 @@ export default function Cadastro() {
 
                 <InputTypeCancer
                   value={cancerType}
-                  onChangeText={setCancerType}
+                  onSelect={setCancerType}
                   placeholder="Tipo do câncer"
                   style={{ borderColor: errors.cancerType ? '#ff6b6b' : 'transparent', borderWidth: 1, borderRadius: 50 }}
                 />

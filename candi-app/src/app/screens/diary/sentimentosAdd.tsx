@@ -3,6 +3,7 @@ import { View, StyleSheet, ScrollView, Alert, ActivityIndicator } from 'react-na
 import { Text, TextInput, Button, IconButton } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { API_BASE_URL } from '../../../constants/api'; 
 
 import { AppTheme } from '../../../theme';
 import MoodSlider from '../../../components/Sentiments/MoodSlider';
@@ -10,8 +11,9 @@ import SentimentCard from '../../../components/Sentiments/SentimentCard';
 
 // LEMBRAR DE TROCAR O IP DA MAQUINA
 const PATIENT_ID = '123'; 
-const BASE_URL = 'http://192.168.68.122:3000'; // Troque para 10.0.2.2 se estiver no Android Emulator
-const FEELINGS_ENDPOINT = `${BASE_URL}/patients/5ff589d2-d149-41a3-8fe7-c2ee8caaa853/journal/feelings`;
+
+const FEELINGS_ENDPOINT = `${API_BASE_URL}/patients/5ff589d2-d149-41a3-8fe7-c2ee8caaa853/journal/feelings`;
+
 
 const moodStates = [
     { score: 1, emoji: '😞', label: 'Muito Triste' },

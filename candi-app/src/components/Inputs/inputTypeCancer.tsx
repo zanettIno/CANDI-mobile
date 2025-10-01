@@ -1,13 +1,18 @@
 import React, { useState } from "react";
-import { View } from "react-native";
+import { View, Text } from "react-native";
 import styled from "styled-components/native";
 import { Menu } from "react-native-paper";
 import { MaterialIcons } from "@expo/vector-icons";
 import { AppTheme } from "@/theme";
 
+interface CancerType {
+  id: number;
+  name: string;
+}
+
 interface InputTypeCancerProps {
-  value: string;
-  onChangeText: (text: string) => void;
+  value: number | null;
+  onSelect: (id: number) => void;
   placeholder?: string;
   style?: any;
 }
@@ -18,18 +23,18 @@ const Container = styled(View)`
   margin: 16px;
 `;
 
-const StyledInputLike = styled.TouchableOpacity<{ isValid?: boolean }>`
+const StyledInputLike = styled.TouchableOpacity<{ hasError?: boolean }>`
   background-color: ${AppTheme.colors.formFieldColor};
   border-radius: 50px;
   padding: 16px 50px 16px 16px;
   font-size: 20px;
-  border: 1px solid ${props => props.isValid === false ? '#ff6b6b' : 'transparent'};
+  border: 1px solid ${props => props.hasError ? '#ff6b6b' : 'transparent'};
   justify-content: center;
 `;
 
-const InputText = styled.Text`
+const InputText = styled(Text)<{ hasValue: boolean }>`
   font-size: 20px;
-  color: #545f71;
+  color: ${props => props.hasValue ? AppTheme.colors.textColor : '#545f71'};
 `;
 
 const IconContainer = styled(View)`
@@ -39,15 +44,31 @@ const IconContainer = styled(View)`
   margin-top: -12px;
 `;
 
-const cancerTypes = [
-  "Mama", "Próstata", "Pulmão", "Cólon e Reto", "Estômago", "Fígado", "Colo do Útero",
-  "Esôfago", "Bexiga", "Linfoma não Hodgkin", "Leucemia", "Rim", "Pâncreas", "Tireoide",
-  "Sistema Nervoso Central", "Ovário", "Melanoma", "Outros",
+
+export const cancerTypes: CancerType[] = [
+  { id: 1, name: "Mama" },
+  { id: 2, name: "Próstata" },
+  { id: 3, name: "Pulmão" },
+  { id: 4, name: "Cólon e Reto" },
+  { id: 5, name: "Estômago" },
+  { id: 6, name: "Fígado" },
+  { id: 7, name: "Colo do Útero" },
+  { id: 8, name: "Esôfago" },
+  { id: 9, name: "Bexiga" },
+  { id: 10, name: "Linfoma não Hodgkin" },
+  { id: 11, name: "Leucemia" },
+  { id: 12, name: "Rim" },
+  { id: 13, name: "Pâncreas" },
+  { id: 14, name: "Tireoide" },
+  { id: 15, name: "Sistema Nervoso Central" },
+  { id: 16, name: "Ovário" },
+  { id: 17, name: "Melanoma" },
+  { id: 99, name: "Outros" },
 ];
 
 const InputTypeCancer: React.FC<InputTypeCancerProps> = ({
   value,
-  onChangeText,
+  onSelect,
   placeholder = "Tipo do câncer",
   style,
 }) => {
@@ -56,13 +77,13 @@ const InputTypeCancer: React.FC<InputTypeCancerProps> = ({
   const openMenu = () => setVisible(true);
   const closeMenu = () => setVisible(false);
 
-  const handleSelect = (item: string) => {
-    onChangeText(item);
+  const handleSelect = (id: number) => {
+    onSelect(id);
     closeMenu();
   };
 
-  // VALIDAÇÃO: campo obrigatório
-  const isValid = !!value;
+  
+  const selectedCancer = cancerTypes.find(type => type.id === value);
 
   return (
     <Container style={style}>
@@ -70,12 +91,12 @@ const InputTypeCancer: React.FC<InputTypeCancerProps> = ({
         visible={visible}
         onDismiss={closeMenu}
         anchor={
-          <StyledInputLike onPress={openMenu} activeOpacity={0.8} isValid={isValid}>
-            <InputText>{value || placeholder}</InputText>
+          <StyledInputLike onPress={openMenu} activeOpacity={0.8} hasError={style?.borderColor === '#ff6b6b'}>
+            <InputText hasValue={!!value}>
+              {selectedCancer ? selectedCancer.name : placeholder}
+            </InputText>
             <IconContainer>
-              <MaterialIcons name="favorite" size={24} color="#545f71" style={{
-                top: '70%'
-              }}/>
+              <MaterialIcons name="favorite" size={24} color="#545f71" style={{ top: '70%' }}/>
             </IconContainer>
           </StyledInputLike>
         }
@@ -83,9 +104,9 @@ const InputTypeCancer: React.FC<InputTypeCancerProps> = ({
       >
         {cancerTypes.map((type) => (
           <Menu.Item
-            key={type}
-            onPress={() => handleSelect(type)}
-            title={type}
+            key={type.id} 
+            onPress={() => handleSelect(type.id)} 
+            title={type.name}
           />
         ))}
       </Menu>

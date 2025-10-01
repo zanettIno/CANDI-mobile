@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { PaperProvider, Modal, Portal } from 'react-native-paper';
 import { AppTheme } from '../../../theme';
@@ -8,6 +8,11 @@ import EmergencyContactCard, { EmergencyContact } from '../../../components/Emer
 import Timeline from '../../../components/Timeline';
 import CommunityShortcut from "../../../components/Community-Shortcut";
 import CarouselComponent from "../../../components/Carousel/carousel";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL } from '../../../constants/api'; 
+
+
+const userEndpoint = `${API_BASE_URL}/auth/me`;
 
 export default function HomeScreen() {
   const contacts: EmergencyContact[] = [
@@ -36,6 +41,40 @@ export default function HomeScreen() {
   const showTimelineModal = () => setTimelineModalVisible(true);
   const hideTimelineModal = () => setTimelineModalVisible(false);
 
+  const [userName, setUserName] = useState('');
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const token = await AsyncStorage.getItem('accessToken');
+
+        if (!token) {
+          console.error("Nenhum token de acesso encontrado. O usuário precisa fazer login.");
+          return;
+        }
+
+        const response = await fetch(userEndpoint, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setUserName(data.profile_name);
+        } else {
+          console.error("Erro ao buscar dados do usuário: ", response.status);
+        }
+      } catch (error) {
+        console.error("Erro de conexão ao buscar dados do usuário:", error);
+      }
+    };
+
+    fetchUserData();
+  }, []);
+
   return (
     <PaperProvider theme={AppTheme}>
       <Portal>
@@ -51,7 +90,7 @@ export default function HomeScreen() {
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.header}>
           <Text style={styles.greeting}>
-            OLÁ, CAROLINDA S2
+            OLÁ, {userName ? userName.toUpperCase() : '...'}
           </Text>
         
           <Text style={styles.subtitle}>Veja quanto falta para o fim do seu tratamento!</Text>
