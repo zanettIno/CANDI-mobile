@@ -5,20 +5,20 @@ import { AppTheme } from '../../theme';
 
 const Row = styled(View)`
   flex-direction: column;
-  gap: 10px;
+  gap: 20px;
   justify-content: space-between;
   margin-top: 110px; 
 `;
 
 const Label = styled(View)`
   background-color: #f0f0f0;
-  padding: 12px 16px;
+  padding: 16px 16px;
   border-radius: 20px;
 `;
 
 const LabelText = styled(Text)`
   color: ${AppTheme.colors.textColor};
-  font-size: 12px;
+  font-size: 16px;
 `;
 
 export const LabelsRow = ({ labels }: { labels: string[] }) => {

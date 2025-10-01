@@ -19,6 +19,7 @@ const RedBackground = styled(View)`
   width: 100%; /* força ocupar largura total */
   align-self: stretch; /* garante que não vai sobrar gap */
   height: 220px;
+  padding-top:px;
   background-color: ${AppTheme.colors.secondary};
   z-index: -1;
 `;
@@ -26,7 +27,7 @@ const RedBackground = styled(View)`
 
 const Header = styled(View)`
   width: 100%;
-  padding: 20px;
+  padding: 35px;
   justify-content: flex-start;
   align-items: flex-end;
 `;

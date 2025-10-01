@@ -10,6 +10,7 @@ import { Text } from 'react-native';
 const Header = styled(View)`
   width: 100%;
   padding: 20px;
+  padding-top: 30px;
   flex-direction: row; /* 👈 icone e texto ficam lado a lado */
   align-items: center;
 `;
@@ -75,7 +76,7 @@ export const ContatsBackground = ({
   }}
 >
   <Feather name="arrow-left" size={24} color="white" />
-  <Text style={{ fontSize: 26, color: 'white' }}>Contatos de Confiança</Text>
+  <Text style={{ fontSize: 26, color: 'white', fontFamily:AppTheme.fonts.titleLarge.fontFamily }}>Contatos de Confiança</Text>
 </TouchableOpacity>
 
       </Header>
