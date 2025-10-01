@@ -1,19 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { Text, TextInput, Button, IconButton } from 'react-native-paper';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { API_BASE_URL } from '../../../constants/api'; 
-
 import { AppTheme } from '../../../theme';
 import MoodSlider from '../../../components/Sentiments/MoodSlider';
 import SentimentCard from '../../../components/Sentiments/SentimentCard';
-
-// LEMBRAR DE TROCAR O IP DA MAQUINA
-const PATIENT_ID = '123'; 
-
-const FEELINGS_ENDPOINT = `${API_BASE_URL}/patients/5ff589d2-d149-41a3-8fe7-c2ee8caaa853/journal/feelings`;
-
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const moodStates = [
     { score: 1, emoji: '😞', label: 'Muito Triste' },
@@ -31,27 +25,46 @@ const getEmojiByScore = (score) => {
 const AddSentimentScreen = () => {
   const navigation = useNavigation();
 
-  const [moodValue, setMoodValue] = useState(3);
+  // O valor do slider vai de 0 a 4, representando os 5 estados.
+  // Começamos em '2' que corresponde ao score '3' (Normal).
+  const [moodValue, setMoodValue] = useState(2); 
   const [observation, setObservation] = useState('');
   const [sentiments, setSentiments] = useState([]); 
   const [loading, setLoading] = useState(true); 
   const [saving, setSaving] = useState(false); 
   const [error, setError] = useState(null);
+  
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
   const fetchFeelings = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(FEELINGS_ENDPOINT, {
+      const token = await AsyncStorage.getItem('accessToken');
+      if (!token) throw new Error("Não autenticado");
+
+      let email = userEmail;
+      if (!email) {
+          const userResponse = await fetch(`${API_BASE_URL}/auth/me`, {
+            headers: { 'Authorization': `Bearer ${token}` },
+          });
+          if (!userResponse.ok) throw new Error("Falha ao buscar usuário");
+          const userData = await userResponse.json();
+          email = userData.profile_email;
+          setUserEmail(email);
+      }
+
+      if (!email) throw new Error("E-mail do usuário não encontrado");
+
+      const response = await fetch(`${API_BASE_URL}/journal/feelings/${email}`, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
         },
       });
 
-      if (!response.ok) {
-        throw new Error(`Erro ao buscar dados: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`Erro ao buscar dados: ${response.status}`);
       
       const data = await response.json();
       setSentiments(data); 
@@ -59,36 +72,47 @@ const AddSentimentScreen = () => {
     } catch (err) {
       console.error("Erro ao buscar sentimentos:", err);
       setError("Não foi possível carregar o diário. Verifique a conexão.");
-      Alert.alert("Erro de Conexão", "Não foi possível conectar ao servidor para carregar o diário.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [userEmail]);
 
-  useEffect(() => {
-    fetchFeelings();
-  }, [fetchFeelings]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchFeelings();
+    }, [fetchFeelings])
+  );
 
   const handleSaveFeeling = async () => {
     if (!observation.trim()) {
         Alert.alert("Atenção", "Por favor, adicione uma observação sobre seu sentimento.");
         return;
     }
+    if (!userEmail) {
+        Alert.alert("Erro", "Dados de usuário não carregados. Tente novamente.");
+        return;
+    }
 
     setSaving(true);
     setError(null);
 
-    const selectedMood = moodStates.find(mood => mood.score === moodValue) || moodStates[2];
+    // --- A CORREÇÃO ESTÁ AQUI ---
+    // O valor do slider (moodValue) vai de 0 a 4.
+    // O score que queremos salvar no banco (happiness) vai de 1 a 5.
+    // Portanto, somamos 1 ao valor do slider antes de enviar.
+    const happinessScore = moodValue + 1;
 
     try {
-        const response = await fetch(FEELINGS_ENDPOINT, {
+        const token = await AsyncStorage.getItem('accessToken');
+        const response = await fetch(`${API_BASE_URL}/journal/feelings`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
             },
             body: JSON.stringify({
-                happiness: moodValue + 1,
-                emotion: selectedMood.label,
+                email: userEmail,
+                happiness: happinessScore, // Enviamos o score corrigido
                 observation: observation,
             }),
         });
@@ -96,7 +120,7 @@ const AddSentimentScreen = () => {
         if (response.ok) {
             Alert.alert("Sucesso", "Sentimento salvo com sucesso!");
             setObservation('');
-            setMoodValue(3); 
+            setMoodValue(2); // Reseta para 'Normal'
             await fetchFeelings();
         } else {
             const errorData = await response.json();
@@ -133,6 +157,7 @@ const AddSentimentScreen = () => {
               <Text style={styles.subtitle}>Insira um novo sentimento para o dia de hoje</Text>
             </View>
 
+            {/* O slider provavelmente usa um índice de 0-4 para as 5 opções */}
             <MoodSlider value={moodValue} onValueChange={setMoodValue}/>
 
             <Text style={styles.label}>Observação</Text>
@@ -153,7 +178,7 @@ const AddSentimentScreen = () => {
               style={styles.button}
               labelStyle={styles.buttonLabel}
               buttonColor={AppTheme.colors.tertiary}
-              disabled={saving}
+              disabled={saving || !userEmail}
             >
               {saving ? 'Salvando...' : 'Salvar Sentimento'}
             </Button>
@@ -162,29 +187,23 @@ const AddSentimentScreen = () => {
                 <Text style={styles.listTitle}>LISTA DE SENTIMENTOS</Text>
                 
                 {loading ? (
-                    
                     <ActivityIndicator size="large" color={AppTheme.colors.primary} style={{ marginTop: 20 }} />
                 ) : error ? (
-                    
                     <Text style={{ color: 'red', textAlign: 'center', marginTop: 20 }}>{error}</Text>
                 ) : sentiments.length === 0 ? (
-                    
                     <Text style={{ textAlign: 'center', marginTop: 20, color: AppTheme.colors.onSurfaceVariant }}>
                         Nenhum sentimento registrado ainda.
                     </Text>
                 ) : (
-                    sentiments
-                        .slice() 
-                        .reverse() 
-                        .map((item) => (
-                            <SentimentCard 
-                                key={item.feeling_id || Math.random()}
-                                emoji={getEmojiByScore(item.happiness)} 
-                                emotion={moodStates.find(m => m.score === item.happiness)?.label || `Score ${item.happiness}`} 
-                                observation={item.observation} 
-                                date={item.created_at || 'Data Indisponível'} 
-                            />
-                        ))
+                    sentiments.map((item) => (
+                        <SentimentCard 
+                            key={item.feeling_id}
+                            emoji={getEmojiByScore(item.happiness)} 
+                            emotion={moodStates.find(m => m.score === item.happiness)?.label || `Score ${item.happiness}`} 
+                            observation={item.observation} 
+                            date={new Date(item.created_at).toLocaleDateString('pt-BR')} 
+                        />
+                    ))
                 )}
             </View>
         </ScrollView>
