@@ -157,8 +157,9 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   sectionCommunity: {
-    marginTop: '7%',
+    marginTop: '20%',
     paddingHorizontal: 20,
+    marginBottom: 20,
   },
   modalContainer: {
     backgroundColor: 'white',
