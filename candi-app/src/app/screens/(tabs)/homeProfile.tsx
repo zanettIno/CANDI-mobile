@@ -12,6 +12,7 @@ import { API_BASE_URL } from '../../../constants/api';
 import { cancerTypes } from '@/components/Inputs/inputTypeCancer';
 
 interface UserProfile {
+   profile_id: string;
   profile_name: string;
   profile_email: string;
   profile_birth_date: string; 
@@ -56,13 +57,20 @@ export default function HomeScreen() {
   return (
     <HomeBackground onSettingsPress={() => console.log('⚙️ Configurações clicadas')}>
       <ContentContainer>
-        <ProfileCard
-          name={profile?.profile_name || '...'}
-          username={profile?.profile_email || '...'}
-          userType="Paciente oncológico"
-          onFirePress={() => console.log('🔥 Fire')}
-          onBrushPress={() => console.log('✏️ Brush')}
-        />
+    <ProfileCard
+  name={profile?.profile_name || '...'}
+  username={profile?.profile_email || '...'}
+  userType="Paciente oncológico"
+  avatarUri={
+    profile
+      ? `https://candi-image-uploads.s3.us-east-1.amazonaws.com/profile-images/${profile?.profile_id || '...'}.jpg`
+      : undefined
+  }
+  onFirePress={() => console.log('🔥 Fire')}
+  onBrushPress={() => console.log('✏️ Brush')}
+/>
+
+
 
         <LabelsRow 
           labels={[cancerTypeName, formattedBirthDate, profile?.profile_email]} 
