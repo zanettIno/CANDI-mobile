@@ -11,7 +11,6 @@ import {
 import { Modal, Portal, Button } from "react-native-paper";
 import { AppTheme } from "../../theme"; 
 
-// --- INTERFACES E FUNÇÕES AUXILIARES (sem alterações) ---
 interface VerificationModalProps {
   visible: boolean;
   email: string;
@@ -28,7 +27,6 @@ const maskEmail = (email: string) => {
 };
 
 
-// --- COMPONENTE PRINCIPAL DO MODAL ---
 const VerificationModal: React.FC<VerificationModalProps> = ({
   visible, email, onDismiss, onConfirm, onResend,
 }) => {
@@ -39,7 +37,6 @@ const VerificationModal: React.FC<VerificationModalProps> = ({
   const [countdown, setCountdown] = useState(30);
   const [isResendDisabled, setIsResendDisabled] = useState(true);
 
-  // Hooks useEffect e outras funções (sem alterações)
   useEffect(() => {
     if (visible && countdown > 0) {
       setIsResendDisabled(true);
@@ -67,16 +64,13 @@ const VerificationModal: React.FC<VerificationModalProps> = ({
     }
   };
 
-  // =========================================================================
-  // FUNÇÃO ATUALIZADA PARA LIDAR COM "COLAR" CÓDIGO
-  // =========================================================================
+
   const handleChange = (text: string, index: number) => {
     const sanitizedText = text.replace(/[^0-9]/g, '');
     
-    // Se o texto colado for maior que 1, distribui pelos campos
     if (sanitizedText.length > 1) {
       const newCode = [...code];
-      // Pega somente os caracteres necessários para preencher a partir do campo atual
+
       const charsToFill = sanitizedText.slice(0, OTP_LENGTH - index);
       let lastFilledIndex = index;
 
@@ -90,19 +84,17 @@ const VerificationModal: React.FC<VerificationModalProps> = ({
       
       setCode(newCode);
 
-      // Move o foco para o último campo que foi preenchido
       if (lastFilledIndex < OTP_LENGTH - 1) {
         inputsRef.current[lastFilledIndex + 1]?.focus();
       } else {
         inputsRef.current[lastFilledIndex]?.focus();
       }
 
-    } else { // Caso contrário, lida com a digitação de um único número
+    } else { 
       const newCode = [...code];
       newCode[index] = sanitizedText;
       setCode(newCode);
 
-      // Se um número válido foi inserido, avança para o próximo campo
       if (sanitizedText && index < OTP_LENGTH - 1) {
         inputsRef.current[index + 1]?.focus();
       }
@@ -118,7 +110,6 @@ const VerificationModal: React.FC<VerificationModalProps> = ({
   const fullCode = code.join("");
 
   return (
-    // ... (JSX existente, sem alterações)
     <Portal>
       <Modal visible={visible} onDismiss={onDismiss} contentContainerStyle={styles.modalContainer}>
         <View style={styles.contentWrapper}>
@@ -145,8 +136,6 @@ const VerificationModal: React.FC<VerificationModalProps> = ({
                   focusedIndex === index ? styles.inputFocused : {},
                 ]}
                 keyboardType="number-pad"
-                // Removido o maxLength para permitir que a ação de colar funcione no primeiro campo
-                // A lógica da função handleChange já garante que apenas 1 dígito fique por campo
               />
             ))}
           </View>
@@ -171,7 +160,6 @@ const VerificationModal: React.FC<VerificationModalProps> = ({
 };
 
 
-// --- ESTILOS (sem alterações) ---
 const styles = StyleSheet.create({
     modalContainer: {
         justifyContent: "center", alignItems: "center", paddingHorizontal: 20,
