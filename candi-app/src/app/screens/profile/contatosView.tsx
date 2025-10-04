@@ -3,32 +3,9 @@ import * as React from 'react';
 import { ContatsBackground } from '@/components/HomeProfile/ContatsBackground';
 import { ContentContainer } from '@/components/HomeProfile/ContentContainer';
 import { ProfileCard } from '@/components/HomeProfile/CardProfileContats';
-import styled from 'styled-components/native';
-import { Feather } from '@expo/vector-icons';
 import { AppTheme } from '@/theme';
 import { router } from 'expo-router';
-import { TouchableOpacity, Text, View } from 'react-native';
-
-const AddCardContainer = styled(TouchableOpacity)`
-  margin-top: 20px;
-  background-color: white;
-  border-radius: 15px;
-  padding: 25px;
-  align-items: center;
-  justify-content: center;
-  elevation: 4;
-  shadow-color: #000;
-  shadow-offset: 0px 4px;
-  shadow-opacity: 0.1;
-  shadow-radius: 6px;
-`;
-
-const AddText = styled(Text)`
-  margin-top: 8px;
-  font-size: 13px;
-  color: ${AppTheme.colors.tertiary};
-  font-family: ${AppTheme.fonts.titleMedium.fontFamily};
-`;
+import { AddContactButton } from '@/components/Buttons/addContactButton';
 
 export default function ContatosView() {
   const contatos = [
@@ -46,8 +23,7 @@ export default function ContatosView() {
         }
       }}
     >
-
-    <ContentContainer>
+      <ContentContainer>
         {/* 🔁 Lista de contatos */}
         {contatos.map((c, idx) => (
           <ProfileCard
@@ -61,15 +37,11 @@ export default function ContatosView() {
           />
         ))}
 
-
-  
-        {/* ➕ Botão de adicionar */}
-       <AddCardContainer onPress={() => router.push("/screens/profile/contatosAdd")}>
-        <AddText>Adicionar novo contato de confiança</AddText>
-  <Feather name="plus-circle" size={80} color={AppTheme.colors.tertiary} />
-  
-</AddCardContainer>
-
+        {/* ➕ Botão de adicionar contato usando AddContactButton */}
+        <AddContactButton
+          onPress={() => router.push("/screens/profile/contatosAdd")}
+          variant="primary"
+        />
       </ContentContainer>
     </ContatsBackground>
   );
