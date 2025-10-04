@@ -76,7 +76,7 @@ export const ContatsBackground = ({
   }}
 >
   <Feather name="arrow-left" size={24} color="white" />
-  <Text style={{ fontSize: 26, color: 'white', fontFamily:AppTheme.fonts.titleLarge.fontFamily }}>Contatos de Confiança</Text>
+  <Text style={{ paddingTop: 30, fontSize: 26, color: 'white', fontFamily:AppTheme.fonts.titleLarge.fontFamily }}>Contatos de Confiança</Text>
 </TouchableOpacity>
 
       </Header>

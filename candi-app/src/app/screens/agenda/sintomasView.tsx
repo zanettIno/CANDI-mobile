@@ -80,7 +80,7 @@ export default function SintomasView() {
             <View style={styles.statusBar}>
                 <BackIconButton 
                 color={AppTheme.colors.cardBackground} 
-                bottom={-30} 
+                bottom={-80} 
                 left={-10} 
                 onPress={() => router.push("/screens/(tabs)/homeAgenda")} 
                 />

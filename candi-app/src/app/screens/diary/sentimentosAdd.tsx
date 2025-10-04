@@ -153,7 +153,7 @@ const AddSentimentScreen = () => {
             />
             
             <View style={styles.header}>
-              <Text style={styles.title}>SEUS SENTIMENTOS</Text>
+              <Text style={styles.title }>SEUS SENTIMENTOS</Text>
               <Text style={styles.subtitle}>Insira um novo sentimento para o dia de hoje</Text>
             </View>
 
@@ -243,6 +243,7 @@ const styles = StyleSheet.create({
     ...AppTheme.fonts.headlineSmall,
     fontWeight: 'bold',
     color: AppTheme.colors.onSurface,
+    paddingTop: 20,
   },
   subtitle: {
     ...AppTheme.fonts.bodyMedium,

@@ -88,6 +88,7 @@ const InputBirth: React.FC<InputBirthProps> = ({
         value={value}
         onChangeText={handleChangeText}
         placeholder={placeholder}
+        placeholderTextColor="#999" 
         keyboardType="numeric"
         maxLength={10}
         style={{

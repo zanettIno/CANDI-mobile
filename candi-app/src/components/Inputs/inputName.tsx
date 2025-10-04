@@ -48,6 +48,7 @@ const InputName: React.FC<InputNameProps> = ({
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
+        placeholderTextColor="#999" 
         keyboardType="default"
         autoCapitalize="words"
         autoCorrect={false}

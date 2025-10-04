@@ -71,6 +71,7 @@ const InputPhone: React.FC<InputPhoneProps> = ({
         value={value}
         onChangeText={handleChangeText}
         placeholder={placeholder}
+        placeholderTextColor="#999" 
         keyboardType="phone-pad"
         maxLength={15}
         isValid={value ? isValidPhone(value) : undefined}

@@ -17,7 +17,7 @@ const Container = styled(View)`
   margin: 16px;
 `;
 
-const StyledTextInput = styled(TextInput)<{ isValid?: boolean }>`
+const StyledTextInput = styled(TextInput) <{ isValid?: boolean }>`
   background-color: ${AppTheme.colors.formFieldColor};
   border-radius: 50px;
   padding: 16px 50px 16px 16px;
@@ -51,6 +51,7 @@ const InputEmail: React.FC<InputEmailProps> = ({
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
+        placeholderTextColor="#999"   // 🔥 cor do placeholder
         keyboardType="email-address"
         autoCapitalize="none"
         autoCorrect={false}

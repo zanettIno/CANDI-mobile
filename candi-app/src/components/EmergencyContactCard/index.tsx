@@ -53,7 +53,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: AppTheme.colors.cardBackground,
-    borderRadius: AppTheme.roundness * 2,
+    borderRadius: 16,
     padding: 12,
     marginVertical: 8,
     marginHorizontal: 16,

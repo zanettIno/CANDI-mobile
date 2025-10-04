@@ -34,7 +34,7 @@ const StyledInputLike = styled.TouchableOpacity<{ hasError?: boolean }>`
 
 const InputText = styled(Text)<{ hasValue: boolean }>`
   font-size: 20px;
-  color: ${props => props.hasValue ? AppTheme.colors.textColor : '#545f71'};
+  color: ${props => props.hasValue ? AppTheme.colors.textColor : '#999'};
 `;
 
 const IconContainer = styled(View)`
@@ -91,7 +91,7 @@ const InputTypeCancer: React.FC<InputTypeCancerProps> = ({
         visible={visible}
         onDismiss={closeMenu}
         anchor={
-          <StyledInputLike onPress={openMenu} activeOpacity={0.8} hasError={style?.borderColor === '#ff6b6b'}>
+          <StyledInputLike onPress={() => setVisible(prev => !prev)} activeOpacity={0.8} hasError={style?.borderColor === '#ff6b6b'}>
             <InputText hasValue={!!value}>
               {selectedCancer ? selectedCancer.name : placeholder}
             </InputText>

@@ -56,6 +56,7 @@ const InputPassword: React.FC<InputPasswordProps> = ({
         onChangeText={onChangeText}
         placeholder={placeholder}
         secureTextEntry={!isPasswordVisible}
+        placeholderTextColor="#999" 
         autoCapitalize="none"
         autoCorrect={false}
         isValid={value ? isValidPassword(value) : undefined}
