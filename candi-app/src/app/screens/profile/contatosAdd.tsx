@@ -82,7 +82,7 @@ export default function ContatosAdd() {
         if (!token) throw new Error("Não autenticado");
 
         const response = await fetch(`${API_BASE_URL}/auth/me`, {
-          headers: { 'Authorization': `Bearer ${token}` },
+          headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true', },
         });
 
         if (response.ok) {
@@ -128,6 +128,7 @@ export default function ContatosAdd() {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
+          'ngrok-skip-browser-warning': 'true',
         },
         body: JSON.stringify({
           emergency_contact_name: name,

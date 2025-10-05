@@ -46,7 +46,7 @@ const AddSentimentScreen = () => {
       let email = userEmail;
       if (!email) {
           const userResponse = await fetch(`${API_BASE_URL}/auth/me`, {
-            headers: { 'Authorization': `Bearer ${token}` },
+            headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true', },
           });
           if (!userResponse.ok) throw new Error("Falha ao buscar usuário");
           const userData = await userResponse.json();
@@ -61,6 +61,7 @@ const AddSentimentScreen = () => {
         headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
+            'ngrok-skip-browser-warning': 'true',
         },
       });
 
@@ -109,6 +110,7 @@ const AddSentimentScreen = () => {
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`,
+                'ngrok-skip-browser-warning': 'true',
             },
             body: JSON.stringify({
                 email: userEmail,

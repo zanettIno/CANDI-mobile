@@ -115,7 +115,8 @@ export default function SintomasAdd() {
         }
 
         const response = await fetch(`${API_BASE_URL}/auth/me`, {
-          headers: { 'Authorization': `Bearer ${token}` },
+          headers: { 'Authorization': `Bearer ${token}`,
+                      'ngrok-skip-browser-warning': 'true', },
         });
 
         if (response.ok) {
@@ -178,6 +179,7 @@ export default function SintomasAdd() {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
+          'ngrok-skip-browser-warning': 'true',
         },
         body: JSON.stringify({
           email: userEmail,

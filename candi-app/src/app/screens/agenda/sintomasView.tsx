@@ -30,7 +30,8 @@ export default function SintomasView() {
           if (!token) throw new Error("Não autenticado");
 
           const userResponse = await fetch(`${API_BASE_URL}/auth/me`, {
-            headers: { 'Authorization': `Bearer ${token}` },
+            headers: { 'Authorization': `Bearer ${token}`,
+                        'ngrok-skip-browser-warning': 'true', },
           });
           if (!userResponse.ok) throw new Error("Falha ao buscar usuário");
           const userData = await userResponse.json();
@@ -39,7 +40,8 @@ export default function SintomasView() {
           if (!userEmail) throw new Error("E-mail do usuário não encontrado");
 
           const symptomsResponse = await fetch(`${API_BASE_URL}/schedule/symptoms/${userEmail}`, {
-            headers: { 'Authorization': `Bearer ${token}` },
+            headers: { 'Authorization': `Bearer ${token}`,
+                        'ngrok-skip-browser-warning': 'true', },
           });
           if (!symptomsResponse.ok) throw new Error("Falha ao buscar sintomas");
           

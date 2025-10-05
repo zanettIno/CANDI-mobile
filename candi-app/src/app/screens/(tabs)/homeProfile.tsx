@@ -28,7 +28,9 @@ export default function HomeScreen() {
         if (!token) return;
 
         const response = await fetch(`${API_BASE_URL}/auth/me`, {
-          headers: { 'Authorization': `Bearer ${token}` },
+          headers: { 'Authorization': `Bearer ${token}`,
+                      'ngrok-skip-browser-warning': 'true',
+         },
         });
 
         if (response.ok) {
