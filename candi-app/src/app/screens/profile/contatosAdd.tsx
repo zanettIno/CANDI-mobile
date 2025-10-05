@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { View, Text, ScrollView, Alert } from 'react-native';
+import { View, Text, ScrollView, Alert, SafeAreaView } from 'react-native';
 import { PaperProvider } from 'react-native-paper';
 import styled from 'styled-components/native';
 import { AppTheme } from '@/theme'; 
@@ -12,9 +12,10 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '@/constants/api'; 
 
-const Container = styled(View)`
+const Container = styled(SafeAreaView)`
   flex: 1;
   background-color: ${AppTheme.colors.primary};
+  justify-content: flex-end;
 `;
 
 const Header = styled(View)`
@@ -23,17 +24,17 @@ const Header = styled(View)`
   padding-left: 16px;
 `;
 
+// ALTERADO: Diminuímos a altura para 'descer' mais o formulário.
 const FormContainer = styled(View)`
-  flex: 1;
+  height: 85%; /* Estava 90% */
   background-color: ${AppTheme.colors.cardBackground};
   border-top-left-radius: 30px;
   border-top-right-radius: 30px;
-  margin-top: 10px;
   padding: 32px 24px 24px 24px;
 `;
 
 const FormScrollView = styled(ScrollView)`
-  flex: 1;
+  flex-grow: 1;
 `;
 
 const HeaderTitle = styled(Text)`
