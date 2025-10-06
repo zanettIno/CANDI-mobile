@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { PaperProvider } from 'react-native-paper';
 import { AppTheme } from '../../../theme/index'; 
@@ -29,31 +29,24 @@ export default function SintomasView() {
           const token = await AsyncStorage.getItem('accessToken');
           if (!token) throw new Error("Não autenticado");
 
-          const userResponse = await fetch(`${API_BASE_URL}/auth/me`, {
+          // A URL agora é mais simples. O backend identifica o usuário pelo token.
+          const symptomsResponse = await fetch(`${API_BASE_URL}/schedule/symptoms`, {
             headers: { 'Authorization': `Bearer ${token}` },
           });
-          if (!userResponse.ok) throw new Error("Falha ao buscar usuário");
-          const userData = await userResponse.json();
-          const userEmail = userData.profile_email;
 
-          if (!userEmail) throw new Error("E-mail do usuário não encontrado");
-
-          const symptomsResponse = await fetch(`${API_BASE_URL}/schedule/symptoms/${userEmail}`, {
-            headers: { 'Authorization': `Bearer ${token}` },
-          });
           if (!symptomsResponse.ok) throw new Error("Falha ao buscar sintomas");
           
           const symptomsData: ApiSymptom[] = await symptomsResponse.json();
-          symptomsData.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
+          // O backend já retorna a lista ordenada, então não precisamos de ordenar aqui.
           const formattedSymptoms = symptomsData.map(symptom => ({
             symptoms: symptom.description,
             date: new Date(symptom.created_at).toLocaleDateString('pt-BR'),
             reminderStatus: 'Ativo', 
             otherInfo: 'Sim',      
-          })); // <-- CORREÇÃO: Fechar o objeto e o .map() aqui
+          }));
 
-          setSymptoms(formattedSymptoms); // <-- Esta linha fica fora
+          setSymptoms(formattedSymptoms);
         
         } catch (error) {
           console.error("Erro no processo de busca de sintomas:", error);
@@ -66,7 +59,6 @@ export default function SintomasView() {
       fetchSymptomsForUser();
     }, [])
   );
-
 
   const handleOptionsPress = () => console.log('Options pressed');
   const handleReminderPress = () => console.log('Reminder pressed');

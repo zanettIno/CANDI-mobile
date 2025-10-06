@@ -9,7 +9,6 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../../../constants/api';
 
-// Interface para os dados que vêm da API
 interface ApiMedicine {
   medicine_id: string;
   medicine_name: string;
@@ -25,7 +24,6 @@ export default function MedicamentosView() {
   const [medicines, setMedicines] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // useFocusEffect para atualizar a lista sempre que a tela ganhar foco
   useFocusEffect(
     useCallback(() => {
       const fetchMedicinesForUser = async () => {
@@ -34,29 +32,23 @@ export default function MedicamentosView() {
           const token = await AsyncStorage.getItem('accessToken');
           if (!token) throw new Error("Não autenticado");
 
-          const userResponse = await fetch(`${API_BASE_URL}/auth/me`, {
+          // A URL agora é mais simples, o backend identifica o usuário pelo token
+          const endpoint = `${API_BASE_URL}/schedule/medicines`;
+
+          const medicinesResponse = await fetch(endpoint, {
             headers: { 'Authorization': `Bearer ${token}` },
           });
-          if (!userResponse.ok) throw new Error("Falha ao buscar usuário");
-          const userData = await userResponse.json();
-          const userEmail = userData.profile_email;
 
-          if (!userEmail) throw new Error("E-mail do usuário não encontrado");
-
-          const medicinesResponse = await fetch(`${API_BASE_URL}/schedule/medicines/by-email/${userEmail}`, {
-            headers: { 'Authorization': `Bearer ${token}` },
-          });
           if (!medicinesResponse.ok) throw new Error("Falha ao buscar medicamentos");
           
           const medicinesData: ApiMedicine[] = await medicinesResponse.json();
 
-          // Transforma os dados da API para o formato que o seu MedicineCard espera
           const formattedMedicines = medicinesData.map(med => ({
             name: med.medicine_name,
             dosage: med.medicine_dosage,
-            frequency: med.medicine_posology, // Mapeando posology para frequency
-            startDate: new Date(med.created_at).toLocaleDateString('pt-BR'), // Usando a data de criação como data de início
-            endDate: med.medicine_period, // Mapeando period para endDate
+            frequency: med.medicine_posology,
+            startDate: new Date(med.created_at).toLocaleDateString('pt-BR'),
+            endDate: med.medicine_period,
           }));
           
           setMedicines(formattedMedicines);
