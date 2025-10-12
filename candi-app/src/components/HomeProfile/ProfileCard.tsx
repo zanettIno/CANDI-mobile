@@ -6,7 +6,7 @@ import { AppTheme } from '../../theme';
 
 const CardContainer = styled(View)`
   position: absolute;
-  top: -40px; /* 🔥 sai para fora do container */
+  top: -40px; 
   left: 20px;
   right: 20px;
   background-color: white;
@@ -21,7 +21,7 @@ const CardContainer = styled(View)`
 
 
 const AvatarWrapper = styled(View)`
-  margin-top: -70px; /* imagem sai do card */
+  margin-top: -70px; 
   z-index: 10;
   align-items: center;
   justify-content: center;
@@ -42,6 +42,7 @@ const SectionContainer = styled(View)`
   flex-direction: row;
   justify-content: space-between;
  margin-top: -35px;
+ z-index: 20;
 `;
 
 const InfoContainer = styled(View)`
@@ -84,12 +85,11 @@ export const ProfileCard = ({
 }) => {
   return (
     <CardContainer>
-      {/* Avatar saindo do card */}
       <AvatarWrapper>
         {avatarUri ? (
           <AvatarImage source={{ uri: avatarUri }} resizeMode="cover" />
         ) : (
-          <AvatarImage source={require('../../../assets/images/icon.png')} />
+          <AvatarImage source={require('../../../assets/default-avatar.jpg')} />
         )}
       </AvatarWrapper>
 
@@ -104,7 +104,6 @@ export const ProfileCard = ({
         </TouchableOpacity>
       </SectionContainer>
 
-      {/* Infos */}
       <InfoContainer>
         <Name>{name}</Name>
         <Username>{username}</Username>
