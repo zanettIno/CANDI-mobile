@@ -8,8 +8,12 @@ import InputEmail from '../components/Inputs/inputEmail';
 import InputPassword from '../components/Inputs/inputPassword';
 import ButtonCustom from '../components/Buttons/buttonCustom';
 import { useRouter } from 'expo-router';
-// NOVO: Importe a sua função de login do serviço
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL } from 'constants/api'; 
+import Clarity from '@microsoft/clarity';
+const CLARITY_PROJECT_ID = "tlhkwdjvv6";
 import { login } from 'services/authService';
+
 
 const { width } = Dimensions.get('window');
 
@@ -20,6 +24,18 @@ export default function Index() {
 
   const router = useRouter();
 
+  React.useEffect(() => {
+    if (typeof window !== "undefined" && Clarity) {
+      Clarity.init(CLARITY_PROJECT_ID);
+      console.log('Microsoft Clarity inicializado na tela de Login.');
+
+      // Exemplo: identificar o usuário após o login for bem-sucedido
+      // if (userLoggedIn) {
+      //   Clarity.identify(userId, sessionId, pageId, name); 
+      // }
+    }
+  }, []);
+
   const handleLogin = async () => {
     if (!email || !password) {
       Alert.alert("Erro", "Por favor, preencha o e-mail e a senha.");
@@ -29,12 +45,39 @@ export default function Index() {
     setLoading(true);
 
     try {
-      // ALTERADO: Usamos a função 'login' do seu serviço
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true',
+        },
+        body: JSON.stringify({
+          email: email,
+          password: password,
+        }),
+      });
+      
       await login(email, password);
 
-      // Se a função 'login' não lançar um erro, o login foi bem-sucedido
       Alert.alert("Sucesso", "Login realizado!");
       router.push('/screens/(tabs)/home'); 
+
+      if (response.ok && data.accessToken) {
+        await AsyncStorage.setItem('accessToken', data.accessToken);
+        
+        if (typeof window !== "undefined" && Clarity) {
+            const userId = data.userId || email; 
+
+            Clarity.identify(userId, null, null, email); 
+        }
+
+        Alert.alert("Sucesso", "Login realizado!");
+        router.push('/screens/(tabs)/home'); 
+      } else {
+        const errorMessage = data.message || "Email ou senha incorretos. Tente novamente.";
+        Alert.alert("Erro de Login", errorMessage);
+      }
 
     } catch (error) {
       // A função 'login' já lança um erro com a mensagem correta em caso de falha
@@ -84,7 +127,7 @@ export default function Index() {
             </View>
 
             <View style={styles.forgotPasswordContainer}>
-              <TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push('/recuperarSenha')}>
                 <Text style={[styles.forgotPasswordText, { color: AppTheme.colors.tertinaryTextColor }]}>
                   Esqueceu sua senha?
                 </Text>

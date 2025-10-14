@@ -32,6 +32,19 @@ export default function MedicamentosView() {
           const token = await AsyncStorage.getItem('accessToken');
           if (!token) throw new Error("Não autenticado");
 
+          const userResponse = await fetch(`${API_BASE_URL}/auth/me`, {
+            headers: { 'Authorization': `Bearer ${token}`,
+                        'ngrok-skip-browser-warning': 'true', },
+          });
+          if (!userResponse.ok) throw new Error("Falha ao buscar usuário");
+          const userData = await userResponse.json();
+          const userEmail = userData.profile_email;
+
+          if (!userEmail) throw new Error("E-mail do usuário não encontrado");
+
+          const medicinesResponse = await fetch(`${API_BASE_URL}/schedule/medicines/by-email/${userEmail}`, {
+            headers: { 'Authorization': `Bearer ${token}`,
+                        'ngrok-skip-browser-warning': 'true', },
           // A URL agora é mais simples, o backend identifica o usuário pelo token
           const endpoint = `${API_BASE_URL}/schedule/medicines`;
 

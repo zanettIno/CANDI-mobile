@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
     color: AppTheme.colors.textColor,
   },
   scrollArea: {
-    maxHeight: 260, // garante espaço para o texto e torna rolável quando necessário
+    maxHeight: 260,
   },
   scrollContent: {
     paddingTop: 12,

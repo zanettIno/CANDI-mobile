@@ -10,6 +10,7 @@ import CommunityShortcut from "../../../components/Community-Shortcut";
 import CarouselComponent from "../../../components/Carousel/carousel";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../../../constants/api'; 
+import { makePhoneCall } from '../../../services/PhoneService';
 
 
 const userEndpoint = `${API_BASE_URL}/auth/me`;
@@ -43,6 +44,11 @@ export default function HomeScreen() {
 
   const [userName, setUserName] = useState('');
 
+  const handleCallContact = (contact: EmergencyContact) => {
+    console.log(`Iniciando chamada para ${contact.name} no número ${contact.phoneNumber}...`);
+    makePhoneCall(contact.phoneNumber);
+  };
+
   useEffect(() => {
     const fetchUserData = async () => {
       try {
@@ -58,6 +64,7 @@ export default function HomeScreen() {
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
+            'ngrok-skip-browser-warning': 'true',
           },
         });
 
@@ -104,7 +111,7 @@ export default function HomeScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Contatos</Text>
           {contacts.map((c, i) => (
-            <EmergencyContactCard key={i} contact={c} />
+            <EmergencyContactCard key={i} contact={c} onPress={handleCallContact}/>
           ))}
         </View>
 
@@ -151,8 +158,9 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   sectionCommunity: {
-    marginTop: '7%',
+    marginTop: '25%',
     paddingHorizontal: 20,
+    marginBottom: 20,
   },
   modalContainer: {
     backgroundColor: 'white',

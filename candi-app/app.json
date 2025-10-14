@@ -27,7 +27,12 @@
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/favicon.png",
+      "head.html.append": [
+        "<link href=\"https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css\" rel=\"stylesheet\" />",
+        "<link href=\"https://fonts.googleapis.com/icon?family=Material+Icons\" rel=\"stylesheet\">",
+        "<link href=\"https://cdnjs.cloudflare.com/ajax/libs/ionicons/5.5.2/ionicons.min.css\" rel=\"stylesheet\" />"
+      ]
     },
     "plugins": [
       "expo-router",
