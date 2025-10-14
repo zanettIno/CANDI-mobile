@@ -11,7 +11,6 @@ import { ObservationInput } from '@/components/Inputs/FormInputMedicine/Observat
 import { RegisterMedicineButton } from '@/components/Buttons/RegisterMedicineButton';
 import BackIconButton from '@/components/BackIconButton';
 import { useRouter } from 'expo-router';
-// 1. Imports necessários para a lógica
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../../../constants/api';
 
@@ -78,12 +77,8 @@ export default function MedicamentosAdd() {
   const [observation, setObservation] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   
-  // 2. Estado para guardar o e-mail do usuário logado
-  const [userEmail, setUserEmail] = React.useState<string | null>(null);
-
   const router = useRouter();
 
-  // 3. useEffect para buscar o e-mail do usuário ao carregar a tela
   React.useEffect(() => {
     const fetchUserData = async () => {
       try {
@@ -112,16 +107,16 @@ export default function MedicamentosAdd() {
     fetchUserData();
   }, []);
 
-  // 4. Lógica para adicionar o medicamento, agora com chamada à API
   const handleAddMedicine = async () => {
-    if (!userEmail) {
-      Alert.alert('Aguarde', 'A carregar dados do usuário...');
-      return;
-    }
-
     setLoading(true);
     try {
       const token = await AsyncStorage.getItem('accessToken');
+      if (!token) {
+        Alert.alert("Erro", "Você não está autenticado.");
+        setLoading(false);
+        return;
+      }
+
       const endpoint = `${API_BASE_URL}/schedule/medicines`;
 
       const response = await fetch(endpoint, {
@@ -132,7 +127,7 @@ export default function MedicamentosAdd() {
           'ngrok-skip-browser-warning': 'true',
         },
         body: JSON.stringify({
-          email: userEmail,
+          // O e-mail foi removido, o backend identifica o usuário pelo token
           medicine_name: medicineName,
           medicine_dosage: dosage,
           medicine_posology: posology,
@@ -143,7 +138,7 @@ export default function MedicamentosAdd() {
 
       if (response.ok) {
         Alert.alert('Sucesso', 'Medicamento adicionado com sucesso!');
-        router.back(); // Volta para a tela de listagem
+        router.back();
       } else {
         const errorData = await response.json();
         Alert.alert('Erro', errorData.message || 'Não foi possível adicionar o medicamento.');
@@ -212,7 +207,7 @@ export default function MedicamentosAdd() {
 
             <RegisterMedicineButton
               onPress={handleAddMedicine}
-              disabled={!isFormValid || !userEmail} // Botão fica desativado enquanto não tiver o e-mail
+              disabled={!isFormValid || loading}
               loading={loading}
               style={{ marginTop: 24 }}
             />

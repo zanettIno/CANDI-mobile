@@ -11,8 +11,9 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from 'constants/api'; 
 import Clarity from '@microsoft/clarity';
-
 const CLARITY_PROJECT_ID = "tlhkwdjvv6";
+import { login } from 'services/authService';
+
 
 const { width } = Dimensions.get('window');
 
@@ -36,8 +37,6 @@ export default function Index() {
   }, []);
 
   const handleLogin = async () => {
-    const endpoint = `${API_BASE_URL}/auth/login`; 
-
     if (!email || !password) {
       Alert.alert("Erro", "Por favor, preencha o e-mail e a senha.");
       return;
@@ -46,6 +45,7 @@ export default function Index() {
     setLoading(true);
 
     try {
+
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
@@ -57,8 +57,11 @@ export default function Index() {
           password: password,
         }),
       });
+      
+      await login(email, password);
 
-      const data = await response.json();
+      Alert.alert("Sucesso", "Login realizado!");
+      router.push('/screens/(tabs)/home'); 
 
       if (response.ok && data.accessToken) {
         await AsyncStorage.setItem('accessToken', data.accessToken);
@@ -75,9 +78,11 @@ export default function Index() {
         const errorMessage = data.message || "Email ou senha incorretos. Tente novamente.";
         Alert.alert("Erro de Login", errorMessage);
       }
+
     } catch (error) {
+      // A função 'login' já lança um erro com a mensagem correta em caso de falha
       console.error("Erro na requisição de login:", error);
-      Alert.alert("Erro", "Não foi possível conectar ao servidor. Verifique sua conexão.");
+      Alert.alert("Erro de Login", error.message);
     } finally {
       setLoading(false);
     }

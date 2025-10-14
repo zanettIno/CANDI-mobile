@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, StyleSheet, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { Text, TextInput, Button, IconButton } from 'react-native-paper';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -25,8 +25,6 @@ const getEmojiByScore = (score) => {
 const AddSentimentScreen = () => {
   const navigation = useNavigation();
 
-  // O valor do slider vai de 0 a 4, representando os 5 estados.
-  // Começamos em '2' que corresponde ao score '3' (Normal).
   const [moodValue, setMoodValue] = useState(2); 
   const [observation, setObservation] = useState('');
   const [sentiments, setSentiments] = useState([]); 
@@ -34,7 +32,7 @@ const AddSentimentScreen = () => {
   const [saving, setSaving] = useState(false); 
   const [error, setError] = useState(null);
   
-  const [userEmail, setUserEmail] = useState<string | null>(null);
+  // O estado 'userEmail' foi removido, não é mais necessário.
 
   const fetchFeelings = useCallback(async () => {
     setLoading(true);
@@ -76,7 +74,7 @@ const AddSentimentScreen = () => {
     } finally {
       setLoading(false);
     }
-  }, [userEmail]);
+  }, []); // Removido 'userEmail' das dependências
 
   useFocusEffect(
     useCallback(() => {
@@ -89,22 +87,16 @@ const AddSentimentScreen = () => {
         Alert.alert("Atenção", "Por favor, adicione uma observação sobre seu sentimento.");
         return;
     }
-    if (!userEmail) {
-        Alert.alert("Erro", "Dados de usuário não carregados. Tente novamente.");
-        return;
-    }
 
     setSaving(true);
     setError(null);
 
-    // --- A CORREÇÃO ESTÁ AQUI ---
-    // O valor do slider (moodValue) vai de 0 a 4.
-    // O score que queremos salvar no banco (happiness) vai de 1 a 5.
-    // Portanto, somamos 1 ao valor do slider antes de enviar.
     const happinessScore = moodValue + 1;
 
     try {
         const token = await AsyncStorage.getItem('accessToken');
+        if (!token) throw new Error("Não autenticado");
+        
         const response = await fetch(`${API_BASE_URL}/journal/feelings`, {
             method: 'POST',
             headers: {
@@ -112,9 +104,9 @@ const AddSentimentScreen = () => {
                 'Authorization': `Bearer ${token}`,
                 'ngrok-skip-browser-warning': 'true',
             },
+            // ALTERADO: O corpo do pedido já não precisa do e-mail
             body: JSON.stringify({
-                email: userEmail,
-                happiness: happinessScore, // Enviamos o score corrigido
+                happiness: happinessScore,
                 observation: observation,
             }),
         });
@@ -122,8 +114,8 @@ const AddSentimentScreen = () => {
         if (response.ok) {
             Alert.alert("Sucesso", "Sentimento salvo com sucesso!");
             setObservation('');
-            setMoodValue(2); // Reseta para 'Normal'
-            await fetchFeelings();
+            setMoodValue(2); 
+            await fetchFeelings(); // Atualiza a lista com o novo sentimento
         } else {
             const errorData = await response.json();
             const errorMessage = errorData.message || "Erro ao salvar sentimento.";
@@ -159,7 +151,6 @@ const AddSentimentScreen = () => {
               <Text style={styles.subtitle}>Insira um novo sentimento para o dia de hoje</Text>
             </View>
 
-            {/* O slider provavelmente usa um índice de 0-4 para as 5 opções */}
             <MoodSlider value={moodValue} onValueChange={setMoodValue}/>
 
             <Text style={styles.label}>Observação</Text>
@@ -180,7 +171,7 @@ const AddSentimentScreen = () => {
               style={styles.button}
               labelStyle={styles.buttonLabel}
               buttonColor={AppTheme.colors.tertiary}
-              disabled={saving || !userEmail}
+              disabled={saving || loading}
             >
               {saving ? 'Salvando...' : 'Salvar Sentimento'}
             </Button>

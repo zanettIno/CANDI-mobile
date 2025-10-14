@@ -99,7 +99,6 @@ export default function SintomasAdd() {
   const [reminderEnabled, setReminderEnabled] = React.useState(false);
   const [notifyNetworkEnabled, setNotifyNetworkEnabled] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
-  const [userEmail, setUserEmail] = React.useState<string | null>(null);
   const [isMenuVisible, setMenuVisible] = React.useState(false);
   
   const router = useRouter();
@@ -132,6 +131,7 @@ export default function SintomasAdd() {
     };
     fetchUserData();
   }, []);
+  // O useEffect que buscava o e-mail do usuário foi removido, pois não é mais necessário.
 
   const symptoms = [
     'Enjoo', 'Dor de cabeça', 'Febre', 'Tontura', 'Náusea', 'Dor abdominal', 'Fadiga', 'Insônia'
@@ -152,26 +152,24 @@ export default function SintomasAdd() {
 
   const handleAddSymptom = async () => {
     const parts = [];
-    if (selectedSymptom) {
-      parts.push(selectedSymptom);
-    }
-    if (otherSymptom.trim()) {
-      parts.push(otherSymptom.trim());
-    }
+    if (selectedSymptom) parts.push(selectedSymptom);
+    if (otherSymptom.trim()) parts.push(otherSymptom.trim());
     const description = parts.join(', ');
     
     if (!description) {
       Alert.alert('Erro', 'Por favor, selecione ou descreva um sintoma.');
       return;
     }
-    if (!userEmail) {
-      Alert.alert('Aguarde', 'As informações de usuário ainda estão a ser carregadas. Tente novamente em um instante.');
-      return;
-    }
 
     setLoading(true);
     try {
       const token = await AsyncStorage.getItem('accessToken');
+      if (!token) {
+        Alert.alert("Erro", "Você não está autenticado.");
+        setLoading(false);
+        return;
+      }
+      
       const endpoint = `${API_BASE_URL}/schedule/symptoms`;
 
       const response = await fetch(endpoint, {
@@ -181,8 +179,8 @@ export default function SintomasAdd() {
           'Authorization': `Bearer ${token}`,
           'ngrok-skip-browser-warning': 'true',
         },
+        // O e-mail foi removido do corpo do pedido
         body: JSON.stringify({
-          email: userEmail,
           description: description,
         }),
       });
@@ -274,7 +272,7 @@ export default function SintomasAdd() {
 
             <RegisterSymptomButton
               onPress={handleAddSymptom}
-              disabled={!isFormValid || !userEmail}
+              disabled={!isFormValid || loading}
               loading={loading}
               style={{ marginTop: 24 }}
             />
