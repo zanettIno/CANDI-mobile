@@ -5,6 +5,8 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { AppTheme } from '@/theme';
 import HomeBackground from '@/components/HomeBackground';
+import InputEmail from '@/components/Inputs/inputEmail';
+import InputCode from '@/components/Inputs/inputCode';
 import InputNewPassword from '@/components/Inputs/inputNewPassword';
 import InputConfirmNewPassword from '@/components/Inputs/inputConfirmNewPassword';
 import { SendButton } from '@/components/Buttons/sendButton';
@@ -59,6 +61,8 @@ const Description = styled(Text)`
 `;
 
 const NewPasswordScreen: React.FC = () => {
+  const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -68,10 +72,12 @@ const NewPasswordScreen: React.FC = () => {
     /^(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/.test(password);
 
   const passwordsMatch = newPassword === confirmPassword && newPassword !== '';
-  const isFormValid = isValidPassword(newPassword) && passwordsMatch;
+  const isFormValid = isValidPassword(newPassword) && passwordsMatch && email && code;
 
   const handleSetNewPassword = () => {
     setLoading(true);
+    console.log('Email:', email);
+    console.log('Código:', code);
     console.log('Nova senha:', newPassword);
     setTimeout(() => {
       setLoading(false);
@@ -98,6 +104,20 @@ const NewPasswordScreen: React.FC = () => {
             Preencha os campos para criar uma nova senha
           </Description>
 
+          {/* 🔹 Novos campos */}
+          <InputEmail
+            value={email}
+            onChangeText={setEmail}
+            style={{ marginHorizontal: 0 }}
+          />
+
+          <InputCode
+            value={code}
+            onChangeText={setCode}
+            style={{ marginHorizontal: 0 }}
+          />
+
+          {/* Campos de senha */}
           <InputNewPassword
             value={newPassword}
             onChangeText={setNewPassword}
