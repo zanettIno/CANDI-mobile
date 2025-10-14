@@ -6,6 +6,7 @@ import { router } from "expo-router";
 type BackIconButtonProps = {
   color: string;
   bottom?: number;
+  top?: number,
   left?: number;
   onPress?: () => void;
 };
@@ -13,13 +14,14 @@ type BackIconButtonProps = {
 export default function BackIconButton({
   color,
   bottom = 0,
+  top = 0,
   left = 0,
   onPress,
 }: BackIconButtonProps) {
   return (
     <TouchableOpacity
       onPress={onPress ? onPress : () => router.back()}
-      style={[styles.button, { bottom, left }]}
+      style={[styles.button, { bottom, top, left }]}
     >
       <MaterialIcons name="chevron-left" size={50} color={color} />
     </TouchableOpacity>

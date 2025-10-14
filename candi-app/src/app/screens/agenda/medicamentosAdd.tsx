@@ -95,7 +95,8 @@ export default function MedicamentosAdd() {
         }
 
         const response = await fetch(`${API_BASE_URL}/auth/me`, {
-          headers: { 'Authorization': `Bearer ${token}` },
+          headers: { 'Authorization': `Bearer ${token}`,
+                      'ngrok-skip-browser-warning': 'true',},
         });
 
         if (response.ok) {
@@ -128,6 +129,7 @@ export default function MedicamentosAdd() {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
+          'ngrok-skip-browser-warning': 'true',
         },
         body: JSON.stringify({
           email: userEmail,

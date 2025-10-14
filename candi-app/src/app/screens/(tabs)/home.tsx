@@ -64,6 +64,7 @@ export default function HomeScreen() {
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
+            'ngrok-skip-browser-warning': 'true',
           },
         });
 
@@ -157,7 +158,7 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   sectionCommunity: {
-    marginTop: '20%',
+    marginTop: '25%',
     paddingHorizontal: 20,
     marginBottom: 20,
   },

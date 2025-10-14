@@ -66,6 +66,7 @@ export const ProfileCard = ({
   avatarUri,
   onEditPress,
   onDeletePress,
+  onAvatarPress, // nova prop
 }: {
   name: string;
   relation: string;
@@ -73,15 +74,18 @@ export const ProfileCard = ({
   avatarUri?: string;
   onEditPress: () => void;
   onDeletePress: () => void;
+  onAvatarPress?: () => void;
 }) => {
   return (
     <CardContainerContats>
-      {/* 📷 Avatar */}
-      {avatarUri ? (
-        <AvatarImage source={{ uri: avatarUri }} resizeMode="cover" />
-      ) : (
-        <AvatarImage source={require('../../../assets/images/icon.png')} />
-      )}
+      {/* 📷 Avatar com Touchable */}
+      <TouchableOpacity onPress={onAvatarPress}>
+        {avatarUri ? (
+          <AvatarImage source={{ uri: avatarUri }} resizeMode="cover" />
+        ) : (
+          <AvatarImage source={require('../../../assets/images/icon.png')} />
+        )}
+      </TouchableOpacity>
 
       {/* Infos + ações */}
       <InfoWrapper>

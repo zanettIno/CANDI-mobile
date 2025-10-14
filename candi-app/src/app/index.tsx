@@ -10,7 +10,9 @@ import ButtonCustom from '../components/Buttons/buttonCustom';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from 'constants/api'; 
+import Clarity from '@microsoft/clarity';
 
+const CLARITY_PROJECT_ID = "tlhkwdjvv6";
 
 const { width } = Dimensions.get('window');
 
@@ -20,6 +22,18 @@ export default function Index() {
   const [loading, setLoading] = useState(false);
 
   const router = useRouter();
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined" && Clarity) {
+      Clarity.init(CLARITY_PROJECT_ID);
+      console.log('Microsoft Clarity inicializado na tela de Login.');
+
+      // Exemplo: identificar o usuário após o login for bem-sucedido
+      // if (userLoggedIn) {
+      //   Clarity.identify(userId, sessionId, pageId, name); 
+      // }
+    }
+  }, []);
 
   const handleLogin = async () => {
     const endpoint = `${API_BASE_URL}/auth/login`; 
@@ -36,6 +50,7 @@ export default function Index() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true',
         },
         body: JSON.stringify({
           email: email,
@@ -48,6 +63,12 @@ export default function Index() {
       if (response.ok && data.accessToken) {
         await AsyncStorage.setItem('accessToken', data.accessToken);
         
+        if (typeof window !== "undefined" && Clarity) {
+            const userId = data.userId || email; 
+
+            Clarity.identify(userId, null, null, email); 
+        }
+
         Alert.alert("Sucesso", "Login realizado!");
         router.push('/screens/(tabs)/home'); 
       } else {
@@ -101,7 +122,7 @@ export default function Index() {
             </View>
 
             <View style={styles.forgotPasswordContainer}>
-              <TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push('/recuperarSenha')}>
                 <Text style={[styles.forgotPasswordText, { color: AppTheme.colors.tertinaryTextColor }]}>
                   Esqueceu sua senha?
                 </Text>

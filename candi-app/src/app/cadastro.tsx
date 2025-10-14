@@ -88,6 +88,7 @@ export default function Cadastro() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true',
         },
         body: JSON.stringify({
           name: name,
@@ -137,8 +138,8 @@ export default function Cadastro() {
               
               <View style={styles.logoContainer}>
                 <BackIconButton 
-                left={'-3%'}
-                bottom={'50%'}
+                left={-3}
+                bottom={50}
                 color={AppTheme.colors.cardBackground} 
                 onPress={() => router.back()}/>
 
@@ -212,6 +213,7 @@ export default function Cadastro() {
                 onPress={handleRegisterClick}
                 variant="primary"
                 disabled={loading}
+                style={{ marginTop: '-5%' , marginBottom: 20 }}
               />
 
             </View>
