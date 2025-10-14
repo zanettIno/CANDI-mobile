@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { TextInput, View, TouchableOpacity } from 'react-native';
 import styled from 'styled-components/native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { AppTheme } from '@/theme';
 
-interface InputEmailProps {
+interface InputConfirmNewPasswordProps {
   value: string;
   onChangeText: (text: string) => void;
   placeholder?: string;
@@ -17,7 +17,7 @@ const Container = styled(View)`
   margin: 16px;
 `;
 
-const StyledTextInput = styled(TextInput) <{ isValid?: boolean }>`
+const StyledTextInput = styled(TextInput)<{ isValid?: boolean }>`
   background-color: ${AppTheme.colors.formFieldColor};
   border-radius: 50px;
   padding: 16px 50px 16px 16px;
@@ -33,17 +33,21 @@ const IconContainer = styled(TouchableOpacity)`
   transform: translateY(-12px);
 `;
 
-const InputEmail: React.FC<InputEmailProps> = ({
+const InputConfirmNewPassword: React.FC<InputConfirmNewPasswordProps> = ({
   value,
   onChangeText,
-  placeholder = "Email",
+  placeholder = "Confirmar nova senha",
   style
 }) => {
-  // VALIDAÇÃO: email válido
-  const isValidEmail = (email: string) => {
-    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return regex.test(email);
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+
+  const togglePasswordVisibility = () => {
+    setIsPasswordVisible(!isPasswordVisible);
   };
+
+  // VALIDAÇÃO: no mínimo 8 caracteres, letra maiúscula, número e caracter especial
+  const isValidPassword = (password: string) => 
+    /^(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/.test(password);
 
   return (
     <Container style={style}>
@@ -51,17 +55,21 @@ const InputEmail: React.FC<InputEmailProps> = ({
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
+        secureTextEntry={!isPasswordVisible}
         placeholderTextColor="#999" 
-        keyboardType="email-address"
         autoCapitalize="none"
         autoCorrect={false}
-        isValid={value ? isValidEmail(value) : undefined}
+        isValid={value ? isValidPassword(value) : undefined}
       />
-      <IconContainer>
-        <MaterialIcons name="email" size={24} color="#545f71" />
+      <IconContainer onPress={togglePasswordVisibility}>
+        <MaterialIcons 
+          name={isPasswordVisible ? "visibility" : "visibility-off"} 
+          size={24} 
+          color="#545f71" 
+        />
       </IconContainer>
     </Container>
   );
 };
 
-export default InputEmail;
+export default InputConfirmNewPassword;

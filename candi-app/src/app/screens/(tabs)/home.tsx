@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   sectionCommunity: {
-    marginTop: '7%',
+    marginTop: '25%',
     paddingHorizontal: 20,
   },
   modalContainer: {

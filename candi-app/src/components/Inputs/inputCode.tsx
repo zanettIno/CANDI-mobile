@@ -4,7 +4,7 @@ import styled from 'styled-components/native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { AppTheme } from '@/theme';
 
-interface InputEmailProps {
+interface InputCodeProps {
   value: string;
   onChangeText: (text: string) => void;
   placeholder?: string;
@@ -17,13 +17,13 @@ const Container = styled(View)`
   margin: 16px;
 `;
 
-const StyledTextInput = styled(TextInput) <{ isValid?: boolean }>`
+const StyledTextInput = styled(TextInput)`
   background-color: ${AppTheme.colors.formFieldColor};
   border-radius: 50px;
   padding: 16px 50px 16px 16px;
   font-size: 20px;
   color: #545F71;
-  border: 1px solid ${props => props.isValid === false ? '#ff6b6b' : 'transparent'};
+  border: 1px solid transparent;
 `;
 
 const IconContainer = styled(TouchableOpacity)`
@@ -33,35 +33,28 @@ const IconContainer = styled(TouchableOpacity)`
   transform: translateY(-12px);
 `;
 
-const InputEmail: React.FC<InputEmailProps> = ({
+const InputCode: React.FC<InputCodeProps> = ({
   value,
   onChangeText,
-  placeholder = "Email",
+  placeholder = "Código",
   style
 }) => {
-  // VALIDAÇÃO: email válido
-  const isValidEmail = (email: string) => {
-    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return regex.test(email);
-  };
-
   return (
     <Container style={style}>
       <StyledTextInput
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor="#999" 
-        keyboardType="email-address"
+        placeholderTextColor="#999"
+        keyboardType="numeric"
         autoCapitalize="none"
         autoCorrect={false}
-        isValid={value ? isValidEmail(value) : undefined}
       />
       <IconContainer>
-        <MaterialIcons name="email" size={24} color="#545f71" />
+        <MaterialIcons name="vpn-key" size={24} color="#545f71" />
       </IconContainer>
     </Container>
   );
 };
 
-export default InputEmail;
+export default InputCode;

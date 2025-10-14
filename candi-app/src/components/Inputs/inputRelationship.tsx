@@ -1,10 +1,10 @@
 import React from 'react';
-import { TextInput, View, TouchableOpacity } from 'react-native';
+import { TextInput, View } from 'react-native';
 import styled from 'styled-components/native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { AppTheme } from '@/theme';
+import { AppTheme } from '../../theme/index';
 
-interface InputEmailProps {
+interface InputRelationshipProps {
   value: string;
   onChangeText: (text: string) => void;
   placeholder?: string;
@@ -17,34 +17,28 @@ const Container = styled(View)`
   margin: 16px;
 `;
 
-const StyledTextInput = styled(TextInput) <{ isValid?: boolean }>`
+const StyledTextInput = styled(TextInput)`
   background-color: ${AppTheme.colors.formFieldColor};
   border-radius: 50px;
   padding: 16px 50px 16px 16px;
   font-size: 20px;
   color: #545F71;
-  border: 1px solid ${props => props.isValid === false ? '#ff6b6b' : 'transparent'};
+  border: 1px solid transparent;
 `;
 
-const IconContainer = styled(TouchableOpacity)`
+const IconContainer = styled(View)`
   position: absolute;
   right: 16px;
   top: 50%;
   transform: translateY(-12px);
 `;
 
-const InputEmail: React.FC<InputEmailProps> = ({
+const InputRelationship: React.FC<InputRelationshipProps> = ({
   value,
   onChangeText,
-  placeholder = "Email",
+  placeholder = "Amigo(a), Parente, etc.",
   style
 }) => {
-  // VALIDAÇÃO: email válido
-  const isValidEmail = (email: string) => {
-    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return regex.test(email);
-  };
-
   return (
     <Container style={style}>
       <StyledTextInput
@@ -52,16 +46,15 @@ const InputEmail: React.FC<InputEmailProps> = ({
         onChangeText={onChangeText}
         placeholder={placeholder}
         placeholderTextColor="#999" 
-        keyboardType="email-address"
-        autoCapitalize="none"
+        keyboardType="default"
+        autoCapitalize="sentences"
         autoCorrect={false}
-        isValid={value ? isValidEmail(value) : undefined}
       />
       <IconContainer>
-        <MaterialIcons name="email" size={24} color="#545f71" />
+        <MaterialIcons name="label" size={24} color="#545f71" />
       </IconContainer>
     </Container>
   );
 };
 
-export default InputEmail;
+export default InputRelationship;

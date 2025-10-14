@@ -101,7 +101,7 @@ export default function Index() {
             </View>
 
             <View style={styles.forgotPasswordContainer}>
-              <TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push('/recuperarSenha')}>
                 <Text style={[styles.forgotPasswordText, { color: AppTheme.colors.tertinaryTextColor }]}>
                   Esqueceu sua senha?
                 </Text>
