@@ -30,7 +30,6 @@ export default function HomeScreen() {
             try {
                 const token = await AsyncStorage.getItem('accessToken');
                 if (!token) return;
-
                 const response = await fetch(`${API_BASE_URL}/auth/me`, {
                     method: 'GET',
                     headers: { 'Authorization': `Bearer ${token}` },
