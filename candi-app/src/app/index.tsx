@@ -11,9 +11,9 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from 'constants/api'; 
 import Clarity from '@microsoft/clarity';
+
 const CLARITY_PROJECT_ID = "tlhkwdjvv6";
 import { login } from 'services/authService';
-
 
 const { width } = Dimensions.get('window');
 
@@ -28,11 +28,6 @@ export default function Index() {
     if (typeof window !== "undefined" && Clarity) {
       Clarity.init(CLARITY_PROJECT_ID);
       console.log('Microsoft Clarity inicializado na tela de Login.');
-
-      // Exemplo: identificar o usuário após o login for bem-sucedido
-      // if (userLoggedIn) {
-      //   Clarity.identify(userId, sessionId, pageId, name); 
-      // }
     }
   }, []);
 
@@ -45,39 +40,12 @@ export default function Index() {
     setLoading(true);
 
     try {
-
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'ngrok-skip-browser-warning': 'true',
-        },
-        body: JSON.stringify({
-          email: email,
-          password: password,
-        }),
-      });
-      
+      // ALTERADO: Usamos a função 'login' do seu serviço
       await login(email, password);
 
+      // Se a função 'login' não lançar um erro, o login foi bem-sucedido
       Alert.alert("Sucesso", "Login realizado!");
       router.push('/screens/(tabs)/home'); 
-
-      if (response.ok && data.accessToken) {
-        await AsyncStorage.setItem('accessToken', data.accessToken);
-        
-        if (typeof window !== "undefined" && Clarity) {
-            const userId = data.userId || email; 
-
-            Clarity.identify(userId, null, null, email); 
-        }
-
-        Alert.alert("Sucesso", "Login realizado!");
-        router.push('/screens/(tabs)/home'); 
-      } else {
-        const errorMessage = data.message || "Email ou senha incorretos. Tente novamente.";
-        Alert.alert("Erro de Login", errorMessage);
-      }
 
     } catch (error) {
       // A função 'login' já lança um erro com a mensagem correta em caso de falha

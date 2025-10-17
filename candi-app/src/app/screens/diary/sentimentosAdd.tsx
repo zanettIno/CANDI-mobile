@@ -41,25 +41,12 @@ const AddSentimentScreen = () => {
       const token = await AsyncStorage.getItem('accessToken');
       if (!token) throw new Error("Não autenticado");
 
-      let email = userEmail;
-      if (!email) {
-          const userResponse = await fetch(`${API_BASE_URL}/auth/me`, {
-            headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true', },
-          });
-          if (!userResponse.ok) throw new Error("Falha ao buscar usuário");
-          const userData = await userResponse.json();
-          email = userData.profile_email;
-          setUserEmail(email);
-      }
-
-      if (!email) throw new Error("E-mail do usuário não encontrado");
-
-      const response = await fetch(`${API_BASE_URL}/journal/feelings/${email}`, {
+      // ALTERADO: A rota agora é mais simples e não precisa do e-mail.
+      const response = await fetch(`${API_BASE_URL}/journal/feelings`, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-            'ngrok-skip-browser-warning': 'true',
+            'Authorization': `Bearer ${token}`, // O backend usa isto para saber quem é o usuário
         },
       });
 
@@ -102,7 +89,6 @@ const AddSentimentScreen = () => {
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`,
-                'ngrok-skip-browser-warning': 'true',
             },
             // ALTERADO: O corpo do pedido já não precisa do e-mail
             body: JSON.stringify({

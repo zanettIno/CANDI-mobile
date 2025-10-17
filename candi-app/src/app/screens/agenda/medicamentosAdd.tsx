@@ -79,34 +79,6 @@ export default function MedicamentosAdd() {
   
   const router = useRouter();
 
-  React.useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const token = await AsyncStorage.getItem('accessToken');
-        if (!token) {
-          Alert.alert("Erro de Autenticação", "Sessão inválida. Por favor, faça login novamente.");
-          router.push('/');
-          return;
-        }
-
-        const response = await fetch(`${API_BASE_URL}/auth/me`, {
-          headers: { 'Authorization': `Bearer ${token}`,
-                      'ngrok-skip-browser-warning': 'true',},
-        });
-
-        if (response.ok) {
-          const userData = await response.json();
-          setUserEmail(userData.profile_email);
-        } else {
-          throw new Error("Falha ao autenticar o usuário.");
-        }
-      } catch (e) {
-        console.error("Erro ao carregar dados do usuário:", e);
-      }
-    };
-    fetchUserData();
-  }, []);
-
   const handleAddMedicine = async () => {
     setLoading(true);
     try {
@@ -124,7 +96,6 @@ export default function MedicamentosAdd() {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
-          'ngrok-skip-browser-warning': 'true',
         },
         body: JSON.stringify({
           // O e-mail foi removido, o backend identifica o usuário pelo token
