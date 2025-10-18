@@ -139,7 +139,7 @@ const DiaryScreen = () => {
 
       <SearchNotes />
 
-      <MoodTracker onSave={handleSaveSentiment} />
+     <MoodTracker onSave={handleSaveSentiment} isSaving={isSaving} />
 
       <View style={styles.recordsContainer}>
         <DiaryList entries={diaryEntries} />

@@ -14,9 +14,10 @@ const moodStates = [
 
 interface MoodTrackerProps {
   onSave: (data: { moodValue: number; observation: string }) => void;
+  isSaving: boolean;
 }
 
-const MoodTracker: React.FC<MoodTrackerProps> = ({ onSave }) => {
+const MoodTracker: React.FC<MoodTrackerProps> = ({ onSave, isSaving }) => {
   const [moodValue, setMoodValue] = React.useState(2);
   const [observation, setObservation] = React.useState('');
 
@@ -46,6 +47,7 @@ const MoodTracker: React.FC<MoodTrackerProps> = ({ onSave }) => {
           minimumTrackTintColor={currentMood.color}
           maximumTrackTintColor="#E0E0E0"
           thumbTintColor={currentMood.color}
+          disabled={isSaving}
         />
       </View>
 
@@ -58,6 +60,7 @@ const MoodTracker: React.FC<MoodTrackerProps> = ({ onSave }) => {
         outlineStyle={styles.inputOutline}
         activeOutlineColor={AppTheme.colors.primary}
         dense
+        editable={!isSaving}
       />
 
       <Button
@@ -66,8 +69,9 @@ const MoodTracker: React.FC<MoodTrackerProps> = ({ onSave }) => {
         style={styles.button}
         labelStyle={styles.buttonLabel}
         disabled={!observation.trim()}
+        buttonColor={AppTheme.colors.tertiary}
       >
-        Salvar
+        {isSaving ? 'Salvando...' : 'Salvar'}
       </Button>
 
      
@@ -128,7 +132,6 @@ const styles = StyleSheet.create({
   button: {
     borderRadius: 12,
     alignSelf: 'center',
-    backgroundColor: AppTheme.colors.tertiary,
     width: '100%',
   },
   buttonLabel: {
