@@ -134,8 +134,9 @@ export default function CompromissosAdd() {
         setLoading(false);
         return;
       }
-      const profileId = await AsyncStorage.getItem("profileId");
-      const endpoint = `${API_BASE_URL}/patients/${profileId}/calendar/events`;
+      
+      // ALTERADO: A rota agora é mais simples e segura
+      const endpoint = `${API_BASE_URL}/calendar/events`;
       
       const formattedDate = appointmentDate.toISOString().split("T")[0];
 
@@ -154,7 +155,6 @@ export default function CompromissosAdd() {
         }),
       });
       
-
       if (response.ok) {
         Alert.alert("Sucesso", "Compromisso registrado com sucesso!");
         router.back();

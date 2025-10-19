@@ -9,7 +9,6 @@ import { API_BASE_URL } from '../../../constants/api';
 import BackIconButton from '@/components/BackIconButton';
 import { AddAppointmentButton } from '@/components/Buttons/AppointmentButton';
 
-// Interface (já estava correta para o back-end)
 interface ApiAppointment {
   appointment_id: string;
   appointment_name: string;
@@ -34,18 +33,10 @@ export default function CompromissosView() {
           const token = await AsyncStorage.getItem('accessToken');
           if (!token) throw new Error("Não autenticado");
 
-          // *** INÍCIO DA CORREÇÃO ***
+          // ALTERADO: A rota agora é mais simples e segura
+          const endpoint = `${API_BASE_URL}/calendar/events`;
 
-          // 1. NÃO PRECISAMOS MAIS DO PROFILE ID
-          // const profileId = await AsyncStorage.getItem('profileId');
-          // if (!profileId) throw new Error("ID do perfil não encontrado no AsyncStorage");
-
-          // 2. Usar o endpoint padronizado (igual de sintomas e medicamentos)
-          const endpoint = `${API_BASE_URL}/schedule/appointments`;
-
-          // *** FIM DA CORREÇÃO ***
-
-          const appointmentsResponse = await fetch(endpoint, { // URL corrigida
+          const appointmentsResponse = await fetch(endpoint, {
             headers: { 'Authorization': `Bearer ${token}` },
           });
 
@@ -53,9 +44,7 @@ export default function CompromissosView() {
           
           const appointmentsData: ApiAppointment[] = await appointmentsResponse.json();
 
-          // 3. Mapeamento (já estava correto)
           const formattedAppointments = appointmentsData.map(appointment => {
-            
             const [year, month, day] = appointment.appointment_date.split('-');
             const formattedDate = `${day}/${month}/${year}`;
 
@@ -85,7 +74,6 @@ export default function CompromissosView() {
 
   const handleOptionsPress = () => console.log('Options pressed');
 
-  // ... O resto do seu return e styles continuam iguais ...
   return (
     <PaperProvider theme={AppTheme}>
       <View style={styles.container}>
@@ -137,7 +125,6 @@ export default function CompromissosView() {
   );
 }
 
-// ... Seus styles ...
 const styles = StyleSheet.create({
     container: {
       flex: 1,
