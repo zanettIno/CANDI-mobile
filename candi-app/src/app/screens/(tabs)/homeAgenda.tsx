@@ -42,7 +42,7 @@ export default function HomeAgenda() {
         <ContainerButtons>
           <ButtonCustom
               title="Registrar compromisso"
-              onPress={() => { console.log("foi") }}
+              onPress={() => router.push('/screens/agenda/compromissosView')}
               variant="primary"/>
             <ButtonCustom
               title="Sintomas"
