@@ -65,7 +65,7 @@ export default function MarcosView() {
                   color={AppTheme.colors.cardBackground} 
                   bottom={-80} 
                   left={-10} 
-                  onPress={() => router.push("/screens/(tabs)/homeAgenda")}
+                  onPress={() => router.push("/screens/(tabs)/home")}
                 />
             </View>
         </View>
