@@ -44,7 +44,6 @@ export const MilestoneDescriptionInput: React.FC<CheckpointDescription> = ({
 }) => {
   return (
     <Container style={style}>
-      <LabelText>Descrição do marco</LabelText>
       <StyledTextInput
         value={value}
         onChangeText={onChangeText}

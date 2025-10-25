@@ -29,7 +29,7 @@ export default function HomeScreen() {
     const router = useRouter();
 
     const gotoaddCheckpoint = () => {
-        router.push('/screens/profile/marcosAdd');
+        router.push('/screens/profile/marcosView');
     };
     useEffect(() => {
         const fetchProfileData = async () => {

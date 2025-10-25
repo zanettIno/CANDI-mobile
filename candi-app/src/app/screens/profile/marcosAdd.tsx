@@ -7,12 +7,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppTheme } from '../../../theme/index';
 import BackIconButton from '@/components/BackIconButton';
 import { MilestoneDescriptionInput } from '@/components/Inputs/inputCheckpointDescription';
-import { AddMilestoneButton } from '@/components/Buttons/addCheckpointButton';
+import { AddMilestoneButton } from '@/components/Buttons/addCheckpointButton'; 
 import { API_BASE_URL } from '../../../constants/api';
 import { DateInput } from '@/components/Inputs/FormInputSymptom/DateInput';
-import { CheckpointCompletedToggle } from '@/components/Toggle/CheckpointCompletedToggle';
+import { CheckpointCompletedToggle } from '@/components/Toggle/CheckpointCompletedToggle'; 
 
-
+// Estilos mantidos da versão anterior
 const Container = styled(SafeAreaView)`
   flex: 1;
   background-color: ${AppTheme.colors.primary};
@@ -69,15 +69,28 @@ const SmallText = styled(Text)`
   margin-bottom: 24px;
 `;
 
+// Novo estilo para as labels dos inputs, baseado na imagem
+const InputLabel = styled(Text)`
+  font-family: ${AppTheme.fonts.bodyMedium.fontFamily};
+  font-size: ${AppTheme.fonts.bodyMedium.fontSize}px;
+  font-weight: bold;
+  color: ${AppTheme.colors.nameText}; /* Cor mais escura para destaque, AppTheme.colors.nameText parece ser a cor do título */
+  margin-bottom: 8px;
+  margin-left: 0; /* Removendo o marginLeft de 16px que estava na versão anterior */
+`;
+
+
 export default function MarcosAdd() {
     const router = useRouter();
 
     const [description, setDescription] = React.useState('');
     const [milestoneDate, setMilestoneDate] = React.useState('');
     const [loading, setLoading] = React.useState(false);
-    const [isCompleted, setIsCompleted] = React.useState(false);
+    const [isCompleted, setIsCompleted] = React.useState(false); // Reintroduzindo o estado
 
     const handleDateSelect = () => {
+        // CORREÇÃO: Em um app React Native real, esta função deveria abrir um DatePicker
+        // e setar a data selecionada. Mantendo a lógica original para não quebrar o fluxo.
         const today = new Date();
         setMilestoneDate(today.toLocaleDateString('pt-BR'));
         Alert.alert('Data Selecionada', `Data do marco definida para: ${today.toLocaleDateString('pt-BR')}`);
@@ -109,6 +122,7 @@ export default function MarcosAdd() {
                 body: JSON.stringify({
                     description: description.trim(),
                     date: milestoneDate,
+                    is_completed: isCompleted, // Enviando o status de conclusão
                 }),
             });
 
@@ -154,16 +168,17 @@ export default function MarcosAdd() {
                             Preencha o formulário para cadastrar um novo marco no tratamento
                         </SmallText>
 
+                        {/* Label para Descrição do Marco */}
+                        <InputLabel>Descrição do marco</InputLabel>
                         <MilestoneDescriptionInput
                             value={description}
                             onChangeText={setDescription}
                             placeholder="Última quimioterapia do tratamento"
-                            style={{ marginBottom: 16 }}
+                            style={{ marginBottom: 24 }} // Aumentando a margem para separar do próximo item
                         />
 
-                        <BodyText style={{ fontWeight: 'bold', marginBottom: 8, marginLeft: 16 }}>
-                            Data do marco
-                        </BodyText>
+                        {/* Label para Data do Marco */}
+                        <InputLabel>Data do marco</InputLabel>
                         <DateInput
                             value={milestoneDate}
                             onPress={handleDateSelect}
@@ -172,7 +187,7 @@ export default function MarcosAdd() {
                         />
 
                         <CheckpointCompletedToggle
-                            value={false}
+                            value={isCompleted}
                             onToggle={setIsCompleted}
                             style={{ marginBottom: 24 }}
                         />
