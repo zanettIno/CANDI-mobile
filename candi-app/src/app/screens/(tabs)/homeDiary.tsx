@@ -7,7 +7,7 @@ import {
   Alert,
   ScrollView,
 } from "react-native";
-import { useNavigation } from "expo-router";
+import { useNavigation, useFocusEffect } from "expo-router";
 import { AppTheme } from "../../../theme";
 import { router } from "expo-router";
 
@@ -21,29 +21,18 @@ import { AntDesign } from "@expo/vector-icons";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from "../../../constants/api";
 
-const diaryEntries = [
-  { id: "1", title: "Registro de 02/10" },
-  { id: "2", title: "Registro de 01/10" },
-  { id: "3", title: "Registro de 02/10" },
-  { id: "4", title: "Registro de 01/10" },
-  { id: "5", title: "Registro de 02/10" },
-  { id: "6", title: "Registro de 03/10" },
-  { id: "7", title: "Registro de 04/10" },
-  { id: "8", title: "Registro de 05/10" },
-  { id: "9", title: "Registro de 06/10" },
-  { id: "10", title: "Registro de 07/10" },
-  { id: "11", title: "Registro de 08/10" },
-  { id: "12", title: "Registro de 09/10" },
-  { id: "13", title: "Registro de 10/10" },
-  { id: "14", title: "Registro de 11/10" },
-  { id: "15", title: "Registro de 12/10" },
-];
+interface DiaryEntry {
+  date: string;
+  content: string;
+}
 
 const DiaryScreen = () => {
   const navigation = useNavigation();
 
   const [userEmail, setUserEmail] = React.useState<string | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
+  const [diaryEntries, setDiaryEntries] = React.useState<any[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
 
   React.useEffect(() => {
     const fetchUserData = async () => {
@@ -67,6 +56,49 @@ const DiaryScreen = () => {
     };
     fetchUserData();
   }, []);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      const fetchDiariesForUser = async () => {
+        setIsLoading(true);
+        try {
+          const token = await AsyncStorage.getItem('accessToken');
+          if (!token) throw new Error("Não autenticado");
+
+          const endpoint = `${API_BASE_URL}/diary/list`;
+
+          const diariesResponse = await fetch(endpoint, {
+            headers: { 'Authorization': `Bearer ${token}` },
+          });
+
+          if (!diariesResponse.ok) throw new Error("Falha ao buscar diários");
+          
+          const diariesData: DiaryEntry[] = await diariesResponse.json();
+
+          // Formatar os diários para o formato esperado pelo DiaryList
+          const formattedDiaries = diariesData.map((diary, index) => ({
+            id: String(index + 1),
+            title: `Registro de ${new Date(diary.date).toLocaleDateString('pt-BR', { 
+              day: '2-digit', 
+              month: '2-digit' 
+            })}`,
+            date: diary.date, // Pass the original date string for API calls
+            content: diary.content,
+          }));
+          
+          setDiaryEntries(formattedDiaries);
+
+        } catch (error) {
+          console.error("Erro no processo de busca de diários:", error);
+          setDiaryEntries([]); 
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      fetchDiariesForUser();
+    }, [])
+  );
 
   const handleFabPress = () => {
     router.push("/screens/diary/passagemAdd");
@@ -142,7 +174,7 @@ const DiaryScreen = () => {
       <MoodTracker onSave={handleSaveSentiment} />
 
       <View style={styles.recordsContainer}>
-        <DiaryList entries={diaryEntries} />
+        <DiaryList entries={diaryEntries}/>
       </View>
 
       <NewPassageFAB onPress={handleFabPress} />
