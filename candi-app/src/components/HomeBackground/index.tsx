@@ -45,21 +45,22 @@ const SecondWaves = ({ color, layerHeight, position = 'bottom' }) => {
   );
 };
 
-export default function HomeBackground({ children }) {
+export default function HomeBackground({ children }: { children?: React.ReactNode }) {
   return (
     <PaperProvider theme={AppTheme}>
-      <FirstLayer>
-        <SecondLayer>
+      <View style={{ flex: 1, backgroundColor: AppTheme.colors.background }}>
+        <View style={{ position: "absolute", top: 0, left: 0, right: 0 }}>
           <SecondWaves
-            color={AppTheme.colors.secondary} 
-            layerHeight={height / 4}
+            color={AppTheme.colors.secondary}
+            layerHeight={height / 6.5} 
             position="bottom"
           />
-        </SecondLayer>   
-        <ContentContainer>
+        </View>
+
+        <View style={{ flex: 1, zIndex: 1 }}>
           {children}
-        </ContentContainer>
-      </FirstLayer>
+        </View>
+      </View>
     </PaperProvider>
   );
 }

@@ -36,6 +36,7 @@ export default function RootLayout() {
           title: 'Comunidade',
           //tabBarLabel:() => {return null},
           tabBarIcon: ({ color }) => <MaterialIcons name="people" size={30} color={color} />,
+          tabBarStyle: { display: 'none' },
         }}
         
       />
