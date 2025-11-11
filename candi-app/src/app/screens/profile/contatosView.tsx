@@ -1,16 +1,14 @@
 import * as React from 'react';
-// NOVO: Imports adicionados para a lógica
-import { View, Text, StyleSheet, ScrollView, SafeAreaView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, ActivityIndicator, ScrollView } from 'react-native';
 import { PaperProvider } from 'react-native-paper';
 import styled from 'styled-components/native';
 import { AppTheme } from '@/theme';
 import { ProfileCard } from '@/components/HomeProfile/CardProfileContats';
 import { AddContactButton } from '@/components/Buttons/addContactButton';
-import BackIconButton from '@/components/BackIconButton';
-// NOVO: Imports para a lógica
-import { router, useFocusEffect, useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '@/constants/api';
+import BackIconButton from '@/components/BackIconButton';
 
 const Container = styled(SafeAreaView)`
   flex: 1;
@@ -20,8 +18,19 @@ const Container = styled(SafeAreaView)`
 
 const Header = styled(View)`
   height: 60px;
-  justify-content: center;
+  flex-direction: row;
+  align-items: center;
   padding-left: 16px;
+  padding-right: 16px;
+`;
+
+const HeaderTitle = styled(Text)`
+  flex: 1;
+  text-align: center;
+  font-size: ${AppTheme.fonts.titleLarge.fontSize}px;
+  font-weight: bold;
+  color: ${AppTheme.colors.cardBackground};
+  margin-left: -30px; 
 `;
 
 const ContentCard = styled(View)`
@@ -29,21 +38,23 @@ const ContentCard = styled(View)`
   background-color: ${AppTheme.colors.cardBackground};
   border-top-left-radius: 30px;
   border-top-right-radius: 30px;
-  padding: 32px 24px 24px 24px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 `;
 
 const ListScrollView = styled(ScrollView)`
   flex: 1;
+  margin-bottom: 20px;
 `;
 
 export default function ContatosView() {
-  const router = useRouter(); // Inicializa o router
+  const router = useRouter(); 
 
-  // NOVO: Estados para guardar os contatos e controlar o loading
   const [contatos, setContatos] = React.useState([]);
   const [isLoading, setIsLoading] = React.useState(true);
 
-  // NOVO: Lógica para buscar os dados do banco
   useFocusEffect(
     React.useCallback(() => {
       const fetchContactData = async () => {
@@ -52,23 +63,23 @@ export default function ContatosView() {
           const token = await AsyncStorage.getItem('accessToken');
           if (!token) throw new Error("Não autenticado");
 
-          const response = await fetch(`${API_BASE_URL}/auth/me`, {
+          // ALTERADO: Endpoint agora é a nova rota GET
+          const response = await fetch(`${API_BASE_URL}/emergency-contact`, {
             headers: { 'Authorization': `Bearer ${token}` },
           });
 
           if (response.ok) {
-            const userData = await response.json();
-            const contactList = [];
-
-            // Verifica se os dados do contato de emergência existem no perfil
-            if (userData.emergency_contact_name) {
-              contactList.push({
-                name: userData.emergency_contact_name,
-                relation: userData.emergency_contact_rela, // Usa 'rela' como no backend
-                phone: userData.emergency_contact_phone,
-              });
-            }
-            setContatos(contactList);
+            // A API agora retorna uma LISTA de contatos
+            const contactsData = await response.json();
+            
+            // Mapeamos a lista para o formato que o Card espera
+            const formattedContacts = contactsData.map(contact => ({
+              name: contact.name,
+              relation: contact.relationship,
+              phone: contact.phone,
+            }));
+            
+            setContatos(formattedContacts);
           } else {
             throw new Error("Falha ao buscar os contatos");
           }
@@ -98,16 +109,15 @@ export default function ContatosView() {
               }
             }} 
           />
+          <HeaderTitle>Contatos de Confiança</HeaderTitle>
         </Header>
 
         <ContentCard>
-          <Text style={styles.listTitle}>CONTATOS DE CONFIANÇA</Text>
-          
           <ListScrollView>
-            {/* ALTERADO: Lógica para exibir loading, lista vazia ou o contato do banco */}
             {isLoading ? (
               <ActivityIndicator size="large" color={AppTheme.colors.primary} style={{ marginTop: 50 }} />
             ) : contatos.length > 0 ? (
+              // O .map() agora vai renderizar todos os contatos da lista
               contatos.map((c, idx) => (
                 <ProfileCard
                   key={idx}
@@ -135,19 +145,18 @@ export default function ContatosView() {
 }
 
 const styles = StyleSheet.create({
-  listTitle: {
+  emptyText: {
+    textAlign: 'center',
+    marginTop: 50,
+    fontSize: 16,
+    color: AppTheme.colors.placeholderText,
+  },
+  listTitle: { // Adicionando o estilo que faltava para o título
     fontSize: AppTheme.fonts.titleLarge.fontSize,
     fontWeight: 'bold',
     fontFamily: AppTheme.fonts.titleLarge.fontFamily,
     color: AppTheme.colors.nameText,
     marginBottom: 20,
     textAlign: 'center',
-  },
-  // NOVO: Estilo para a mensagem de lista vazia
-  emptyText: {
-    textAlign: 'center',
-    marginTop: 50,
-    fontSize: 16,
-    color: AppTheme.colors.placeholderText,
   },
 });

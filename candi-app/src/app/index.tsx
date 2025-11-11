@@ -13,6 +13,7 @@ import { API_BASE_URL } from 'constants/api';
 import Clarity from '@microsoft/clarity';
 import GoogleOAuth from '../components/Buttons/GoogleButton'
 const CLARITY_PROJECT_ID = "tlhkwdjvv6";
+
 import { login } from 'services/authService';
 
 const { width } = Dimensions.get('window');
