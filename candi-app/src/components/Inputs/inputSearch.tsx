@@ -22,6 +22,8 @@ const SearchField = styled(TextInput)`
   shadow-opacity: 0.05;
   shadow-radius: 4px;
   elevation: 2;
+
+  font-size: 16px;
 `;
 
 const IconContainer = styled(TouchableOpacity)`

@@ -49,7 +49,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: AppTheme.colors.cardBackground, 
-    fontSize: AppTheme.fonts.bodyLarge.fontSize,
+    fontSize: AppTheme.fonts.bodyMedium.fontSize,
     fontWeight: AppTheme.fonts.bodyLarge.fontWeight,
     fontFamily: AppTheme.fonts.bodyLarge.fontFamily,
     textAlign: 'center',

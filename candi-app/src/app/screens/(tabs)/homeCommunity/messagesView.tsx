@@ -6,6 +6,7 @@ import { AppTheme } from '@/theme';
 import HomeBackground from '@/components/HomeBackground';
 import MessageCard from '@/components/Card/messageCard'; 
 import SearchInput from '@/components/Inputs/inputSearch'; 
+import MessagesAdd from '@/components/Modals/MessagesAddModal'; 
 
 const MOCK_MESSAGES = [
   { id: '1', userName: "Fernando D'Avila", lastMessage: 'Como vai o tratamento?', time: '22:48', unreadCount: 3, isRead: false },
@@ -56,12 +57,22 @@ const ListContainer = styled(View)`
 
 export const MessagesScreen: React.FC = () => {
   const [searchText, setSearchText] = useState('');
+  const [isModalVisible, setIsModalVisible] = useState(false); 
+
   const totalMessages = MOCK_MESSAGES.length;
 
   const filteredMessages = MOCK_MESSAGES.filter(msg =>
     msg.userName.toLowerCase().includes(searchText.toLowerCase()) ||
     msg.lastMessage.toLowerCase().includes(searchText.toLowerCase())
   );
+
+  const handleOpenModal = () => setIsModalVisible(true);
+  const handleCloseModal = () => setIsModalVisible(false);
+
+  const handleAddConversation = (search: string) => {
+    console.log('Iniciar conversa com:', search);
+    handleCloseModal();
+  };
 
   return (
     <ScreenContainer>
@@ -71,13 +82,14 @@ export const MessagesScreen: React.FC = () => {
 
       <View style={{ 
         flex: 1, 
-        marginTop: -540 ,
+        marginTop: -540,
         zIndex: 1
       }}>
         
         <HeaderContainer>
           <TitleText>MENSAGENS</TitleText>
-          <AddButton onPress={() => console.log('Nova Mensagem')}>
+
+          <AddButton onPress={handleOpenModal}>
             <MaterialIcons name="add" size={26} color={AppTheme.colors.textColor} />
           </AddButton>
         </HeaderContainer>
@@ -113,6 +125,12 @@ export const MessagesScreen: React.FC = () => {
           />
         </ListContainer>
       </View>
+
+      <MessagesAdd
+        visible={isModalVisible}
+        onDismiss={handleCloseModal}
+        onAddConversation={handleAddConversation}
+      />
     </ScreenContainer>
   );
 };
