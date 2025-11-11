@@ -94,7 +94,7 @@ export default function ContatosView() {
               if (router.canGoBack()) {
                 router.back();
               } else {
-                router.replace("/screens/profile/homeProfile");
+                router.back();
               }
             }} 
           />
