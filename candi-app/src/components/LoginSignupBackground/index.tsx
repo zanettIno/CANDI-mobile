@@ -38,8 +38,7 @@ const ContentContainer = styled(View)`
 
 const SecondWaves = ({ color, layerHeight, position = 'bottom' }) => {
   const isBottom = position === 'bottom';
-  
-  const wavePath = isBottom 
+  const wavePath = isBottom
     ? `M 0,0 L 0,${layerHeight - 90} 
        Q ${width * 0.25},${layerHeight} ${width * 0.5},${layerHeight - 20}
        T ${width},${layerHeight - 20} L ${width},0 Z`
@@ -55,8 +54,7 @@ const SecondWaves = ({ color, layerHeight, position = 'bottom' }) => {
 
 const ThirdWaves = ({ color, layerHeight, position = 'bottom' }) => {
   const isBottom = position === 'bottom';
-  
-  const wavePath = isBottom 
+  const wavePath = isBottom
     ? `M 0,0 L 0,${layerHeight - 25} 
        Q ${width * 0.25},${layerHeight} ${width * 0.5},${layerHeight - 30}
        T ${width},${layerHeight - 25} L ${width},0 Z`
@@ -70,29 +68,31 @@ const ThirdWaves = ({ color, layerHeight, position = 'bottom' }) => {
   );
 };
 
-export default function LoginSignupBackground({ children }) {
+interface LoginSignupBackgroundProps {
+  children?: React.ReactNode;
+}
+
+export default function LoginSignupBackground({ children }: LoginSignupBackgroundProps) {
   return (
     <PaperProvider theme={AppTheme}>
       <FirstLayer>
         <SecondLayer>
           <SecondWaves
-            color={AppTheme.colors.secondary} 
+            color={AppTheme.colors.secondary}
             layerHeight={height / 3.9}
             position="bottom"
           />
         </SecondLayer>
-        
+
         <ThirdLayer>
           <ThirdWaves
-            color={AppTheme.colors.primary} 
+            color={AppTheme.colors.primary}
             layerHeight={height / 4.2}
             position="bottom"
           />
         </ThirdLayer>
-        
-        <ContentContainer>
-          {children}
-        </ContentContainer>
+
+        <ContentContainer>{children}</ContentContainer>
       </FirstLayer>
     </PaperProvider>
   );

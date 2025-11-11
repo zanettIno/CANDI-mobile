@@ -7,6 +7,7 @@ import { AppTheme } from '@/theme';
 import { SearchInput } from '@/components/Inputs/inputSearch';
 import PostCard from '@/components/Card/postCard';
 import PostCardView from '@/components/Card/postCardView';
+import { useRouter } from 'expo-router'; 
 
 const Container = styled(SafeAreaView)`
   flex: 1;
@@ -33,73 +34,85 @@ const ContentContainer = styled(View)`
   background-color: ${AppTheme.colors.background};
 `;
 
-const BottomNavigation = styled(View)`
-  background-color: ${AppTheme.colors.cardBackground};
-  flex-direction: row;
-  justify-content: space-around;
-  align-items: center;
-  padding: 8px 0;
-  border-top-width: 1px;
-  border-top-color: ${AppTheme.colors.dotsColor};
-`;
+const allPostsData = {
+  'Feed': [
+    {
+      id: 'f1',
+      userName: 'Carolina Souza',
+      userHandle: 'carolina_souza',
+      timeAgo: '9 min',
+      content: 'Ao ir no consultório para um exame de retina encontrei uma amiga...',
+    },
+    {
+      id: 'f2',
+      userName: 'João Silva',
+      userHandle: 'joao_silva',
+      timeAgo: '2h',
+      content: 'Compartilhando minha experiência com o tratamento. Cada dia é uma nova lição.',
+    },
+  ],
+  'Quimio': [
+    {
+      id: 'q1',
+      userName: 'Equipe Candi',
+      userHandle: 'candi_oficial',
+      timeAgo: '1h',
+      content: 'Dicas importantes para quem está começando a quimioterapia. Beba bastante água!',
+    },
+  ],
+  'Câncer': [
+    {
+      id: 'c1',
+      userName: 'Maria Santos',
+      userHandle: 'maria_santos',
+      timeAgo: '4h',
+      content: 'Gratidão por ter encontrado essa comunidade. Vocês fazem toda a diferença.',
+    },
+  ],
+};
 
-const NavItem = styled(TouchableOpacity) <{ active: boolean }>`
-  align-items: center;
-  justify-content: center;
-  padding: 8px 16px;
-`;
-
-const mockPosts = [
+const defaultPosts = [
   {
-    userName: 'Carolina Souza',
-    userHandle: 'carolina_souza',
-    timeAgo: '9 min',
-    content: 'Ao ir no consultório para um exame de retina encontrei uma amiga que passou por todo o processo comigo e não pude deixar de apoiá-la hoje. Passei mais uma hora acompanhando-a pela via-lozinha me partiu o coração. Nós que já passamos por isso o entendemos a dor do outro devemos transmitir força.',
-  },
-  {
-    userName: 'João Silva',
-    userHandle: 'joao_silva',
-    timeAgo: '2h',
-    content: 'Compartilhando minha experiência com o tratamento. Cada dia é uma nova lição de vida e resiliência.',
-  },
-  {
-    userName: 'Maria Santos',
-    userHandle: 'maria_santos',
-    timeAgo: '4h',
-    content: 'Gratidão por ter encontrado essa comunidade. Vocês fazem toda a diferença na minha jornada.',
+    id: 'd1',
+    userName: 'Sistema',
+    userHandle: 'admin',
+    timeAgo: 'agora',
+    content: 'Ainda não há publicações neste grupo. Seja o primeiro a postar!',
   },
 ];
 
+
 export default function CommunityScreen() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = React.useState('Feed');
   const [searchValue, setSearchValue] = React.useState('');
+  
+  const [displayedPosts, setDisplayedPosts] = React.useState(allPostsData['Feed']);
 
   const tabs = ['Feed', 'Quimio', 'Câncer', 'Câncer SP', 'Contr...', 'Leuce', 'Diagnóstico', 'Pós-Tratamento', 'Bem-estar'];
+
+  React.useEffect(() => {
+    const newPosts = allPostsData[activeTab] || defaultPosts;
+    setDisplayedPosts(newPosts);
+  }, [activeTab]); 
 
   return (
     <PaperProvider theme={AppTheme}>
       <Container>
-        {/* Topo */}
         <TopBar>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/screens/homeProfile')}> 
             <MaterialIcons name="person" size={26} color={AppTheme.colors.tertiary} />
           </TouchableOpacity>
 
           <Image
             source={require('../../../../../assets/images/original.png')}
-            style={{
-              width: 120,
-              height: 50,
-              resizeMode: 'contain',
-            }}
+            style={{ width: 120, height: 50, resizeMode: 'contain' }}
           />
 
-          <TouchableOpacity>
-            <MaterialIcons name="notifications-none" size={26} color={AppTheme.colors.tertiary} />
-          </TouchableOpacity>
+          <View style={{ width: 26 }} /> 
+
         </TopBar>
 
-        {/* Campo de pesquisa */}
         <SearchInputWrapper>
           <SearchInput
             placeholder="Pesquisar"
@@ -108,7 +121,6 @@ export default function CommunityScreen() {
           />
         </SearchInputWrapper>
 
-        {/* Tabs com scroll horizontal e fundo consistente */}
         <View
           style={{
             backgroundColor: AppTheme.colors.cardBackground,
@@ -124,7 +136,7 @@ export default function CommunityScreen() {
             {tabs.map((tab) => (
               <TouchableOpacity
                 key={tab}
-                onPress={() => setActiveTab(tab)}
+                onPress={() => setActiveTab(tab)} 
                 style={{
                   paddingVertical: 12,
                   marginRight: 24,
@@ -151,14 +163,14 @@ export default function CommunityScreen() {
           </ScrollView>
         </View>
 
-        {/* Conteúdo do feed */}
         <ContentContainer>
           <ScrollView showsVerticalScrollIndicator={false}>
+            
             <PostCard />
 
-            {mockPosts.map((post, index) => (
+            {displayedPosts.map((post) => (
               <PostCardView
-                key={index}
+                key={post.id} 
                 userName={post.userName}
                 userHandle={post.userHandle}
                 timeAgo={post.timeAgo}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, Image } from 'react-native';
 import styled from 'styled-components/native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { AppTheme } from '../../theme'; 
@@ -65,13 +65,11 @@ const ActionIcons = styled(View)`
   gap: 24px;
 `;
 
-const ProfilePlaceholderIcon = styled(View)`
+const ProfileImage = styled(Image)`
   width: 40px;
   height: 40px;
   border-radius: 20px;
   background-color: ${AppTheme.colors.placeholderBackground};
-  align-items: center;
-  justify-content: center;
 `;
 
 interface PostCardViewProps {
@@ -79,16 +77,29 @@ interface PostCardViewProps {
   userHandle: string;
   timeAgo: string;
   content: string;
+  profileImageKey?: string; 
 }
 
-export const PostCardView: React.FC<PostCardViewProps> = ({ userName, userHandle, timeAgo, content }) => {
+export const PostCardView: React.FC<PostCardViewProps> = ({ 
+  userName, 
+  userHandle, 
+  timeAgo, 
+  content,
+  profileImageKey
+}) => {
+
+  const getAvatarSource = () => {
+    if (profileImageKey) {
+      return { uri: `https://candi-image-uploads.s3.us-east-1.amazonaws.com/profile-images/${profileImageKey}.jpg` };
+    }
+    return require('../../../assets/default-avatar.jpg'); 
+  };
+
   return (
     <PostCardViewContainer>
       <ReadPostHeader>
         <UserInfo>
-          <ProfilePlaceholderIcon>
-            <MaterialIcons name="person" size={24} color={AppTheme.colors.placeholderText} />
-          </ProfilePlaceholderIcon>
+          <ProfileImage source={getAvatarSource()} />
           <UserDetails>
             <UserName>{userName}</UserName>
             <UserHandleAndTime>@{userHandle} • {timeAgo}</UserHandleAndTime>

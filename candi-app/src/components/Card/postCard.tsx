@@ -5,7 +5,6 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { AppTheme } from '../../theme/index'; 
 
 const PostCreationCardContainer = styled(View)`
-  /* Cor rosa claro para o fundo do card, usando a cor primary do tema */
   background-color: ${AppTheme.colors.primary}; 
   border-radius: 16px;
   padding: 16px;
@@ -43,13 +42,13 @@ const PostCreationSubtitle = styled(Text)`
 `;
 
 const PostCreationInput = styled(TextInput)`
-  background-color: ${AppTheme.colors.cardBackground}; /* Fundo branco para o input */
+  background-color: ${AppTheme.colors.cardBackground}; 
   border-radius: 8px;
   padding: 12px;
   min-height: 80px;
   font-size: ${AppTheme.fonts.bodyMedium.fontSize}px;
   color: ${AppTheme.colors.textColor};
-  text-align-vertical: top; /* Para Android */
+  text-align-vertical: top; 
 `;
 
 const PostCreationFooter = styled(View)`
@@ -81,7 +80,6 @@ const PlaceholderIcon = styled(View)`
   width: 32px;
   height: 32px;
   border-radius: 16px;
-  /* Usando uma cor mais escura para o ícone de placeholder, como o secondary */
   background-color: ${AppTheme.colors.secondary}; 
   align-items: center;
   justify-content: center;
