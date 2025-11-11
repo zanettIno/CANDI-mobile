@@ -77,18 +77,6 @@ export default function BottomSheet() {
                     </Text>
                     <AppointmentTimeline/>
 
-                    <Text style={{
-                        fontFamily: AppTheme.fonts.titleLarge.fontFamily,
-                        fontSize: AppTheme.fonts.titleLarge.fontSize,
-                        color: AppTheme.colors.tertiary,
-                        paddingVertical: '6%'}}>
-                        MEDICAMENTOS
-                    </Text>
-
-                    <ContainerMedicamentos>
-                        
-                    </ContainerMedicamentos>
-
                     <ButtonCustom
                         title="Medicamentos"
                         onPress={() => router.push('/screens/agenda/medicamentosView')}

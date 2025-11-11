@@ -1,16 +1,20 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
 import { AppTheme } from '../../../theme';
 import { Button, Dialog, Portal, Text } from 'react-native-paper';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { DatePickerModal } from 'react-native-paper-dates';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 
 import NewPassageHeader from '../../../components/NewPassage/NewPassageHeader';
 import DiaryTextInput from '../../../components/NewPassage/DiaryTextInput';
 import MoodSelector from '../../../components/NewPassage/MoodSelector';
 import SaveButton from '../../../components/NewPassage/SaveButton';
+
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL } from '../../../constants/api';
 
 const NewPassageScreen = () => {
   const [date, setDate] = useState<Date | undefined>(new Date());
@@ -41,9 +45,110 @@ const NewPassageScreen = () => {
     setBodyText('');
     hideClearDialog();
   };
-  const handleSaveAsDraft = () => console.log('Salvando rascunho...');
-  const handleSavePassage = () => console.log('Salvando passagem...');
+
+  const handleSaveAsDraft = async () => {
+    // Save draft locally using AsyncStorage
+    try {
+      const draftData = {
+        date: date?.toISOString(),
+        title,
+        content: bodyText,
+        mood,
+      };
+      await AsyncStorage.setItem('diaryDraft', JSON.stringify(draftData));
+      Alert.alert('Sucesso', 'Rascunho salvo localmente');
+    } catch (error) {
+      console.error('Error saving draft:', error);
+      Alert.alert('Erro', 'Não foi possível salvar o rascunho');
+    }
+  };
+
+  const handleSavePassage = async () => {
+    // Validate inputs
+    if (!date) {
+      Alert.alert('Atenção', 'Por favor, selecione uma data');
+      return;
+    }
+
+    if (!bodyText.trim()) {
+      Alert.alert('Atenção', 'Por favor, escreva o conteúdo da passagem');
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      const token = await AsyncStorage.getItem('accessToken');
+      if (!token) throw new Error("Não autenticado");
+
+      // Format date as YYYY-MM-DD for the API
+      const formattedDate = format(date, 'yyyy-MM-dd');
+
+      const endpoint = `${API_BASE_URL}/diary`;
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          date: formattedDate,
+          content: bodyText,
+        }),
+      });
+
+      if (response.ok) {
+        Alert.alert(
+          'Sucesso!', 
+          'Sua passagem foi salva no diário.',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                // Clear the form
+                setBodyText('');
+                setDate(new Date());
+                // Remove draft if exists
+                AsyncStorage.removeItem('diaryDraft');
+                // Navigate back to diary screen
+                router.back();
+              }
+            }
+          ]
+        );
+      } else {
+        const errorData = await response.json();
+        Alert.alert('Erro', errorData.message || 'Não foi possível salvar a passagem');
+      }
+    } catch (error) {
+      console.error('Error saving diary entry:', error);
+      Alert.alert('Erro de Rede', 'Não foi possível conectar ao servidor');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleOpenMoodModal = () => console.log('Abrir seletor de humor');
+
+  // Load draft on component mount
+  useEffect(() => {
+    const loadDraft = async () => {
+      try {
+        const draftJson = await AsyncStorage.getItem('diaryDraft');
+        if (draftJson) {
+          const draft = JSON.parse(draftJson);
+          if (draft.date) setDate(new Date(draft.date));
+          if (draft.title) setTitle(draft.title);
+          if (draft.content) setBodyText(draft.content);
+          if (draft.mood) setMood(draft.mood);
+        }
+      } catch (error) {
+        console.error('Error loading draft:', error);
+      }
+    };
+    loadDraft();
+  }, []);
   
   return (
     <SafeAreaProvider style={styles.provider}>

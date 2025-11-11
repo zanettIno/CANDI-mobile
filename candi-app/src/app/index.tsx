@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useState } from 'react';
-import { Text, View, TouchableOpacity, StatusBar, Image, StyleSheet, Alert, Dimensions } from 'react-native';
+import { Text, View, TouchableOpacity, StatusBar, Image, StyleSheet, Dimensions } from 'react-native';
 import { PaperProvider } from 'react-native-paper';
 import { AppTheme } from '../theme';
 import LoginSignupBackground from '../components/LoginSignupBackground';
@@ -11,16 +11,22 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from 'constants/api'; 
 import Clarity from '@microsoft/clarity';
+<<<<<<< Updated upstream
+=======
+import GoogleOAuth from '../components/Buttons/GoogleButton'
 
 const CLARITY_PROJECT_ID = "tlhkwdjvv6";
+>>>>>>> Stashed changes
 import { login } from 'services/authService';
 
+const CLARITY_PROJECT_ID = "tlhkwdjvv6";
 const { width } = Dimensions.get('window');
 
 export default function Index() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const router = useRouter();
 
@@ -33,24 +39,19 @@ export default function Index() {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert("Erro", "Por favor, preencha o e-mail e a senha.");
+      setErrorMessage('Por favor, preencha o e-mail e a senha.');
       return;
     }
 
     setLoading(true);
+    setErrorMessage('');
 
     try {
-      // ALTERADO: Usamos a função 'login' do seu serviço
       await login(email, password);
-
-      // Se a função 'login' não lançar um erro, o login foi bem-sucedido
-      Alert.alert("Sucesso", "Login realizado!");
       router.push('/screens/(tabs)/home'); 
-
     } catch (error) {
-      // A função 'login' já lança um erro com a mensagem correta em caso de falha
       console.error("Erro na requisição de login:", error);
-      Alert.alert("Erro de Login", error.message);
+      setErrorMessage('E-mail ou senha incorretos. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -84,14 +85,27 @@ export default function Index() {
             <View style={styles.formContainer}>
               <InputEmail
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={(text) => {
+                  setEmail(text);
+                  if (errorMessage) setErrorMessage('');
+                }}
                 placeholder="Email"
               />
               <InputPassword
                 value={password}
-                onChangeText={setPassword}
+                onChangeText={(text) => {
+                  setPassword(text);
+                  if (errorMessage) setErrorMessage('');
+                }}
                 placeholder="Senha"
               />
+
+              {/* mensagem de erro inline */}
+              {errorMessage ? (
+                <Text style={[styles.errorText, { color: AppTheme.colors.error || '#d32f2f' }]}>
+                  {errorMessage}
+                </Text>
+              ) : null}
             </View>
 
             <View style={styles.forgotPasswordContainer}>
@@ -101,6 +115,8 @@ export default function Index() {
                 </Text>
               </TouchableOpacity>
             </View>
+
+            <GoogleOAuth />
 
             <ButtonCustom
               title={loading ? "Entrando..." : "Entrar"}
@@ -152,7 +168,12 @@ const styles = StyleSheet.create({
     fontFamily: AppTheme.fonts.labelLarge.fontFamily,
     fontSize: AppTheme.fonts.titleLarge.fontSize,
   },
-  formContainer: { marginBottom: 16 },
+  formContainer: { marginBottom: 8 },
+  errorText: {
+    marginTop: 4,
+    fontSize: 14,
+    fontFamily: AppTheme.fonts.bodyMedium.fontFamily,
+  },
   forgotPasswordContainer: { alignItems: 'flex-end', marginBottom: 24 },
   forgotPasswordText: {
     fontFamily: AppTheme.fonts.bodyMedium.fontFamily,
