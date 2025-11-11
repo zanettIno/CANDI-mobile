@@ -11,6 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../../../constants/api';
 import { cancerTypes } from '@/components/Inputs/inputTypeCancer';
 import ProfilePictureModal from '../../../components/Modals/ProfilePictureModal';
+import { useRouter } from 'expo-router';
 
 interface UserProfile {
     profile_id: string;
@@ -25,6 +26,11 @@ export default function HomeScreen() {
     const [profile, setProfile] = useState<UserProfile | null>(null);
     const [modalVisible, setModalVisible] = useState(false);
 
+    const router = useRouter();
+
+    const gotoaddCheckpoint = () => {
+        router.push('/screens/profile/marcosView');
+    };
     useEffect(() => {
         const fetchProfileData = async () => {
             try {
@@ -48,14 +54,14 @@ export default function HomeScreen() {
     }, []);
 
     const handlePictureUpdate = (isDeletion: boolean = false) => {
-    if (profile) {
-        setProfile({
-            ...profile,
-            profile_picture_last_updated: isDeletion ? undefined : new Date().getTime(),
-        });
-    }
-};
-    
+        if (profile) {
+            setProfile({
+                ...profile,
+                profile_picture_last_updated: isDeletion ? undefined : new Date().getTime(),
+            });
+        }
+    };
+
     const cancerTypeName = profile
         ? cancerTypes.find(c => c.id === profile.cancer_type_id)?.name || 'Não especificado'
         : '...';
@@ -69,8 +75,8 @@ export default function HomeScreen() {
 
     const getAvatarUri = () => {
         if (!profile || !profile.profile_picture_last_updated) {
-        return undefined;
-    }
+            return undefined;
+        }
         const baseUrl = `https://candi-image-uploads.s3.us-east-1.amazonaws.com/profile-images/${profile.profile_id}.jpg`;
         return `${baseUrl}?timestamp=${profile.profile_picture_last_updated || new Date().getTime()}`;
     };
@@ -100,18 +106,22 @@ export default function HomeScreen() {
                             { title: 'Contatos de Emergência  >' },
                             { title: 'Ajuda', onPress: () => console.log('Ajuda clicado') },
                             { title: 'Sobre', onPress: () => console.log('Sobre clicado') },
+                            {
+                                title: 'Adicionar Marco  >',
+                                onPress: gotoaddCheckpoint,
+                            },
                         ]}
                     />
                 </ContentContainer>
             </HomeBackground>
 
             {profile && (
-                 <ProfilePictureModal
+                <ProfilePictureModal
                     visible={modalVisible}
                     onDismiss={() => setModalVisible(false)}
                     user={profile}
                     onPictureUpdate={handlePictureUpdate}
-                 />
+                />
             )}
         </>
     );

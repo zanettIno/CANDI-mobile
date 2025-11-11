@@ -5,7 +5,7 @@ import { AppTheme } from '../../theme';
 
 const { height: screenHeight, width: screenWidth } = Dimensions.get('window');
 const itemWidth = screenWidth * 0.8;
-const itemHeight = itemWidth * 0.6; 
+const itemHeight = itemWidth * 0.6;
 
 export type CarouselItem = {
   title: string;
@@ -23,7 +23,10 @@ const CarouselComponent: React.FC<Props> = ({ data, onItemPress }) => {
     <TouchableOpacity onPress={() => onItemPress?.(item)}>
       <View style={styles.itemContainer}>
         {item.image ? (
-          <Image source={{ uri: item.image }} style={styles.image} />
+          <Image
+            source={typeof item.image === 'string' ? { uri: item.image } : item.image}
+            style={styles.image}
+          />
         ) : (
           <View style={styles.placeholder}>
             <Text style={styles.title}>{item.title}</Text>

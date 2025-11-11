@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useState, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
-import { PaperProvider, Modal, Portal } from 'react-native-paper';
+import { PaperProvider } from 'react-native-paper';
 import { AppTheme } from '../../../theme';
 import { StatusBar } from 'expo-status-bar';
 import EmergencyContactCard, { EmergencyContact } from '../../../components/EmergencyContactCard';
@@ -11,11 +11,13 @@ import CarouselComponent from "../../../components/Carousel/carousel";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../../../constants/api'; 
 import { makePhoneCall } from '../../../services/PhoneService';
-
+import { useRouter } from 'expo-router';
 
 const userEndpoint = `${API_BASE_URL}/auth/me`;
 
 export default function HomeScreen() {
+  const router = useRouter();
+
   const contacts: EmergencyContact[] = [
     {
       name: 'Vivian Zanon',
@@ -32,21 +34,21 @@ export default function HomeScreen() {
   ];
 
   const carouselData = [
-    { title: 'Grupo de apoio', image: 'https://upload.wikimedia.org/wikipedia/commons/3/3a/Cat03.jpg' },
-    { title: 'Eventos', image: 'https://upload.wikimedia.org/wikipedia/commons/4/4c/Push_van_cat.jpg' },
-    { title: 'Notícias', image: 'https://upload.wikimedia.org/wikipedia/commons/5/5e/Sleeping_cat_on_her_back.jpg' },
-    { title: 'Dicas de saúde', image: 'https://upload.wikimedia.org/wikipedia/commons/b/bb/Kittyply_edit1.jpg' },
+    { title: 'Equipe CANDI 1', image: require('../../../../assets/images/equipe-candi-1.jpeg') },
+    { title: 'Equipe CANDI 2', image: require('../../../../assets/images/equipe-candi-2.jpeg') },
+    { title: 'Equipe Rede', image: require('../../../../assets/images/equipe-candi-rede.jpeg') },
+    { title: 'Rede Feminina', image: require('../../../../assets/images/site-rede-feminina.jpeg') },
   ];
-
-  const [isTimelineModalVisible, setTimelineModalVisible] = useState(false);
-  const showTimelineModal = () => setTimelineModalVisible(true);
-  const hideTimelineModal = () => setTimelineModalVisible(false);
 
   const [userName, setUserName] = useState('');
 
   const handleCallContact = (contact: EmergencyContact) => {
     console.log(`Iniciando chamada para ${contact.name} no número ${contact.phoneNumber}...`);
     makePhoneCall(contact.phoneNumber);
+  };
+
+  const handleOpenMarcos = () => {
+    router.push('/screens/profile/marcosView');
   };
 
   useEffect(() => {
@@ -83,15 +85,6 @@ export default function HomeScreen() {
 
   return (
     <PaperProvider theme={AppTheme}>
-      <Portal>
-        <Modal 
-          visible={isTimelineModalVisible} 
-          onDismiss={hideTimelineModal} 
-          contentContainerStyle={styles.modalContainer}
-        >
-          <Text>Inserir como vamos mostrar os marcos</Text>
-        </Modal>
-      </Portal>
       <StatusBar style="dark"/>
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.header}>
@@ -100,7 +93,7 @@ export default function HomeScreen() {
           </Text>
         
           <Text style={styles.subtitle}>Veja quanto falta para o fim do seu tratamento!</Text>
-          <Timeline onPress={showTimelineModal} />
+          <Timeline onPress={handleOpenMarcos} />
         </View>
 
         <View>
@@ -161,10 +154,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 20,
   },
-  modalContainer: {
-    backgroundColor: 'white',
-    padding: 20,
-    margin: 20,
-    borderRadius: 8,
-  }
 });
