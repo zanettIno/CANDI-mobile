@@ -1,11 +1,15 @@
 import * as React from 'react';
-import { View, StyleSheet, FlatList, Text } from 'react-native';
+import { View, StyleSheet, FlatList } from 'react-native';
 import { List, Divider } from 'react-native-paper';
-import { AppTheme } from '../../theme'; 
+import { AppTheme } from '../../theme';
+import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type DiaryEntry = {
   id: string;
   title: string;
+  date: string;
+  content: string;
 };
 
 type DiaryListProps = {
@@ -18,7 +22,17 @@ const DiaryList: React.FC<DiaryListProps> = ({ entries }) => {
     <List.Item
       title={item.title}
       titleStyle={styles.listItemTitle}
-      onPress={() => console.log('Abriu a passagem:', item.id)}
+      onPress={async () => {
+        try {
+          console.log('Storing date:', item.date); // Debug log
+          // Store the selected diary date temporarily
+          await AsyncStorage.setItem('selectedDiaryDate', item.date);
+          // Navigate to passagemRead (in the diary folder within tabs)
+          router.push('/screens/diary/passagemRead');
+        } catch (error) {
+          console.error('Error storing diary date:', error);
+        }
+      }}
     />
   );
 
