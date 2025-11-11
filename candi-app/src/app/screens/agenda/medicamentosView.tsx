@@ -32,7 +32,6 @@ export default function MedicamentosView() {
           const token = await AsyncStorage.getItem('accessToken');
           if (!token) throw new Error("Não autenticado");
 
-          // A URL agora é mais simples, o backend identifica o usuário pelo token
           const endpoint = `${API_BASE_URL}/schedule/medicines`;
 
           const medicinesResponse = await fetch(endpoint, {
