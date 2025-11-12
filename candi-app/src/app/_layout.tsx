@@ -31,6 +31,7 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index"/>
         <Stack.Screen name="cadastro"/>
+        <Stack.Screen name="screens/community/chatCommunity" />
       </Stack>
     </PaperProvider>
   );
