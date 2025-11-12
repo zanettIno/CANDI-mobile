@@ -1,5 +1,6 @@
+// src/app/screens/(tabs)/homeCommunity/index.tsx
 import * as React from 'react';
-import { View, Text, ScrollView, SafeAreaView, TouchableOpacity, Image } from 'react-native';
+import { View, Text, ScrollView, SafeAreaView, TouchableOpacity, Image, Alert, ActivityIndicator } from 'react-native'; // 🔹 Adiciona ActivityIndicator, Alert
 import { PaperProvider } from 'react-native-paper';
 import styled from 'styled-components/native';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -7,7 +8,19 @@ import { AppTheme } from '@/theme';
 import { SearchInput } from '@/components/Inputs/inputSearch';
 import PostCard from '@/components/Card/postCard';
 import PostCardView from '@/components/Card/postCardView';
-import { useRouter } from 'expo-router'; 
+import { useRouter, useFocusEffect } from 'expo-router'; // 🔹 Adiciona useFocusEffect
+import { getPosts } from '@/services/feedService'; // 🔹 IMPORTA O SERVIÇO
+
+// Interface para o item de postagem vindo do backend
+interface Post {
+    post_id: string;
+    profile_id: string;
+    profile_name: string;
+    content: string;
+    file_url?: string;
+    created_at: string;
+    topic: string;
+}
 
 const Container = styled(SafeAreaView)`
   flex: 1;
@@ -34,52 +47,15 @@ const ContentContainer = styled(View)`
   background-color: ${AppTheme.colors.background};
 `;
 
-const allPostsData = {
-  'Feed': [
-    {
-      id: 'f1',
-      userName: 'Carolina Souza',
-      userHandle: 'carolina_souza',
-      timeAgo: '9 min',
-      content: 'Ao ir no consultório para um exame de retina encontrei uma amiga...',
-    },
-    {
-      id: 'f2',
-      userName: 'João Silva',
-      userHandle: 'joao_silva',
-      timeAgo: '2h',
-      content: 'Compartilhando minha experiência com o tratamento. Cada dia é uma nova lição.',
-    },
-  ],
-  'Quimio': [
-    {
-      id: 'q1',
-      userName: 'Equipe Candi',
-      userHandle: 'candi_oficial',
-      timeAgo: '1h',
-      content: 'Dicas importantes para quem está começando a quimioterapia. Beba bastante água!',
-    },
-  ],
-  'Câncer': [
-    {
-      id: 'c1',
-      userName: 'Maria Santos',
-      userHandle: 'maria_santos',
-      timeAgo: '4h',
-      content: 'Gratidão por ter encontrado essa comunidade. Vocês fazem toda a diferença.',
-    },
-  ],
-};
+const CenteredText = styled(Text)`
+  text-align: center;
+  color: ${AppTheme.colors.placeholderText};
+  margin-top: 50px;
+  font-size: 16px;
+`;
 
-const defaultPosts = [
-  {
-    id: 'd1',
-    userName: 'Sistema',
-    userHandle: 'admin',
-    timeAgo: 'agora',
-    content: 'Ainda não há publicações neste grupo. Seja o primeiro a postar!',
-  },
-];
+// 🔹 A lista de abas será a fonte da verdade para o GSI 'topic'
+const tabs = ['Feed', 'Quimio', 'Câncer', 'Câncer SP', 'Contr...', 'Leuce', 'Diagnóstico', 'Pós-Tratamento', 'Bem-estar'];
 
 
 export default function CommunityScreen() {
@@ -87,14 +63,58 @@ export default function CommunityScreen() {
   const [activeTab, setActiveTab] = React.useState('Feed');
   const [searchValue, setSearchValue] = React.useState('');
   
-  const [displayedPosts, setDisplayedPosts] = React.useState(allPostsData['Feed']);
+  // 🔹 NOVOS ESTADOS
+  const [displayedPosts, setDisplayedPosts] = React.useState<Post[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
 
-  const tabs = ['Feed', 'Quimio', 'Câncer', 'Câncer SP', 'Contr...', 'Leuce', 'Diagnóstico', 'Pós-Tratamento', 'Bem-estar'];
 
+  // 🔹 FUNÇÃO PARA BUSCAR POSTS
+  const fetchPosts = React.useCallback(async (topic: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      // O serviço mapeia 'Feed' para o feed global (sem query param)
+      const data = await getPosts(topic);
+      // Os posts do backend são objetos Post
+      setDisplayedPosts(data); 
+    } catch (err: any) {
+      setError(err.message || 'Não foi possível carregar as postagens.');
+      setDisplayedPosts([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // 🔹 EFEITO 1: Recarrega posts sempre que a tela ganha foco (ou a primeira vez)
+  useFocusEffect(
+    React.useCallback(() => {
+      // Recarrega o feed para a aba ativa
+      fetchPosts(activeTab); 
+    }, [activeTab]) // Depende da aba, mas só carrega se ganhar foco
+  );
+
+  // 🔹 EFEITO 2: Garante que, ao mudar a aba, o nome é passado corretamente para o fetch
   React.useEffect(() => {
-    const newPosts = allPostsData[activeTab] || defaultPosts;
-    setDisplayedPosts(newPosts);
-  }, [activeTab]); 
+      fetchPosts(activeTab);
+  }, [activeTab]);
+
+
+  // 🔹 HANDLER APÓS O POST SER CRIADO (para atualizar a lista)
+  const handlePostCreated = (newPost: Post) => {
+    // Se o post foi criado na aba ativa, adiciona-o ao topo da lista
+    if (activeTab === 'Feed' || activeTab.toUpperCase() === newPost.topic) {
+        setDisplayedPosts(prev => [newPost, ...prev]);
+    }
+  };
+
+
+  const filteredPosts = displayedPosts.filter(
+    (post) =>
+        post.profile_name.toLowerCase().includes(searchValue.toLowerCase()) ||
+        post.content.toLowerCase().includes(searchValue.toLowerCase())
+  );
+
 
   return (
     <PaperProvider theme={AppTheme}>
@@ -110,7 +130,6 @@ export default function CommunityScreen() {
           />
 
           <View style={{ width: 26 }} /> 
-
         </TopBar>
 
         <SearchInputWrapper>
@@ -166,17 +185,32 @@ export default function CommunityScreen() {
         <ContentContainer>
           <ScrollView showsVerticalScrollIndicator={false}>
             
-            <PostCard />
+            {/* 🔹 PASSA O HANDLER E O TÓPICO ATIVO PARA O POSTCARD */}
+            <PostCard 
+                activeTopic={activeTab} 
+                onPostSuccess={handlePostCreated}
+            />
 
-            {displayedPosts.map((post) => (
-              <PostCardView
-                key={post.id} 
-                userName={post.userName}
-                userHandle={post.userHandle}
-                timeAgo={post.timeAgo}
-                content={post.content}
-              />
-            ))}
+            {isLoading ? (
+                <ActivityIndicator size="large" color={AppTheme.colors.primary} style={{ marginTop: 50 }} />
+            ) : error ? (
+                <CenteredText style={{color: 'red'}}>{error}</CenteredText>
+            ) : filteredPosts.length === 0 ? (
+                <CenteredText>
+                    Nenhuma postagem encontrada nesta categoria.
+                </CenteredText>
+            ) : (
+                filteredPosts.map((post) => (
+                    <PostCardView
+                        key={post.post_id} 
+                        userName={post.profile_name}
+                        userHandle={post.profile_id.substring(0, 8)} // Usa o início do ID como handle
+                        timeAgo={new Date(post.created_at).toLocaleDateString('pt-BR')} // Melhore a formatação de data depois
+                        content={post.content}
+                        // fileUrl={post.file_url} // Se você quiser exibir imagens
+                    />
+                ))
+            )}
           </ScrollView>
         </ContentContainer>
       </Container>

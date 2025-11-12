@@ -31,7 +31,7 @@ export default function CommunitiesScreen() {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `${token}`, // token bonitinho
+            'Authorization': `Bearer ${token}`,// token bonitinho
           },
         });
 
