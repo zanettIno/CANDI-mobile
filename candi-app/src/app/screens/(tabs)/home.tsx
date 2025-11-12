@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   sectionCommunity: {
-    marginTop: '25%',
+    marginTop: '8%',
     paddingHorizontal: 20,
     marginBottom: 20,
   },

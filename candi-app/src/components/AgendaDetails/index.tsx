@@ -68,14 +68,18 @@ export default function BottomSheet() {
             <UpDown onPress={toggleSheet}>
                 <Macaneta/>
             </UpDown>
-            {setExpandido && <ContainerInfo>
+            {setExpandido && 
+            <ContainerInfo>
                     <Text style={{
                         fontFamily: AppTheme.fonts.titleLarge.fontFamily,
                         fontSize: AppTheme.fonts.titleLarge.fontSize,
                         color: AppTheme.colors.tertiary}}>
                         HOJE, {dia} DE {meses[mes-1]}
                     </Text>
-                    <AppointmentTimeline/>
+                    
+                    {
+                        //<AppointmentTimeline/>
+                    }
 
                     <ButtonCustom
                         title="Medicamentos"

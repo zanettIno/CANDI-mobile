@@ -19,9 +19,10 @@ const Container = styled(SafeAreaView)`
 `;
 
 const Header = styled(View)`
-  height: 60px;
+  height: 40px;
   justify-content: center;
   padding-left: 16px;
+  top: 35px;
 `;
 
 const FormContainer = styled(View)`
@@ -197,10 +198,10 @@ const convertToISO = (dateStr: string) => {
                 <Header>
                     <BackIconButton
                         color={AppTheme.colors.cardBackground}
-                        onPress={() => router.back()}
-                    />
+                        onPress={() => router.back()}/>
                 </Header>
 
+                <View style={{height: '5%'}}/>
                 <FormContainer>
                     <HeaderTitle>NOVO MARCO NO TRATAMENTO!</HeaderTitle>
 

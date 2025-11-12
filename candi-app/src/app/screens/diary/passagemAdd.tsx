@@ -153,6 +153,9 @@ const NewPassageScreen = () => {
   return (
     <SafeAreaProvider style={styles.provider}>
       <View style={styles.safeArea}>
+        <View style={{
+          height: '4%'
+        }}/>
           <NewPassageHeader 
               onCalendarPress={() => setDatePickerVisible(true)}
               onClearAll={handleClearAll}

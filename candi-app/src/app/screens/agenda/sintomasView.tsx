@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
     },
     statusBar: {
       position: 'absolute',
-      top: 10,
+      top: 40,
       width: '90%',
       flexDirection: 'row',
       justifyContent: 'space-between',

@@ -6,6 +6,7 @@ import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
+import BackIconButton from '@/components/BackIconButton';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../../../constants/api';
@@ -86,6 +87,7 @@ const ViewPassageScreen = () => {
     return (
       <SafeAreaProvider style={styles.provider}>
         <View style={styles.loadingContainer}>
+          <BackIconButton color='#FFC4C4' top={30}/>
           <ActivityIndicator size="large" color={AppTheme.colors.primary} />
           <Text style={styles.loadingText}>Carregando diário...</Text>
         </View>
@@ -97,6 +99,7 @@ const ViewPassageScreen = () => {
     return (
       <SafeAreaProvider style={styles.provider}>
         <View style={styles.loadingContainer}>
+          <BackIconButton color='#FFC4C4' top={30}/>
           <Text style={styles.errorText}>Diário não encontrado</Text>
         </View>
       </SafeAreaProvider>
@@ -109,7 +112,9 @@ const ViewPassageScreen = () => {
         <ScrollView 
           contentContainerStyle={styles.scrollContent}
         >
+          <BackIconButton color='#FFC4C4' top={30}/>
           <View style={styles.contentContainer}>
+            
             <Text style={styles.title}>{title}</Text>
             <Text style={styles.bodyText}>{diaryEntry.content}</Text>
           </View>
@@ -134,7 +139,8 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   contentContainer: { 
-    flex: 1 
+    flex: 1,
+    top: '6%' 
   },
   loadingContainer: {
     flex: 1,
