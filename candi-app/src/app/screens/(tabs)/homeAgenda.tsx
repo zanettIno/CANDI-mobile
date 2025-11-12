@@ -20,7 +20,7 @@ const Container = styled(View)`
 
 const ContainerButtons = styled(View)`
     position: absolute;
-    top: 62%;
+    top: 66%;
 `;
 
 export default function HomeAgenda() {

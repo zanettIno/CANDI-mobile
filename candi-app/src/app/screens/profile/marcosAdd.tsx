@@ -19,9 +19,10 @@ const Container = styled(SafeAreaView)`
 `;
 
 const Header = styled(View)`
-  height: 60px;
+  height: 40px;
   justify-content: center;
   padding-left: 16px;
+  top: 35px;
 `;
 
 const FormContainer = styled(View)`
@@ -82,11 +83,47 @@ const InputLabel = styled(Text)`
 
 export default function MarcosAdd() {
     const router = useRouter();
+    const userEndpoint = `${API_BASE_URL}/auth/me`;
 
     const [description, setDescription] = React.useState('');
     const [milestoneDate, setMilestoneDate] = React.useState('');
     const [loading, setLoading] = React.useState(false);
-    const [isCompleted, setIsCompleted] = React.useState(false); // Reintroduzindo o estado
+    const [isCompleted, setIsCompleted] = React.useState(false); 
+    const [userUid, setUserUid] = React.useState('');
+
+    React.useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        console.log("entrou no try")
+        const token = await AsyncStorage.getItem('accessToken');
+
+        if (!token) {
+          console.log("nao achou token")
+          return;
+        }
+
+        const response = await fetch(userEndpoint, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          console.log("recebemos data")
+          const data = await response.json();
+          setUserUid(data.profile_id);
+        } else {
+          console.error("Erro ao buscar dados do usuário: ", response.status);
+        }
+      } catch (error) {
+        console.error("Erro de conexão ao buscar dados do usuário:", error);
+      }
+    };
+
+    fetchUserData();
+  }, []);
 
     const handleDateSelect = () => {
         // CORREÇÃO: Em um app React Native real, esta função deveria abrir um DatePicker
@@ -97,49 +134,61 @@ export default function MarcosAdd() {
     };
 
     const handleAddMilestone = async () => {
-        if (!description.trim() || !milestoneDate) {
-            Alert.alert('Atenção', 'Por favor, preencha a descrição e a data do marco.');
+    if (!description.trim() || !milestoneDate) {
+        Alert.alert('Atenção', 'Por favor, preencha a descrição e a data do marco.');
+        return;
+    }
+
+    setLoading(true);
+    try {
+        const token = await AsyncStorage.getItem('accessToken');
+        if (!token) {
+            Alert.alert("Erro de Autenticação", "Você não está autenticado.");
+            setLoading(false);
             return;
         }
 
-        setLoading(true);
-        try {
-            const token = await AsyncStorage.getItem('accessToken');
-            if (!token) {
-                Alert.alert("Erro de Autenticação", "Você não está autenticado.");
-                setLoading(false);
-                return;
-            }
+        const endpoint = `${API_BASE_URL}/milestones`;
 
-            const endpoint = `${API_BASE_URL}/milestones`;
+        // Converter data de dd/MM/yyyy para ISO se necessário
+        const isoDate = convertToISO(milestoneDate); // Implemente esta função ou use new Date()
 
-            const response = await fetch(endpoint, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                },
-                body: JSON.stringify({
-                    description: description.trim(),
-                    date: milestoneDate,
-                    is_completed: isCompleted, // Enviando o status de conclusão
-                }),
-            });
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+                title: description.trim(),
+                description: '', 
+                date: isoDate, // ou milestoneDate se já estiver no formato correto
+                type: 'custom',
+                position: null,
+                profile_id: userUid,
+            }),
+        });
 
-            if (response.ok) {
-                Alert.alert('Sucesso', 'Marco registrado com sucesso!');
-                router.back();
-            } else {
-                const errorData = await response.json();
-                Alert.alert('Erro', errorData.message || 'Não foi possível registrar o marco.');
-            }
-        } catch (error) {
-            console.error('Erro ao adicionar marco:', error);
-            Alert.alert('Erro', 'Ocorreu um erro de rede. Tente novamente.');
-        } finally {
-            setLoading(false);
+        if (response.ok) {
+            const data = await response.json();
+            Alert.alert('Sucesso', data.message || 'Marco registrado com sucesso!');
+            router.back();
+        } else {
+            const errorData = await response.json();
+            Alert.alert('Erro', errorData.message || 'Não foi possível registrar o marco.');
         }
-    };
+    } catch (error) {
+        console.error('Erro ao adicionar marco:', error);
+        Alert.alert('Erro', 'Ocorreu um erro de rede. Tente novamente.');
+    } finally {
+        setLoading(false);
+    }
+};
+
+const convertToISO = (dateStr: string) => {
+    const [day, month, year] = dateStr.split('/');
+    return new Date(Number(year), Number(month) - 1, Number(day)).toISOString();
+};
 
     const isFormValid = description.trim() !== '' && milestoneDate !== '';
 
@@ -149,10 +198,10 @@ export default function MarcosAdd() {
                 <Header>
                     <BackIconButton
                         color={AppTheme.colors.cardBackground}
-                        onPress={() => router.back()}
-                    />
+                        onPress={() => router.back()}/>
                 </Header>
 
+                <View style={{height: '5%'}}/>
                 <FormContainer>
                     <HeaderTitle>NOVO MARCO NO TRATAMENTO!</HeaderTitle>
 

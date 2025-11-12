@@ -11,9 +11,7 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from 'constants/api'; 
 import Clarity from '@microsoft/clarity';
-
 import GoogleOAuth from '../components/Buttons/GoogleButton'
-
 const CLARITY_PROJECT_ID = "tlhkwdjvv6";
 
 import { login } from 'services/authService';
@@ -113,8 +111,11 @@ export default function Index() {
                 </Text>
               </TouchableOpacity>
             </View>
-
-            <GoogleOAuth />
+            
+              {
+                // <GoogleOAuth />
+              }
+            
 
             <ButtonCustom
               title={loading ? "Entrando..." : "Entrar"}

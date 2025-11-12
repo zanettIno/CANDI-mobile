@@ -81,9 +81,11 @@ const styles = StyleSheet.create({
   backButtonContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    top: '10%'
   },
   iconButton: {
     margin: 0,
+    bottom: '5%'
   },
   title: {
     ...AppTheme.fonts.titleLarge,

@@ -23,6 +23,7 @@ const Header = styled(View)`
   height: 60px;
   justify-content: center;
   padding-left: 16px;
+  top: 15px;
 `;
 
 const FormContainer = styled(View)`

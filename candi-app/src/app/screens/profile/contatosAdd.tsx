@@ -24,9 +24,8 @@ const Header = styled(View)`
   padding-left: 16px;
 `;
 
-// ALTERADO: Diminuímos a altura para 'descer' mais o formulário.
 const FormContainer = styled(View)`
-  height: 85%; /* Estava 90% */
+  height: 85%;
   background-color: ${AppTheme.colors.cardBackground};
   border-top-left-radius: 30px;
   border-top-right-radius: 30px;
@@ -74,31 +73,7 @@ export default function ContatosAdd() {
   const [relationship, setRelationship] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(false);
   
-  const [userId, setUserId] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    const fetchUserId = async () => {
-      try {
-        const token = await AsyncStorage.getItem('accessToken');
-        if (!token) throw new Error("Não autenticado");
-
-        const response = await fetch(`${API_BASE_URL}/auth/me`, {
-          headers: { 'Authorization': `Bearer ${token}`},
-        });
-
-        if (response.ok) {
-          const userData = await response.json();
-          setUserId(userData.profile_id);
-        } else {
-          throw new Error("Falha ao buscar dados do usuário");
-        }
-      } catch (error) {
-        console.error(error);
-        Alert.alert("Erro", "Não foi possível obter os dados do seu perfil. Tente novamente.");
-      }
-    };
-    fetchUserId();
-  }, []);
+  // REMOVIDO: O estado e o useEffect para buscar o userId não são mais necessários
 
   const isValidName = (name: string) => /^[A-Za-zÀ-ÿ\s]+$/.test(name) && name.trim().length > 0;
   const isValidPhone = (phone: string) => {
@@ -113,24 +88,25 @@ export default function ContatosAdd() {
       Alert.alert("Campos inválidos", "Por favor, preencha o nome e o telefone corretamente.");
       return;
     }
-    if (!userId) {
-      Alert.alert("Erro", "ID do usuário não encontrado. Aguarde ou tente novamente.");
-      return;
-    }
 
     setIsLoading(true);
 
     try {
       const token = await AsyncStorage.getItem('accessToken');
-      const endpoint = `${API_BASE_URL}/users/${userId}/emergency-contact`;
+      if (!token) throw new Error("Não autenticado");
+
+      // ALTERADO: A rota agora é a nova rota base, sem ID
+      const endpoint = `${API_BASE_URL}/emergency-contact`;
 
       const response = await fetch(endpoint, {
-        method: 'POST', 
+        method: 'POST', // ALTERADO: De PATCH para POST
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
+          // O backend espera 'rela', mas o seu DTO e o frontend usam 'relationship'.
+          // Vou manter 'relationship' pois é o que está no seu DTO.
           emergency_contact_name: name,
           emergency_contact_phone: phone,
           emergency_contact_relationship: relationship,
@@ -138,14 +114,14 @@ export default function ContatosAdd() {
       });
 
       if (response.ok) {
-        Alert.alert('Sucesso!', 'Contato de confiança atualizado.');
+        Alert.alert('Sucesso!', 'Novo contato de confiança adicionado.');
         router.back();
       } else {
         const errorData = await response.json();
-        Alert.alert('Erro', errorData.message || "Não foi possível atualizar o contato.");
+        Alert.alert('Erro', errorData.message || "Não foi possível adicionar o contato.");
       }
     } catch (error) {
-      console.error("Erro ao atualizar contato:", error);
+      console.error("Erro ao adicionar contato:", error);
       Alert.alert('Erro de Rede', "Não foi possível conectar ao servidor.");
     } finally {
       setIsLoading(false);
@@ -158,7 +134,13 @@ export default function ContatosAdd() {
         <Header>
           <BackIconButton 
             color={AppTheme.colors.cardBackground} 
-            onPress={() => router.back()} 
+            onPress={() => {
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace("/screens/profile/homeProfile");
+              }
+            }} 
           />
         </Header>
 
@@ -196,7 +178,8 @@ export default function ContatosAdd() {
             <AddContactButton
               onPress={handleAddContact}
               loading={isLoading}
-              disabled={isButtonDisabled || isLoading || !userId}
+              // ALTERADO: 'disabled' simplificado
+              disabled={isButtonDisabled || isLoading}
               style={{ marginTop: 24 }}
             />
           </FormScrollView>

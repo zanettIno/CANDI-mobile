@@ -25,6 +25,7 @@ const Header = styled(View)`
   align-items: flex-start;
   padding-left: 16px;
   padding-top: 0px;
+  top: 15px;
 `;
 
 const FormContainer = styled(View)`
