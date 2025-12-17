@@ -48,7 +48,7 @@ const HeaderContainer = styled(View)`
 const UserInfoContainer = styled(View)`
   flex-direction: row;
   align-items: center;
-  margin-left: 14px;
+  margin-left: 25px;
 `;
 const AvatarPlaceholder = styled(View)`
   width: 64px;
@@ -237,10 +237,13 @@ export const ChatCommunity: React.FC = () => {
       </BackgroundWrapper>
       <ContentWrapper>
         <HeaderContainer>
-          <BackIconButton
+          
+          <BackIconButton 
             color={AppTheme.colors.cardBackground}
-            onPress={() => router.back()}
+            onPress={() => router.back()} 
+            top={60}
           />
+          
           <UserInfoContainer>
             <AvatarPlaceholder />
             <UserName>{userName || 'Chat'}</UserName>

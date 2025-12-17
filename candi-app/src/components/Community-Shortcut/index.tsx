@@ -1,22 +1,22 @@
 import * as React from 'react';
-import { View, Text, TextInput, TouchableOpacity } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 import styled from 'styled-components/native';
-import { PaperProvider } from 'react-native-paper';
-import { AppTheme } from '../../theme';
-import { Ionicons } from '@expo/vector-icons';
+import { AppTheme } from '../../theme'; 
+import { Ionicons } from '@expo/vector-icons'; 
 
-const Container = styled(View)`
-  flex: 1;
-  justify-content: center;
-  align-items: center;
-`;
+interface CommunityShortcutProps {
+  value: string;
+  onChangeText: (text: string) => void;
+  onSend: () => void;
+  loading: boolean;
+}
 
 const ContainerCommunity = styled(View)`
   background-color: ${AppTheme.colors.tertiaryLight};
-  height: 140px;
-  width: 350px;
-  border-radius: 20px;
-  padding: 20px;
+  width: 100%; 
+  height: 140px; 
+  border-radius: 20px; 
+  padding: 20px; 
   justify-content: space-between;
 `;
 
@@ -24,7 +24,7 @@ const ComunidadeText = styled(Text)`
   color: ${AppTheme.colors.tertinaryTextColor};
   font-size: 26px; 
   font-weight: bold;
-  margin-bottom: 10px;
+  margin-bottom: 10px; 
 `;
 
 const PublishInputContainer = styled(View)`
@@ -32,37 +32,62 @@ const PublishInputContainer = styled(View)`
   align-items: center;
   background-color: ${AppTheme.colors.background};
   border-radius: 25px;
-  padding: 0 16px;
-  height: 50px;
+  padding-left: 16px; 
+  padding-right: 16px;
+  padding-top: 0px;
+  padding-bottom: 0px;
+  height: 50px; 
 `;
 
 const PublishInput = styled(TextInput).attrs({
   placeholderTextColor: AppTheme.colors.tertinaryTextColor,
+  style: Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : undefined,
 })`
   flex: 1;
-  font-size: 16px;
+  font-size: 16px; 
   color: ${AppTheme.colors.tertinaryTextColor};
 `;
 
 const SendIcon = styled(Ionicons)`
-  margin-left: 10px;
+  margin-left: 10px; 
   color: ${AppTheme.colors.tertinaryTextColor};
 `;
 
-export default function CommunityShortcut() {
+const CommunityShortcut: React.FC<CommunityShortcutProps> = ({ 
+  value, 
+  onChangeText, 
+  onSend, 
+  loading 
+}) => {
+  const isSendDisabled = !value.trim() || loading;
+
   return (
-    <PaperProvider>
-      <Container>
-        <ContainerCommunity>
-          <ComunidadeText>Comunidade</ComunidadeText>
-          <PublishInputContainer>
-            <PublishInput placeholder={"O que deseja publicar?"}/>
-            <TouchableOpacity>
-                <SendIcon name="paper-plane-outline" size={24} />
-            </TouchableOpacity>
-          </PublishInputContainer>
-        </ContainerCommunity>
-      </Container>
-    </PaperProvider>
+    <ContainerCommunity>
+      <ComunidadeText>Comunidade</ComunidadeText>
+      <PublishInputContainer>
+        <PublishInput 
+          placeholder={"O que deseja publicar?"}
+          value={value}
+          onChangeText={onChangeText}
+          editable={!loading}
+          multiline={false} 
+          returnKeyType="send"
+          onSubmitEditing={onSend} 
+        />
+        <TouchableOpacity 
+          onPress={onSend}
+          disabled={isSendDisabled}
+          style={{ opacity: isSendDisabled ? 0.5 : 1 }}
+        >
+          {loading ? (
+            <ActivityIndicator size="small" color={AppTheme.colors.tertinaryTextColor} />
+          ) : (
+            <SendIcon name="paper-plane-outline" size={24} />
+          )}
+        </TouchableOpacity>
+      </PublishInputContainer>
+    </ContainerCommunity>
   );
-}
+};
+
+export default CommunityShortcut;

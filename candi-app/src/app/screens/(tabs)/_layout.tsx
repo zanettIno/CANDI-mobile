@@ -6,8 +6,12 @@ import { AppTheme } from '../../../theme';
 import * as Kadwa from '@expo-google-fonts/kadwa';
 import * as Inter from '@expo-google-fonts/inter';
 import { useEffect } from 'react';
+import { pt, registerTranslation } from "react-native-paper-dates";
+import { Platform } from 'react-native';
 
 import { MaterialIcons } from "@expo/vector-icons";
+
+registerTranslation("pt", pt);
 
 SplashScreen.preventAutoHideAsync();
 
@@ -18,10 +22,20 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    if (fontsLoaded || fontError) {
-      SplashScreen.hideAsync();
+    if (Platform.OS === 'web') {
+      const style = document.createElement('style');
+      style.textContent = `
+        input:focus, textarea:focus, div[contenteditable="true"]:focus {
+          outline: none !important;
+          box-shadow: none !important;
+        }
+      `;
+      document.head.appendChild(style);
+      return () => {
+        document.head.removeChild(style);
+      };
     }
-  }, [fontsLoaded, fontError]);
+  }, []);
 
   if (!fontsLoaded && !fontError) {
     return null;
@@ -34,7 +48,6 @@ export default function RootLayout() {
         name="homeCommunity"
         options={{
           title: 'Comunidade',
-          //tabBarLabel:() => {return null},
           tabBarIcon: ({ color }) => <MaterialIcons name="people" size={30} color={color} />,
           tabBarStyle: { display: 'none' },
         }}
