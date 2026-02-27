@@ -10,7 +10,6 @@ Este repositório contêm o código fonte para o aplicativo mobile desenvolvido 
 - **Heloísa Pichelli Souza :tada: (analista de sistemas; dev front-end; UI/UX)**
 - **Lucas Batista de Sousa :desktop_computer: (dev back-end)**
 - **Nuno Kasuo Tronco Yokoji :long_drum: (DBA)**
-- **Vivian de Oliveira Zanon :bar_chart: (UI/UX; dev front-end; marketing e análise de marcado)**
 
 ---
 
