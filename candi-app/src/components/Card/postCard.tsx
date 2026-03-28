@@ -188,9 +188,9 @@ export const PostCard: React.FC<PostCardProps> = ({ activeTopic, onPostSuccess }
         return;
       }
 
-      // Pick image (usando formato correto do MediaType)
+      // Pick image
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: [ImagePicker.MediaType.IMAGE],
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [4, 3],
         quality: 0.8,
