@@ -216,8 +216,12 @@ export const PostCard: React.FC<PostCardProps> = ({ activeTopic, onPostSuccess }
   };
 
   const handlePublish = async () => {
-    if (content.trim().length === 0) {
-      Alert.alert('Atenção', 'A postagem não pode ser vazia');
+    // Validação: deve ter texto OU imagem
+    const hasContent = content.trim().length > 0;
+    const hasImage = selectedImage !== null;
+
+    if (!hasContent && !hasImage) {
+      Alert.alert('Atenção', 'A postagem deve conter texto ou uma imagem');
       return;
     }
 
@@ -252,7 +256,8 @@ export const PostCard: React.FC<PostCardProps> = ({ activeTopic, onPostSuccess }
     }
   };
 
-  const isPublishDisabled = isLoading || content.trim().length === 0;
+  // Botão habilitado se houver conteúdo (texto OU imagem) e não estiver carregando
+  const isPublishDisabled = isLoading || (content.trim().length === 0 && !selectedImage);
   const imageSizeInMB = selectedImage?.size ? (selectedImage.size / (1024 * 1024)).toFixed(2) : '0';
 
   return (

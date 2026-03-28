@@ -194,8 +194,11 @@ export const PostCardView: React.FC<PostCardViewProps> = ({
       const region = 'us-east-1'; // Ou outra região configurada
       return `https://${bucketName}.s3.${region}.amazonaws.com/posts-image/${fileName}`;
     }
-    return imageUrl;
+    return undefined;
   };
+
+  // Verifica se tem conteúdo de texto (diferente de apenas imagem)
+  const hasTextContent = content && content.trim().length > 0;
   const [isLiked, setIsLiked] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [likesCountState, setLikesCountState] = useState(likesCount);
@@ -303,10 +306,13 @@ export const PostCardView: React.FC<PostCardViewProps> = ({
 
       {/* Post content */}
       <PostContentSection>
-        <PostContent>{content}</PostContent>
+        {/* Renderiza texto apenas se houver conteúdo de texto */}
+        {hasTextContent && <PostContent>{content}</PostContent>}
 
-        {/* Post image if available */}
-        {getImageUrl() && <PostImage source={{ uri: getImageUrl()! }} resizeMode="cover" />}
+        {/* Renderiza imagem apenas se isImage = true */}
+        {isImage && getImageUrl() && (
+          <PostImage source={{ uri: getImageUrl()! }} resizeMode="cover" />
+        )}
       </PostContentSection>
 
       {/* Action buttons */}

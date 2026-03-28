@@ -40,7 +40,8 @@ interface Post {
   profile_id: string;
   profile_name: string;
   content: string;
-  file_url?: string;
+  is_image?: boolean;
+  file_name?: string;
   created_at: string;
   topic: string;
   likes_count?: number;
@@ -263,7 +264,8 @@ export default function CommunityScreen() {
                   userHandle={item.profile_id.substring(0, 8)}
                   timeAgo={formatTime(item.created_at)}
                   content={item.content}
-                  imageUrl={item.file_url}
+                  isImage={item.is_image || false}
+                  fileName={item.file_name}
                   likesCount={item.likes_count || 0}
                   commentsCount={item.comments_count || 0}
                 />
