@@ -188,9 +188,9 @@ export const PostCard: React.FC<PostCardProps> = ({ activeTopic, onPostSuccess }
         return;
       }
 
-      // Pick image
+      // Pick image (usando formato correto do MediaType)
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: [ImagePicker.MediaType.IMAGE],
         allowsEditing: true,
         aspect: [4, 3],
         quality: 0.8,
@@ -216,20 +216,36 @@ export const PostCard: React.FC<PostCardProps> = ({ activeTopic, onPostSuccess }
   };
 
   const handlePublish = async () => {
-    // Validação: deve ter texto OU imagem
-    const hasContent = content.trim().length > 0;
-    const hasImage = selectedImage !== null;
-
-    if (!hasContent && !hasImage) {
-      Alert.alert('Atenção', 'A postagem deve conter texto ou uma imagem');
-      return;
-    }
-
-    setIsLoading(true);
-
-    const topic = activeTopic === 'Feed' ? 'GERAL' : activeTopic;
-
     try {
+      // Validação: deve ter texto OU imagem
+      const hasContent = content.trim().length > 0;
+      const hasImage = selectedImage !== null;
+
+      if (!hasContent && !hasImage) {
+        Alert.alert(
+          'Postagem vazia',
+          'Adicione texto ou uma imagem antes de publicar.'
+        );
+        return;
+      }
+
+      if (selectedImage && selectedImage.size && selectedImage.size > 5 * 1024 * 1024) {
+        Alert.alert(
+          'Imagem muito grande',
+          'O tamanho máximo é 5MB. Selecione outra imagem.'
+        );
+        return;
+      }
+
+      setIsLoading(true);
+      const topic = activeTopic === 'Feed' ? 'GERAL' : activeTopic;
+
+      console.log('[PostCard] Publicando:', {
+        hasText: hasContent,
+        hasImage,
+        topic,
+      });
+
       const { post } = await createPost(
         content.trim(),
         topic,
@@ -242,15 +258,31 @@ export const PostCard: React.FC<PostCardProps> = ({ activeTopic, onPostSuccess }
           : undefined
       );
 
-      // Clear form
+      // Limpa formulário
       setContent('');
       setSelectedImage(null);
       onPostSuccess(post);
 
-      Alert.alert('Sucesso', 'Postagem publicada com sucesso!');
+      Alert.alert(
+        'Sucesso! 🎉',
+        'Sua postagem foi publicada com sucesso!'
+      );
     } catch (err: any) {
-      console.error('Error publishing post:', err);
-      Alert.alert('Erro', err.message || 'Não foi possível publicar a postagem');
+      console.error('[PostCard] Erro ao publicar:', err);
+
+      // Mensagens de erro mais amigáveis
+      let errorMessage = 'Não foi possível publicar a postagem.';
+      if (err.message?.includes('A postagem deve conter')) {
+        errorMessage = 'A postagem deve conter texto ou uma imagem.';
+      } else if (err.message?.includes('formato')) {
+        errorMessage = 'Formato de imagem não suportado.';
+      } else if (err.message?.includes('tamanho')) {
+        errorMessage = 'Imagem muito grande (máximo 5MB).';
+      } else if (err.message?.includes('processar')) {
+        errorMessage = 'Erro ao processar a imagem.';
+      }
+
+      Alert.alert('Erro ao publicar', errorMessage);
     } finally {
       setIsLoading(false);
     }

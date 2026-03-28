@@ -54,24 +54,51 @@ export const createPost = async (
   topic: string,
   imageFile?: { uri: string; name: string; type: string }
 ) => {
-  const endpoint = `/feed/posts?topic=${topic}`;
-
-  const formData = new FormData();
-  formData.append('content', content);
-
-  if (imageFile) {
-    formData.append('file', imageFile as any);
-  }
-
-  // O fetch cuida de definir o 'Content-Type: multipart/form-data'
-  return fetchFeedAPI(endpoint, {
-    method: 'POST',
-    body: formData,
-    headers: {
-      // 🔹 Não defina 'Content-Type': 'application/json' aqui!
-      // O fetch deve definir automaticamente como 'multipart/form-data'
+  try {
+    // Validação básica
+    if (!content?.trim() && !imageFile) {
+      throw new Error('A postagem deve conter texto ou uma imagem.');
     }
-  });
+
+    const endpoint = `/feed/posts?topic=${topic}`;
+    const formData = new FormData();
+
+    // Adiciona conteúdo (pode estar vazio se apenas imagem)
+    formData.append('content', content || '');
+
+    // Adiciona arquivo se houver
+    if (imageFile) {
+      try {
+        // Converte URI para blob (necessário para upload)
+        const response = await fetch(imageFile.uri);
+        const blob = await response.blob();
+        formData.append('file', blob, imageFile.name);
+      } catch (error) {
+        console.error('Erro ao converter imagem para blob:', error);
+        throw new Error('Não foi possível processar a imagem selecionada.');
+      }
+    }
+
+    console.log('[createPost] Enviando para backend:', {
+      topic,
+      hasContent: !!content?.trim(),
+      hasImage: !!imageFile,
+    });
+
+    // O fetch cuida de definir automaticamente 'Content-Type: multipart/form-data'
+    const response = await fetchFeedAPI(endpoint, {
+      method: 'POST',
+      body: formData,
+      headers: {
+        // Não defina Content-Type - o fetch define automaticamente
+      },
+    });
+
+    return response;
+  } catch (error) {
+    console.error('[createPost] Erro:', error);
+    throw error;
+  }
 };
 
 /**
