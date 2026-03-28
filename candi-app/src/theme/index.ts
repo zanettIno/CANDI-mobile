@@ -1,5 +1,6 @@
 import { DefaultTheme, configureFonts } from 'react-native-paper';
 import { MD3LightTheme } from 'react-native-paper';
+import * as designTokens from './tokens';
 
 declare global {
   namespace ReactNativePaper {
@@ -47,7 +48,7 @@ export const AppTheme = {
     secondary: '#CFFFE5',   
     tertiary: '#759AAB', 
     tertiaryLight: '#8cb2c4ff',
-    tertinaryTextColor: '#545F71',
+    tertiaryTextColor: '#545F71',
     background: '#f6f6f6',      
     cardBackground: '#FFFFFF',
     placeholderBackground: '#EAEAEA',
@@ -63,3 +64,12 @@ export const AppTheme = {
 
   fonts: configureFonts({ config: fontConfig }),
 };
+
+/**
+ * Export design tokens for use throughout the app
+ *
+ * Usage:
+ * import { spacing, colors, typography, borderRadius } from './theme/tokens';
+ */
+export const tokens = designTokens;
+export { spacing, colors, typography, borderRadius, buttonStyles, inputStyles, shadows, animation, iconStyles } from './tokens';
