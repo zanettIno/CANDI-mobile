@@ -162,3 +162,51 @@ export const checkUserLike = async (postId: string): Promise<boolean> => {
 
   return response.user_liked || false;
 };
+
+/**
+ * Save a post to user's saved posts
+ */
+export const savePost = async (postId: string): Promise<void> => {
+  const endpoint = `/feed/posts/${postId}/save`;
+
+  await fetchFeedAPI(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({}),
+  });
+};
+
+/**
+ * Unsave a post from user's saved posts
+ */
+export const unsavePost = async (postId: string): Promise<void> => {
+  const endpoint = `/feed/posts/${postId}/save`;
+
+  await fetchFeedAPI(endpoint, {
+    method: 'DELETE',
+  });
+};
+
+/**
+ * Get all saved posts for user
+ */
+export const getSavedPosts = async () => {
+  const endpoint = '/feed/saved-posts';
+
+  const response = await fetchFeedAPI(endpoint);
+
+  return response.posts || [];
+};
+
+/**
+ * Check if user saved a post
+ */
+export const checkUserSave = async (postId: string): Promise<boolean> => {
+  const endpoint = `/feed/posts/${postId}/save/check`;
+
+  const response = await fetchFeedAPI(endpoint);
+
+  return response.is_saved || false;
+};

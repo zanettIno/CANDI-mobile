@@ -184,27 +184,31 @@ export const PostCardView: React.FC<PostCardViewProps> = ({
   style,
 }) => {
   const [isLiked, setIsLiked] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
   const [likesCountState, setLikesCountState] = useState(likesCount);
   const [commentsCountState, setCommentsCountState] = useState(commentsCount);
   const [isLoadingLike, setIsLoadingLike] = useState(false);
+  const [isLoadingSave, setIsLoadingSave] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  // Load user ID and check if user liked this post
+  // Load user ID and check if user liked/saved this post
   useEffect(() => {
-    loadUserIdAndCheckLike();
+    loadUserIdAndCheckInteractions();
   }, [postId]);
 
-  const loadUserIdAndCheckLike = async () => {
+  const loadUserIdAndCheckInteractions = async () => {
     try {
       const userId = await AsyncStorage.getItem('profile_id');
       if (userId) {
         setCurrentUserId(userId);
         const userLiked = await feedService.checkUserLike(postId);
+        const userSaved = await feedService.checkUserSave(postId);
         setIsLiked(userLiked);
+        setIsSaved(userSaved);
       }
     } catch (error) {
-      console.error('Error loading user info:', error);
+      console.error('Error loading user interactions:', error);
     }
   };
 
@@ -231,6 +235,26 @@ export const PostCardView: React.FC<PostCardViewProps> = ({
       Alert.alert('Erro', 'Não foi possível curtir a postagem');
     } finally {
       setIsLoadingLike(false);
+    }
+  };
+
+  const handleToggleSave = async () => {
+    if (isLoadingSave) return;
+
+    setIsLoadingSave(true);
+    try {
+      if (isSaved) {
+        await feedService.unsavePost(postId);
+        setIsSaved(false);
+      } else {
+        await feedService.savePost(postId);
+        setIsSaved(true);
+      }
+    } catch (error) {
+      console.error('Error toggling save:', error);
+      Alert.alert('Erro', 'Não foi possível salvar a postagem');
+    } finally {
+      setIsLoadingSave(false);
     }
   };
 
@@ -324,12 +348,22 @@ export const PostCardView: React.FC<PostCardViewProps> = ({
 
         {/* Save/Bookmark button */}
         <ActionButton
-          onPress={() => Alert.alert('Salvar', 'Funcionalidade de salvar em breve')}
+          onPress={handleToggleSave}
+          disabled={isLoadingSave}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityRole="button"
-          accessibilityLabel="Save post"
+          accessibilityLabel={isSaved ? 'Remove from saved' : 'Save post'}
+          accessibilityState={{ disabled: isLoadingSave }}
         >
-          <MaterialIcons name="bookmark-border" size={24} color={colors.text.secondary} />
+          {isLoadingSave ? (
+            <ActivityIndicator size="small" color={colors.primary.rosa_full} />
+          ) : (
+            <MaterialIcons
+              name={isSaved ? 'bookmark' : 'bookmark-border'}
+              size={24}
+              color={isSaved ? colors.primary.rosa_full : colors.text.secondary}
+            />
+          )}
         </ActionButton>
       </PostActionsContainer>
 
