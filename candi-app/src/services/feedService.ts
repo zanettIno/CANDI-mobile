@@ -50,12 +50,12 @@ export const getPosts = async (topic: string = 'Feed') => {
  * Cria uma nova postagem, com suporte a arquivo.
  */
 export const createPost = async (
-  content: string, 
-  topic: string, 
+  content: string,
+  topic: string,
   imageFile?: { uri: string; name: string; type: string }
 ) => {
   const endpoint = `/feed/posts?topic=${topic}`;
-  
+
   const formData = new FormData();
   formData.append('content', content);
 
@@ -72,4 +72,93 @@ export const createPost = async (
       // O fetch deve definir automaticamente como 'multipart/form-data'
     }
   });
+};
+
+/**
+ * Interface para comentário
+ */
+export interface Comment {
+  comment_id: string;
+  post_id: string;
+  profile_id: string;
+  profile_name: string;
+  content: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+/**
+ * Toggle like on a post (add or remove)
+ */
+export const toggleLike = async (postId: string): Promise<{ liked: boolean; likes_count: number }> => {
+  const endpoint = `/feed/posts/${postId}/likes`;
+
+  const response = await fetchFeedAPI(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({}),
+  });
+
+  return {
+    liked: response.liked,
+    likes_count: response.likes_count,
+  };
+};
+
+/**
+ * Add comment to a post
+ */
+export const addComment = async (
+  postId: string,
+  content: string,
+): Promise<Comment> => {
+  const endpoint = `/feed/posts/${postId}/comments`;
+
+  const response = await fetchFeedAPI(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ content }),
+  });
+
+  return response.comment;
+};
+
+/**
+ * Get all comments for a post
+ */
+export const getComments = async (
+  postId: string,
+  limit: number = 20,
+): Promise<Comment[]> => {
+  const endpoint = `/feed/posts/${postId}/comments?limit=${limit}`;
+
+  const response = await fetchFeedAPI(endpoint);
+
+  return response.comments || [];
+};
+
+/**
+ * Delete a comment (only by author)
+ */
+export const deleteComment = async (commentId: string): Promise<void> => {
+  const endpoint = `/feed/comments/${commentId}`;
+
+  await fetchFeedAPI(endpoint, {
+    method: 'DELETE',
+  });
+};
+
+/**
+ * Check if user already liked a post
+ */
+export const checkUserLike = async (postId: string): Promise<boolean> => {
+  const endpoint = `/feed/posts/${postId}/likes/check`;
+
+  const response = await fetchFeedAPI(endpoint);
+
+  return response.user_liked || false;
 };
