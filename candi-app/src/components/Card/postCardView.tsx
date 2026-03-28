@@ -38,10 +38,7 @@ const PostCardViewContainer = styled(View)`
   margin: ${spacing.sm}px ${spacing.base}px;
   border-width: 1px;
   border-color: ${colors.neutral.gray};
-  shadow-color: ${colors.shadow};
-  shadow-offset: 0px 1px;
-  shadow-opacity: 0.05;
-  shadow-radius: 2px;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.05);
   elevation: 1;
   overflow: hidden;
 `;

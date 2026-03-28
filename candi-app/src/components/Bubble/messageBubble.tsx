@@ -17,11 +17,8 @@ const BubbleContainer = styled(View)<{ isSent: boolean }>`
   max-width: 80%;
   margin-vertical: 4px;
   align-self: ${({ isSent }) => (isSent ? 'flex-end' : 'flex-start')};
-  
-  shadow-color: ${AppTheme.colors.shadow};
-  shadow-offset: 0px 2px;
-  shadow-opacity: 0.05;
-  shadow-radius: 4px;
+
+  box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.05);
   elevation: 2;
 `;
 

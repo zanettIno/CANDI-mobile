@@ -37,10 +37,7 @@ const PostCreationCardContainer = styled(View)`
   border-radius: ${borderRadius.large}px;
   padding: ${spacing.base}px;
   margin: ${spacing.base}px;
-  shadow-color: ${colors.shadow};
-  shadow-offset: 0px 2px;
-  shadow-opacity: 0.1;
-  shadow-radius: 4px;
+  box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
   elevation: 3;
 `;
 
@@ -217,19 +214,20 @@ export const PostCard: React.FC<PostCardProps> = ({ activeTopic, onPostSuccess }
 
   const handlePublish = async () => {
     try {
-      // Validação: deve ter texto OU imagem
-      const hasContent = content.trim().length > 0;
+      // Validação: DEVE ter texto OU imagem (pode ter ambos)
+      const hasText = content.trim().length > 0;
       const hasImage = selectedImage !== null;
 
-      if (!hasContent && !hasImage) {
+      if (!hasText && !hasImage) {
         Alert.alert(
-          'Postagem vazia',
-          'Adicione texto ou uma imagem antes de publicar.'
+          'Postagem incompleta',
+          'Escreva um texto ou adicione uma imagem para publicar.'
         );
         return;
       }
 
-      if (selectedImage && selectedImage.size && selectedImage.size > 5 * 1024 * 1024) {
+      // Validar tamanho da imagem
+      if (hasImage && selectedImage && selectedImage.size && selectedImage.size > 5 * 1024 * 1024) {
         Alert.alert(
           'Imagem muito grande',
           'O tamanho máximo é 5MB. Selecione outra imagem.'
@@ -240,14 +238,17 @@ export const PostCard: React.FC<PostCardProps> = ({ activeTopic, onPostSuccess }
       setIsLoading(true);
       const topic = activeTopic === 'Feed' ? 'GERAL' : activeTopic;
 
-      console.log('[PostCard] Publicando:', {
-        hasText: hasContent,
+      console.log('[PostCard] Publicando postagem:', {
+        hasText,
         hasImage,
+        contentLength: content.trim().length,
+        imageSize: selectedImage?.size,
         topic,
       });
 
+      // Enviar para backend (texto pode estar vazio, imagem também pode estar vazia)
       const { post } = await createPost(
-        content.trim(),
+        content.trim(), // Pode ser vazio
         topic,
         selectedImage
           ? {
@@ -255,34 +256,39 @@ export const PostCard: React.FC<PostCardProps> = ({ activeTopic, onPostSuccess }
               name: selectedImage.name,
               type: selectedImage.type,
             }
-          : undefined
+          : undefined // Pode ser undefined
       );
 
-      // Limpa formulário
+      console.log('[PostCard] Postagem publicada com sucesso:', post.post_id);
+
+      // Limpar formulário após sucesso
       setContent('');
       setSelectedImage(null);
       onPostSuccess(post);
 
       Alert.alert(
-        'Sucesso! 🎉',
-        'Sua postagem foi publicada com sucesso!'
+        '✅ Publicado!',
+        'Sua postagem foi compartilhada com a comunidade.'
       );
     } catch (err: any) {
       console.error('[PostCard] Erro ao publicar:', err);
 
-      // Mensagens de erro mais amigáveis
-      let errorMessage = 'Não foi possível publicar a postagem.';
+      // Mensagens de erro específicas e úteis
+      let errorMessage = 'Não foi possível publicar. Tente novamente.';
+
       if (err.message?.includes('A postagem deve conter')) {
-        errorMessage = 'A postagem deve conter texto ou uma imagem.';
+        errorMessage = 'Adicione texto ou uma imagem antes de publicar.';
       } else if (err.message?.includes('formato')) {
-        errorMessage = 'Formato de imagem não suportado.';
+        errorMessage = 'Formato de imagem não suportado. Use JPG ou PNG.';
       } else if (err.message?.includes('tamanho')) {
         errorMessage = 'Imagem muito grande (máximo 5MB).';
       } else if (err.message?.includes('processar')) {
-        errorMessage = 'Erro ao processar a imagem.';
+        errorMessage = 'Erro ao processar a imagem. Tente outra.';
+      } else if (err.message?.includes('conexão') || err.message?.includes('rede')) {
+        errorMessage = 'Problema de conexão. Verifique sua internet.';
       }
 
-      Alert.alert('Erro ao publicar', errorMessage);
+      Alert.alert('⚠️ Erro ao publicar', errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -309,7 +315,7 @@ export const PostCard: React.FC<PostCardProps> = ({ activeTopic, onPostSuccess }
 
       {/* Content Input */}
       <PostCreationInput
-        placeholder="Escreva sua mensagem (máximo 500 caracteres)"
+        placeholder="Escreva sua história (opcional se adicionar foto)"
         placeholderTextColor={colors.text.placeholder}
         multiline
         value={content}
