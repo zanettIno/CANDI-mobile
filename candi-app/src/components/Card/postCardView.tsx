@@ -160,6 +160,8 @@ interface PostCardViewProps {
   content: string;
   profileImageKey?: string;
   imageUrl?: string;
+  isImage?: boolean;  // Novo: indica se tem imagem
+  fileName?: string;   // Novo: nome do arquivo na S3
   likesCount?: number;
   commentsCount?: number;
   onLike?: (postId: string, liked: boolean) => void;
@@ -178,11 +180,22 @@ export const PostCardView: React.FC<PostCardViewProps> = ({
   content,
   profileImageKey,
   imageUrl,
+  isImage = false,
+  fileName,
   likesCount = 0,
   commentsCount = 0,
   onLike,
   style,
 }) => {
+  // Gera URL dinâmica se isImage = true
+  const getImageUrl = (): string | undefined => {
+    if (isImage && fileName) {
+      const bucketName = 'candi-file-uploads'; // Mesmo bucket
+      const region = 'us-east-1'; // Ou outra região configurada
+      return `https://${bucketName}.s3.${region}.amazonaws.com/posts-image/${fileName}`;
+    }
+    return imageUrl;
+  };
   const [isLiked, setIsLiked] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [likesCountState, setLikesCountState] = useState(likesCount);
@@ -293,7 +306,7 @@ export const PostCardView: React.FC<PostCardViewProps> = ({
         <PostContent>{content}</PostContent>
 
         {/* Post image if available */}
-        {imageUrl && <PostImage source={{ uri: imageUrl }} resizeMode="cover" />}
+        {getImageUrl() && <PostImage source={{ uri: getImageUrl()! }} resizeMode="cover" />}
       </PostContentSection>
 
       {/* Action buttons */}

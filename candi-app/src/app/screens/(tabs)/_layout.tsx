@@ -49,9 +49,8 @@ export default function RootLayout() {
         options={{
           title: 'Comunidade',
           tabBarIcon: ({ color }) => <MaterialIcons name="people" size={30} color={color} />,
-          tabBarStyle: { display: 'none' },
+          // Removido: tabBarStyle: { display: 'none' } - estava causando o bug de navegação
         }}
-        
       />
         <Tabs.Screen
         name="homeAgenda"
