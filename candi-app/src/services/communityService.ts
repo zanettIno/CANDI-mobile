@@ -108,6 +108,30 @@ export const sharePostToChat = (postId: string, conversationId: string) =>
 export const getGroupPosts = (groupId: string) =>
   fetchAPI(`/feed/posts?subgroup=${encodeURIComponent(groupId)}`);
 
+export const getMyMemberStatus = (groupId: string) =>
+  fetchAPI(`/community/groups/${groupId}/my-status`);
+
+export const getPendingRequests = (groupId: string) =>
+  fetchAPI(`/community/groups/${groupId}/requests`);
+
+export const handleJoinRequest = (groupId: string, profileId: string, action: 'approve' | 'reject') =>
+  fetchAPI(`/community/groups/${groupId}/requests/${profileId}`, {
+    method: 'POST',
+    body: JSON.stringify({ action }),
+  });
+
+export const removeMember = (groupId: string, profileId: string) =>
+  fetchAPI(`/community/groups/${groupId}/members/${profileId}`, { method: 'DELETE' });
+
+export const updateMemberRole = (groupId: string, profileId: string, role: 'co-leader' | 'member') =>
+  fetchAPI(`/community/groups/${groupId}/members/${profileId}/role`, {
+    method: 'POST',
+    body: JSON.stringify({ role }),
+  });
+
+export const deleteGroupPost = (groupId: string, postId: string) =>
+  fetchAPI(`/community/groups/${groupId}/posts/${postId}`, { method: 'DELETE' });
+
 // ─── FEED COM IMAGEM ─────────────────────────────────────────────────────────
 
 export const createPostWithImage = async (
