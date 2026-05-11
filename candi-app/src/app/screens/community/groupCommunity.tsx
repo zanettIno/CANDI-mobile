@@ -23,6 +23,7 @@ import {
   removeMember, updateMemberRole, deleteGroupPost,
 } from '@/services/communityService';
 import { getMessages, sendMessage as sendChatMessage } from '@/services/chatService';
+// @ts-ignore – authService is a JS file without type declarations
 import { getValidAccessToken } from '@/services/authService';
 import { useProfile } from '@/context/ProfileContext';
 import { formatTime, formatRelativeDate } from '@/utils/dateFormat';
@@ -158,8 +159,6 @@ export default function GroupCommunity() {
         reconnectionDelay: 10000,
         reconnectionAttempts: Infinity,
         timeout: 10000,
-        pingInterval: 8000,
-        pingTimeout: 20000,
       });
 
       socket.on('connect', () => {

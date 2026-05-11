@@ -10,6 +10,7 @@ export interface SharedPostNavParams {
   fileUrl?: string;
   createdAt: string;
   profileId?: string;
+  [key: string]: string | undefined;
 }
 
 interface MessageBubbleProps {

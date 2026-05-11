@@ -13,6 +13,7 @@ import BackIconButton from '@/components/BackIconButton';
 import Avatar from '@/components/Avatar';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { getMessages } from '@/services/chatService';
+// @ts-ignore – authService is a JS file without type declarations
 import { getValidAccessToken } from '@/services/authService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Buffer } from 'buffer';
@@ -97,8 +98,6 @@ export const ChatCommunity: React.FC = () => {
         reconnectionDelay: 10000,
         reconnectionAttempts: Infinity,
         timeout: 10000,
-        pingInterval: 8000,
-        pingTimeout: 20000,
       });
 
       socket.on('connect', () => {
