@@ -8,7 +8,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { AppTheme } from '../../theme';
 import Avatar from '@/components/Avatar';
 import { formatRelativeDate } from '@/utils/dateFormat';
-import { toggleLike, toggleFavorite, getComments, addComment, deleteComment } from '@/services/communityService';
+import { toggleLike, toggleFavorite, getComments, addComment, deleteComment as deleteCommentService } from '@/services/communityService';
 import SharePostModal from '@/components/Modals/SharePostModal';
 import { useProfile } from '@/context/ProfileContext';
 
@@ -64,6 +64,9 @@ interface PostCardViewProps {
   initialFavorited?: boolean;
   onLikeToggle?: (postId: string, liked: boolean) => void;
   onFavoriteToggle?: (postId: string, favorited: boolean) => void;
+  onAdminDelete?: () => void;
+  canDeleteAnyComment?: boolean;
+  groupId?: string;
 }
 
 // ── Componente ───────────────────────────────────────────────────────────────
@@ -71,7 +74,7 @@ export const PostCardView: React.FC<PostCardViewProps> = ({
   postId, userName, userHandle, timeAgo, content, fileUrl, profileId,
   initialLikeCount = 0, initialCommentCount = 0,
   initialLiked = false, initialFavorited = false,
-  onLikeToggle, onFavoriteToggle,
+  onLikeToggle, onFavoriteToggle, onAdminDelete, canDeleteAnyComment = false, groupId,
 }) => {
   const { profileId: myProfileId } = useProfile();
 
@@ -202,13 +205,13 @@ export const PostCardView: React.FC<PostCardViewProps> = ({
 
   const handleDeleteComment = useCallback(async (commentId: string) => {
     try {
-      await deleteComment(postId, commentId);
+      await deleteCommentService(postId, commentId, groupId);
       setComments(prev => prev.filter(c => c.comment_id !== commentId));
       setCommentCount(prev => Math.max(0, prev - 1));
     } catch {
       Alert.alert('Erro', 'Não foi possível excluir o comentário.');
     }
-  }, [postId]);
+  }, [postId, groupId]);
 
   return (
     <>
@@ -289,7 +292,7 @@ export const PostCardView: React.FC<PostCardViewProps> = ({
                 <View key={c.comment_id} style={styles.commentItem}>
                   <View style={styles.commentHeader}>
                     <Text style={styles.commentAuthor}>{c.author_name}</Text>
-                    {c.profile_id === myProfileId && (
+                    {(c.profile_id === myProfileId || canDeleteAnyComment) && (
                       <TouchableOpacity onPress={() => handleDeleteComment(c.comment_id)} hitSlop={HIT_SLOP} activeOpacity={0.7}>
                         <MaterialIcons name="delete-outline" size={14} color={AppTheme.colors.placeholderText} />
                       </TouchableOpacity>
@@ -352,7 +355,13 @@ export const PostCardView: React.FC<PostCardViewProps> = ({
                 <Text style={[styles.menuItemText, { color: '#e05c72' }]}>Excluir postagem</Text>
               </TouchableOpacity>
             )}
-            {!isOwner && (
+            {onAdminDelete && (
+              <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); onAdminDelete(); }} activeOpacity={0.7}>
+                <MaterialIcons name="remove-circle-outline" size={20} color="#e05c72" />
+                <Text style={[styles.menuItemText, { color: '#e05c72' }]}>Remover do grupo</Text>
+              </TouchableOpacity>
+            )}
+            {!isOwner && !onAdminDelete && (
               <TouchableOpacity style={styles.menuItem} onPress={() => handleMenuAction('report')} activeOpacity={0.7}>
                 <MaterialIcons name="flag" size={20} color={AppTheme.colors.placeholderText} />
                 <Text style={styles.menuItemText}>Denunciar</Text>

@@ -17,7 +17,7 @@ import Avatar from '@/components/Avatar';
 import { MessageBubble } from '@/components/Bubble/messageBubble';
 import {
   getGroup, getGroupMembers, getGroupPosts,
-  joinGroup, leaveGroup,
+  joinGroup, leaveGroup, deleteGroup,
   getUserLikedPosts, getMyFavorites,
   getMyMemberStatus, getPendingRequests, handleJoinRequest,
   removeMember, updateMemberRole, deleteGroupPost,
@@ -153,13 +153,13 @@ export default function GroupCommunity() {
       const token = await getValidAccessToken();
       const socket = io(`${SOCKET_URL}/chat`, {
         auth: { token },
-        transports: ['polling', 'websocket'],
-        upgrade: true,
+        transports: ['polling'],
         reconnection: true,
-        reconnectionDelay: 1000,
+        reconnectionDelay: 10000,
         reconnectionAttempts: Infinity,
-        pingInterval: 25000,
-        pingTimeout: 60000,
+        timeout: 10000,
+        pingInterval: 8000,
+        pingTimeout: 20000,
       });
 
       socket.on('connect', () => {
@@ -301,6 +301,22 @@ export default function GroupCommunity() {
     );
   };
 
+  const handleDeleteGroup = () => {
+    Alert.alert(
+      'Excluir grupo',
+      `Tem certeza que deseja excluir "${group?.name || 'este grupo'}"? Esta ação é irreversível.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Excluir', style: 'destructive', onPress: async () => {
+          try {
+            await deleteGroup(groupId!);
+            router.back();
+          } catch (err: any) { Alert.alert('Erro', err.message); }
+        }},
+      ]
+    );
+  };
+
   const handleDeletePost = (post: Post) => {
     Alert.alert('Remover publicação', 'Remover esta publicação do grupo?', [
       { text: 'Cancelar', style: 'cancel' },
@@ -333,12 +349,12 @@ export default function GroupCommunity() {
     const isMe = m.profile_id === myProfileId;
     const targetIsAdmin = m.role === 'admin';
 
-    // Co-líder pode nomear/rebaixar outros membros (não admin, não a si mesmo)
-    // Admin pode tudo: nomear co-líder + remover
-    // Co-líder NÃO pode remover (só admin)
+    const targetIsCoLeader = m.role === 'co-leader';
+    // Admin pode promover/rebaixar co-líder e remover qualquer um (exceto si mesmo e outro admin)
+    // Co-líder pode remover membros comuns (não admin, não outro co-líder, não si mesmo)
     const canPromote = isAdmin && !isMe && !targetIsAdmin;
-    const canRemove = isAdmin && !isMe && !targetIsAdmin;
-    const showMenu = !isMe && !targetIsAdmin && (canPromote || canRemove);
+    const canRemove = isMod && !isMe && !targetIsAdmin && !(isMod && !isAdmin && targetIsCoLeader);
+    const showMenu = canPromote || canRemove;
 
     return (
       <View style={s.memberRow}>
@@ -407,7 +423,12 @@ export default function GroupCommunity() {
         {!isSent && <View style={s.chatAvatarSlot}>{showAvatar && <Avatar name={item.sender_name} size={28} />}</View>}
         <View style={{ maxWidth: '78%' }}>
           {showName && <Text style={s.chatSenderName}>{item.sender_name}</Text>}
-          <MessageBubble message={item.message_content} time={formatTime(item.timestamp)} isSent={isSent} />
+          <MessageBubble
+            message={item.message_content}
+            time={formatTime(item.timestamp)}
+            isSent={isSent}
+            onPressSharedPost={(p) => router.push({ pathname: '/screens/community/postDetail', params: p })}
+          />
         </View>
       </View>
     );
@@ -429,30 +450,18 @@ export default function GroupCommunity() {
           ? <EmptyState icon="article" title="Nenhuma publicação ainda"
               subtitle={isMember ? 'Seja o primeiro a compartilhar!' : 'Entre no grupo para ver publicações.'} />
           : posts.map(p => (
-            <View key={p.post_id} style={s.postWrapper}>
-              {isAdmin && (
-                <TouchableOpacity
-                  style={s.postMenuBtn}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  onPress={() => {
-                    Alert.alert('Publicação', 'O que deseja fazer?', [
-                      { text: 'Remover publicação', style: 'destructive', onPress: () => handleDeletePost(p) },
-                      { text: 'Cancelar', style: 'cancel' },
-                    ]);
-                  }}
-                >
-                  <MaterialIcons name="more-vert" size={20} color={AppTheme.colors.placeholderText} />
-                </TouchableOpacity>
-              )}
-              <PostCardView
-                postId={p.post_id} userName={p.profile_name}
-                userHandle={p.profile_id.substring(0, 8)} timeAgo={p.created_at}
-                content={p.content} fileUrl={p.file_url} profileId={p.profile_id}
-                initialLikeCount={p.like_count || 0} initialCommentCount={p.comment_count || 0}
-                initialLiked={likedPostIds.has(p.post_id)} initialFavorited={favoritedPostIds.has(p.post_id)}
-                onLikeToggle={handleLikeToggle} onFavoriteToggle={handleFavoriteToggle}
-              />
-            </View>
+            <PostCardView
+              key={p.post_id}
+              postId={p.post_id} userName={p.profile_name}
+              userHandle={p.profile_id.substring(0, 8)} timeAgo={p.created_at}
+              content={p.content} fileUrl={p.file_url} profileId={p.profile_id}
+              initialLikeCount={p.like_count || 0} initialCommentCount={p.comment_count || 0}
+              initialLiked={likedPostIds.has(p.post_id)} initialFavorited={favoritedPostIds.has(p.post_id)}
+              onLikeToggle={handleLikeToggle} onFavoriteToggle={handleFavoriteToggle}
+              onAdminDelete={isMod ? () => handleDeletePost(p) : undefined}
+              canDeleteAnyComment={isMod}
+              groupId={groupId}
+            />
           ))
         }
         <View style={{ height: 24 }} />
@@ -573,6 +582,17 @@ export default function GroupCommunity() {
             <Text style={s.joinBtnText}>Sair</Text>
           </TouchableOpacity>
         )}
+        {isAdmin && (
+          <TouchableOpacity
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            onPress={() => Alert.alert(group?.name || 'Grupo', 'Ações do administrador', [
+              { text: 'Excluir grupo', style: 'destructive', onPress: handleDeleteGroup },
+              { text: 'Cancelar', style: 'cancel' },
+            ])}
+          >
+            <MaterialIcons name="more-vert" size={24} color="#fff" />
+          </TouchableOpacity>
+        )}
         {isMod && pendingReqs.length > 0 && (
           <View style={s.pendingBadge}><Text style={s.pendingBadgeText}>{pendingReqs.length}</Text></View>
         )}
@@ -617,11 +637,6 @@ const s = StyleSheet.create({
   tabTextActive: { color: AppTheme.colors.tertiary, fontWeight: '700' },
 
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 40 },
-
-  deletePostBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 2 },
-  deletePostText: { fontSize: 12, color: '#d9534f', fontFamily: AppTheme.fonts.labelSmall.fontFamily, fontWeight: '600' },
-  postWrapper: { position: 'relative' },
-  postMenuBtn: { position: 'absolute', top: 10, right: 10, zIndex: 10, padding: 4 },
 
   // Chat
   chatList: { paddingHorizontal: 12, paddingVertical: 10 },

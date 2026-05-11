@@ -33,6 +33,7 @@ export default function RootLayout() {
           <Stack.Screen name="cadastro" />
           <Stack.Screen name="screens/community/chatCommunity" />
           <Stack.Screen name="screens/community/groupCommunity" />
+          <Stack.Screen name="screens/community/postDetail" />
         </Stack>
       </ProfileProvider>
     </PaperProvider>

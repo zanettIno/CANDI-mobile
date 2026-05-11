@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View, Text, FlatList, StatusBar, ActivityIndicator,
   Alert, Platform, StyleSheet, KeyboardAvoidingView,
-  TouchableOpacity, Image,
+  TouchableOpacity,
 } from 'react-native';
 import { io, Socket } from 'socket.io-client';
 import { AppTheme } from '../../../theme/index';
@@ -30,6 +30,16 @@ interface ChatMessage {
 const STATUS_BAR_HEIGHT = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 44;
 const SOCKET_URL = API_BASE_URL.replace('/api', '');
 
+const decodeJwtId = async (): Promise<string | null> => {
+  const token = await AsyncStorage.getItem('accessToken');
+  if (!token) return null;
+  const p = token.split('.')[1];
+  const decoded = Platform.OS === 'web'
+    ? JSON.parse(atob(p))
+    : JSON.parse(Buffer.from(p, 'base64').toString());
+  return decoded.id ?? null;
+};
+
 export const ChatCommunity: React.FC = () => {
   const router = useRouter();
   const { conversationId, userName } = useLocalSearchParams<{
@@ -43,106 +53,97 @@ export const ChatCommunity: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isConnected, setIsConnected] = useState(false);
   const [isOtherOnline, setIsOtherOnline] = useState(false);
-  const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
   const [isTyping, setIsTyping] = useState(false);
-  const [typingUser, setTypingUser] = useState('');
   const socketRef = useRef<Socket | null>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const otherUserIdRef = useRef<string | null>(null);
-
-  const getUserId = async (): Promise<string | null> => {
-    const token = await AsyncStorage.getItem('accessToken');
-    if (!token) return null;
-    const payloadB64 = token.split('.')[1];
-    const decoded = Platform.OS === 'web'
-      ? JSON.parse(atob(payloadB64))
-      : JSON.parse(Buffer.from(payloadB64, 'base64').toString());
-    return decoded.id;
-  };
-
-  // Extrai o ID do outro usuário do conversationId (formato: "uuid1#uuid2")
-  const extractOtherUserId = (myId: string, convId: string): string | null => {
-    const parts = convId.split('#');
-    if (parts.length !== 2) return null;
-    return parts[0] === myId ? parts[1] : parts[0];
-  };
-
-  const loadHistory = useCallback(async () => {
-    if (!conversationId) return;
-    setIsLoading(true);
-    try {
-      const [id, history] = await Promise.all([getUserId(), getMessages(conversationId)]);
-      if (id) {
-        setCurrentUserId(id);
-        otherUserIdRef.current = extractOtherUserId(id, conversationId);
-      }
-      setMessages([...history].reverse());
-    } catch {
-      Alert.alert('Erro', 'Não foi possível carregar o histórico.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [conversationId]);
+  const onlineUsersRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (!conversationId) return;
+    let mounted = true;
 
-    const connect = async () => {
+    const init = async () => {
+      // 1. Resolve myId e otherUserId antes de qualquer coisa
+      const myId = await decodeJwtId();
+      if (!mounted) return;
+
+      if (myId) {
+        setCurrentUserId(myId);
+        const parts = conversationId.split('#');
+        if (parts.length === 2) {
+          otherUserIdRef.current = parts[0] === myId ? parts[1] : parts[0];
+        }
+      }
+
+      // 2. Carrega histórico
+      try {
+        const history = await getMessages(conversationId);
+        if (mounted) setMessages([...history].reverse());
+      } catch {
+        if (mounted) Alert.alert('Erro', 'Não foi possível carregar o histórico.');
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+
+      // 3. Conecta socket (já tem otherUserIdRef resolvido)
       const token = await getValidAccessToken();
+      if (!mounted) return;
 
       const socket = io(`${SOCKET_URL}/chat`, {
         auth: { token },
-        // Começa com polling (funciona 100% através de qualquer proxy/Cloudflare)
-        // e faz upgrade para WebSocket quando possível
-        transports: ['polling', 'websocket'],
-        upgrade: true,
+        transports: ['polling'],
         reconnection: true,
-        reconnectionDelay: 1000,
+        reconnectionDelay: 10000,
         reconnectionAttempts: Infinity,
-        // Mantém conexão viva além do timeout do Cloudflare (100s)
-        pingInterval: 25000,
-        pingTimeout: 60000,
+        timeout: 10000,
+        pingInterval: 8000,
+        pingTimeout: 20000,
       });
 
       socket.on('connect', () => {
+        if (!mounted) return;
         setIsConnected(true);
         socket.emit('join_conversation', { conversationId });
         socket.emit('get_online_users');
       });
 
-      socket.on('disconnect', () => setIsConnected(false));
+      socket.on('disconnect', () => { if (mounted) setIsConnected(false); });
 
       socket.on('new_message', (msg: ChatMessage) => {
+        if (!mounted) return;
         setMessages(prev => {
-          const withoutOptimistic = prev.filter(
+          const without = prev.filter(
             m => !(m.timestamp.includes('#temp') && m.message_content === msg.message_content && m.sender_id === msg.sender_id),
           );
-          // Evita duplicata se a mensagem já existe
-          if (withoutOptimistic.some(m => m.timestamp === msg.timestamp)) return withoutOptimistic;
-          return [msg, ...withoutOptimistic];
+          if (without.some(m => m.timestamp === msg.timestamp)) return without;
+          return [msg, ...without];
         });
       });
 
-      // Presença
       socket.on('online_users', ({ online }: { online: string[] }) => {
-        const set = new Set(online);
-        setOnlineUsers(set);
-        if (otherUserIdRef.current) setIsOtherOnline(set.has(otherUserIdRef.current));
+        if (!mounted) return;
+        onlineUsersRef.current = new Set(online);
+        if (otherUserIdRef.current) {
+          setIsOtherOnline(onlineUsersRef.current.has(otherUserIdRef.current));
+        }
       });
 
       socket.on('user_online', ({ profile_id }: { profile_id: string }) => {
-        setOnlineUsers(prev => new Set([...prev, profile_id]));
+        if (!mounted) return;
+        onlineUsersRef.current.add(profile_id);
         if (otherUserIdRef.current === profile_id) setIsOtherOnline(true);
       });
 
       socket.on('user_offline', ({ profile_id }: { profile_id: string }) => {
-        setOnlineUsers(prev => { const n = new Set(prev); n.delete(profile_id); return n; });
+        if (!mounted) return;
+        onlineUsersRef.current.delete(profile_id);
         if (otherUserIdRef.current === profile_id) setIsOtherOnline(false);
       });
 
-      socket.on('user_typing', ({ name, isTyping: typing }: { name: string; isTyping: boolean }) => {
+      socket.on('user_typing', ({ isTyping: typing }: { name: string; isTyping: boolean }) => {
+        if (!mounted) return;
         setIsTyping(typing);
-        setTypingUser(name);
       });
 
       socket.on('error', (err: any) => console.warn('[Socket error]', err));
@@ -150,25 +151,18 @@ export const ChatCommunity: React.FC = () => {
       socketRef.current = socket;
     };
 
-    connect();
+    init();
 
     return () => {
+      mounted = false;
       if (socketRef.current) {
         socketRef.current.emit('leave_conversation', { conversationId });
         socketRef.current.disconnect();
         socketRef.current = null;
       }
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     };
   }, [conversationId]);
-
-  // Atualiza isOtherOnline quando otherUserIdRef é resolvido
-  useEffect(() => {
-    if (otherUserIdRef.current) {
-      setIsOtherOnline(onlineUsers.has(otherUserIdRef.current));
-    }
-  }, [currentUserId]);
-
-  useEffect(() => { loadHistory(); }, []);
 
   const handleTypingEvent = useCallback((text: string) => {
     setMessage(text);
@@ -218,8 +212,8 @@ export const ChatCommunity: React.FC = () => {
     const isSent = item.sender_id === currentUserId;
     const isOptimistic = item.timestamp.includes('#temp');
     const prev = messages[index + 1];
-    const showName = !isSent && (!prev || prev.sender_id !== item.sender_id);
     const showAvatar = !isSent && (index === 0 || messages[index - 1]?.sender_id !== item.sender_id);
+    const showName = !isSent && (!prev || prev.sender_id !== item.sender_id);
 
     return (
       <View style={[styles.messageRow, isSent ? styles.rowSent : styles.rowReceived]}>
@@ -234,6 +228,7 @@ export const ChatCommunity: React.FC = () => {
             message={item.message_content}
             time={formatTime(item.timestamp)}
             isSent={isSent}
+            onPressSharedPost={(p) => router.push({ pathname: '/screens/community/postDetail', params: p })}
           />
           {isSent && isOptimistic && (
             <Text style={styles.sending}>enviando...</Text>

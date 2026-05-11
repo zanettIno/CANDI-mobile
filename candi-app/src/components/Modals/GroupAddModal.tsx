@@ -6,13 +6,11 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  ScrollView,
   ActivityIndicator,
+  ScrollView,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { AppTheme } from '@/theme';
-
-const TOPICS = ['GERAL', 'QUIMIO', 'CÂNCER', 'NUTRIÇÃO', 'BEM-ESTAR', 'PESQUISA', 'PÓS-TRATAMENTO'];
 
 interface GroupAddProps {
   visible: boolean;
@@ -23,7 +21,6 @@ interface GroupAddProps {
 const GroupAddModal: React.FC<GroupAddProps> = ({ visible, onDismiss, onCreateGroup }) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [topic, setTopic] = useState('GERAL');
   const [loading, setLoading] = useState(false);
 
   const canCreate = name.trim().length >= 3;
@@ -32,10 +29,9 @@ const GroupAddModal: React.FC<GroupAddProps> = ({ visible, onDismiss, onCreateGr
     if (!canCreate) return;
     setLoading(true);
     try {
-      await onCreateGroup({ name: name.trim(), description: description.trim(), topic });
+      await onCreateGroup({ name: name.trim(), description: description.trim(), topic: 'GERAL' });
       setName('');
       setDescription('');
-      setTopic('GERAL');
       onDismiss();
     } finally {
       setLoading(false);
@@ -77,26 +73,6 @@ const GroupAddModal: React.FC<GroupAddProps> = ({ visible, onDismiss, onCreateGr
             maxLength={300}
             textAlignVertical="top"
           />
-
-          <Text style={styles.label}>Categoria</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.topicsRow}
-          >
-            {TOPICS.map(t => (
-              <TouchableOpacity
-                key={t}
-                onPress={() => setTopic(t)}
-                style={[styles.topicChip, topic === t && styles.topicChipActive]}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.topicChipText, topic === t && styles.topicChipTextActive]}>
-                  {t}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
 
           <TouchableOpacity
             style={[styles.createBtn, !canCreate && styles.createBtnDisabled]}
@@ -166,26 +142,6 @@ const styles = StyleSheet.create({
     borderColor: AppTheme.colors.dotsColor,
   },
   textArea: { minHeight: 80 },
-  topicsRow: { paddingVertical: 4, gap: 8 },
-  topicChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: AppTheme.colors.dotsColor,
-    backgroundColor: AppTheme.colors.background,
-  },
-  topicChipActive: {
-    backgroundColor: AppTheme.colors.tertiary,
-    borderColor: AppTheme.colors.tertiary,
-  },
-  topicChipText: {
-    fontSize: 12,
-    fontFamily: AppTheme.fonts.labelMedium.fontFamily,
-    color: AppTheme.colors.placeholderText,
-    fontWeight: '500',
-  },
-  topicChipTextActive: { color: AppTheme.colors.cardBackground, fontWeight: '700' },
   createBtn: {
     marginTop: 24,
     backgroundColor: AppTheme.colors.tertiary,

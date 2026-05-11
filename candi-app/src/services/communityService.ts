@@ -59,6 +59,9 @@ export const joinGroup = (groupId: string) =>
 export const leaveGroup = (groupId: string) =>
   fetchAPI(`/community/groups/${groupId}/leave`, { method: 'DELETE' });
 
+export const deleteGroup = (groupId: string) =>
+  fetchAPI(`/community/groups/${groupId}`, { method: 'DELETE' });
+
 export const getGroupMembers = (groupId: string) =>
   fetchAPI(`/community/groups/${groupId}/members`);
 
@@ -92,8 +95,13 @@ export const addComment = (postId: string, text: string) =>
     body: JSON.stringify({ text }),
   });
 
-export const deleteComment = (postId: string, commentId: string) =>
-  fetchAPI(`/community/posts/${postId}/comments/${commentId}`, { method: 'DELETE' });
+export const deleteComment = (postId: string, commentId: string, groupId?: string) => {
+  if (groupId) {
+    // Endpoint de grupo: mod pode deletar qualquer comentário
+    return fetchAPI(`/community/groups/${encodeURIComponent(groupId)}/comments/${commentId}?postId=${encodeURIComponent(postId)}`, { method: 'DELETE' });
+  }
+  return fetchAPI(`/community/posts/${postId}/comments/${commentId}`, { method: 'DELETE' });
+};
 
 // ─── COMPARTILHAR ────────────────────────────────────────────────────────────
 

@@ -1,12 +1,22 @@
 import React from 'react';
-import { View, Text, Image, StyleSheet, Platform } from 'react-native';
+import { View, Text, Image, StyleSheet, Platform, TouchableOpacity } from 'react-native';
 import { AppTheme } from '../../theme/index';
 import { MaterialIcons } from '@expo/vector-icons';
+
+export interface SharedPostNavParams {
+  postId: string;
+  authorName: string;
+  content: string;
+  fileUrl?: string;
+  createdAt: string;
+  profileId?: string;
+}
 
 interface MessageBubbleProps {
   message: string;
   time: string;
   isSent: boolean;
+  onPressSharedPost?: (params: SharedPostNavParams) => void;
 }
 
 interface SharedPost {
@@ -63,7 +73,7 @@ const SharedPostCard: React.FC<{ data: SharedPost; isSent: boolean }> = ({ data,
   );
 };
 
-export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, time, isSent }) => {
+export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, time, isSent, onPressSharedPost }) => {
   // Detecta mensagem de post compartilhado
   if (message.startsWith('__POST__:')) {
     let sharedPost: SharedPost | null = null;
@@ -73,12 +83,23 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, time, isS
 
     if (sharedPost) {
       return (
-        <View style={[styles.container, isSent ? styles.containerSent : styles.containerReceived]}>
-          <View style={[styles.bubble, isSent ? styles.bubbleSent : styles.bubbleReceived, styles.bubbleShared]}>
-            <SharedPostCard data={sharedPost} isSent={isSent} />
-            <Text style={[styles.time, isSent ? styles.timeSent : styles.timeReceived]}>{time}</Text>
+        <TouchableOpacity
+          activeOpacity={onPressSharedPost ? 0.75 : 1}
+          onPress={onPressSharedPost ? () => onPressSharedPost({
+            postId: sharedPost!.post_id,
+            authorName: sharedPost!.author_name,
+            content: sharedPost!.content,
+            fileUrl: sharedPost!.file_url ?? undefined,
+            createdAt: sharedPost!.created_at,
+          }) : undefined}
+        >
+          <View style={[styles.container, isSent ? styles.containerSent : styles.containerReceived]}>
+            <View style={[styles.bubble, isSent ? styles.bubbleSent : styles.bubbleReceived, styles.bubbleShared]}>
+              <SharedPostCard data={sharedPost!} isSent={isSent} />
+              <Text style={[styles.time, isSent ? styles.timeSent : styles.timeReceived]}>{time}</Text>
+            </View>
           </View>
-        </View>
+        </TouchableOpacity>
       );
     }
   }
