@@ -330,7 +330,16 @@ export default function GroupCommunity() {
 
   const renderMember = ({ item: m }: { item: Member }) => {
     const badge = roleBadge(m.role);
-    const canAct = isMod && m.profile_id !== myProfileId && m.role !== 'admin';
+    const isMe = m.profile_id === myProfileId;
+    const targetIsAdmin = m.role === 'admin';
+
+    // Co-líder pode nomear/rebaixar outros membros (não admin, não a si mesmo)
+    // Admin pode tudo: nomear co-líder + remover
+    // Co-líder NÃO pode remover (só admin)
+    const canPromote = isAdmin && !isMe && !targetIsAdmin;
+    const canRemove = isAdmin && !isMe && !targetIsAdmin;
+    const showMenu = !isMe && !targetIsAdmin && (canPromote || canRemove);
+
     return (
       <View style={s.memberRow}>
         <Avatar name={m.member_name} size={42} />
@@ -343,23 +352,29 @@ export default function GroupCommunity() {
             <Text style={[s.badgeText, { color: badge.color }]}>{badge.label}</Text>
           </View>
         )}
-        {canAct && (
+        {showMenu && (
           <TouchableOpacity
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             onPress={() => {
               const options: any[] = [];
-              if (isAdmin) {
+              if (canPromote) {
                 options.push({
-                  text: m.role === 'co-leader' ? 'Remover co-líder' : 'Nomear co-líder',
+                  text: m.role === 'co-leader' ? 'Rebaixar para membro' : 'Nomear co-líder',
                   onPress: () => handleRoleUpdate(m),
                 });
               }
-              options.push({ text: 'Remover do grupo', style: 'destructive', onPress: () => handleRemoveMember(m) });
+              if (canRemove) {
+                options.push({
+                  text: 'Remover do grupo',
+                  style: 'destructive',
+                  onPress: () => handleRemoveMember(m),
+                });
+              }
               options.push({ text: 'Cancelar', style: 'cancel' });
-              Alert.alert(m.member_name, '', options);
+              Alert.alert(m.member_name, 'O que deseja fazer?', options);
             }}
           >
-            <MaterialIcons name="more-vert" size={20} color={AppTheme.colors.placeholderText} />
+            <MaterialIcons name="more-vert" size={22} color={AppTheme.colors.placeholderText} />
           </TouchableOpacity>
         )}
       </View>
@@ -414,11 +429,19 @@ export default function GroupCommunity() {
           ? <EmptyState icon="article" title="Nenhuma publicação ainda"
               subtitle={isMember ? 'Seja o primeiro a compartilhar!' : 'Entre no grupo para ver publicações.'} />
           : posts.map(p => (
-            <View key={p.post_id}>
-              {isMod && (
-                <TouchableOpacity style={s.deletePostBtn} onPress={() => handleDeletePost(p)}>
-                  <MaterialIcons name="delete-outline" size={16} color="#d9534f" />
-                  <Text style={s.deletePostText}>Remover</Text>
+            <View key={p.post_id} style={s.postWrapper}>
+              {isAdmin && (
+                <TouchableOpacity
+                  style={s.postMenuBtn}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  onPress={() => {
+                    Alert.alert('Publicação', 'O que deseja fazer?', [
+                      { text: 'Remover publicação', style: 'destructive', onPress: () => handleDeletePost(p) },
+                      { text: 'Cancelar', style: 'cancel' },
+                    ]);
+                  }}
+                >
+                  <MaterialIcons name="more-vert" size={20} color={AppTheme.colors.placeholderText} />
                 </TouchableOpacity>
               )}
               <PostCardView
@@ -597,6 +620,8 @@ const s = StyleSheet.create({
 
   deletePostBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 2 },
   deletePostText: { fontSize: 12, color: '#d9534f', fontFamily: AppTheme.fonts.labelSmall.fontFamily, fontWeight: '600' },
+  postWrapper: { position: 'relative' },
+  postMenuBtn: { position: 'absolute', top: 10, right: 10, zIndex: 10, padding: 4 },
 
   // Chat
   chatList: { paddingHorizontal: 12, paddingVertical: 10 },
