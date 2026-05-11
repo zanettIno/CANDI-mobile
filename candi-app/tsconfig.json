@@ -1,13 +1,21 @@
 {
-  "extends": "@tsconfig/react-native/tsconfig.json",
   "compilerOptions": {
+    "target": "ESNext",
+    "lib": ["ESNext"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
     "jsx": "react-jsx",
+    "strict": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "noEmit": true,
     "baseUrl": "./src",
+    "ignoreDeprecations": "6.0",
     "paths": {
       "@/*": ["*"]
-    },
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true
+    }
   },
   "include": [
     "src/**/*.ts",

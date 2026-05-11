@@ -140,7 +140,7 @@ const ProfilePictureModal: React.FC<ProfilePictureModalProps> = ({
 
   const getModalAvatarSource = () => {
       if (user.profile_picture_last_updated) {
-          const uri = `https://candi-image-uploads.s3.us-east-1.amazonaws.com/profile-images/${user.profile_id}.jpg?timestamp=${user.profile_picture_last_updated}`;
+          const uri = `https://awscandi-image-uploads.s3.us-east-2.amazonaws.com/profile-images/${user.profile_id}.jpg?timestamp=${user.profile_picture_last_updated}`;
           return { uri };
       }
       return require('../../../assets/default-avatar.jpg');

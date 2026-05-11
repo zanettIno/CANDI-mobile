@@ -36,13 +36,12 @@ const fetchFeedAPI = async (endpoint: string, options: RequestInit = {}) => {
 /**
  * Busca postagens por tópico ou o feed global.
  */
-export const getPosts = async (topic: string = 'Feed') => {
-  // O backend usa a palavra 'posts' para listar tudo (global ou por tópico)
-  // O tópico 'Feed' no front-end mapeia para o feed geral no backend (sem query param)
-  const topicParam = topic === 'Feed' ? '' : topic;
-  const endpoint = topicParam ? `/feed/posts?topic=${topicParam}` : '/feed/posts';
-  
-  return fetchFeedAPI(endpoint);
+export const getPosts = async (hashtag?: string) => {
+  if (hashtag) {
+    const tag = hashtag.replace(/^#/, '').toLowerCase();
+    return fetchFeedAPI(`/feed/posts?hashtag=${encodeURIComponent(tag)}`);
+  }
+  return fetchFeedAPI('/feed/posts');
 };
 
 

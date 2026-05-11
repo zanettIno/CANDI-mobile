@@ -1,102 +1,205 @@
 import React, { useState } from 'react';
-import { Modal, Portal, Text, IconButton } from 'react-native-paper';
-import { StyleSheet, View } from 'react-native';
-import styled from 'styled-components/native';
-import { AppTheme } from '../../theme/index'; 
-import SearchInput from '../Inputs/inputSearch';
-import AddButton from '../Buttons/AddButton';
+import {
+  Modal,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+} from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
+import { AppTheme } from '@/theme';
+
+const TOPICS = ['GERAL', 'QUIMIO', 'CÂNCER', 'NUTRIÇÃO', 'BEM-ESTAR', 'PESQUISA', 'PÓS-TRATAMENTO'];
 
 interface GroupAddProps {
   visible: boolean;
   onDismiss: () => void;
-  onJoinGroup: (groupCode: string) => void; 
+  onCreateGroup: (data: { name: string; description: string; topic: string }) => Promise<void>;
 }
 
-const ModalContainer = styled.View`
-  background-color: ${AppTheme.colors.cardBackground};
-  margin: 20px;
-  border-radius: 12px;
-  overflow: hidden;
-  padding: 24px;
-  align-items: center;
-`;
+const GroupAddModal: React.FC<GroupAddProps> = ({ visible, onDismiss, onCreateGroup }) => {
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [topic, setTopic] = useState('GERAL');
+  const [loading, setLoading] = useState(false);
 
-const ModalTitle = styled(Text)`
-  font-size: 18px;
-  font-weight: 700;
-  margin-bottom: 8px;
-  color: ${AppTheme.colors.textColor};
-  font-family: 'Kadwa_700Bold'; 
-`;
+  const canCreate = name.trim().length >= 3;
 
-const ModalText = styled(Text)`
-  font-size: 14px;
-  text-align: center;
-  margin-bottom: 20px;
-  color: ${AppTheme.colors.textColor};
-  font-family: 'Inter_400Regular'; 
-`;
-
-const CloseButton = styled(IconButton)`
-  position: absolute;
-  top: 10px;
-  right: 10px;
-`;
-
-const GroupAdd: React.FC<GroupAddProps> = ({
-  visible,
-  onDismiss,
-  onJoinGroup,
-}) => {
-  const [groupCode, setGroupCode] = useState('');
-
-  const handleJoin = () => {
-    onJoinGroup(groupCode);
-    setGroupCode('');
+  const handleCreate = async () => {
+    if (!canCreate) return;
+    setLoading(true);
+    try {
+      await onCreateGroup({ name: name.trim(), description: description.trim(), topic });
+      setName('');
+      setDescription('');
+      setTopic('GERAL');
+      onDismiss();
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <Portal>
-      <Modal visible={visible} onDismiss={onDismiss} contentContainerStyle={styles.modalOuter}>
-        <ModalContainer>
-          <CloseButton icon="close" size={24} onPress={onDismiss} />
-          
-          <ModalTitle>ENTRAR EM GRUPO</ModalTitle>
-          <ModalText>
-            Insira o nome do grupo para participar.
-          </ModalText>
-          
-          <SearchInput
-            value={groupCode}
-            onChangeText={setGroupCode}
-            style={styles.searchInput}
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onDismiss}>
+      <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onDismiss} />
+      <View style={styles.sheet}>
+        <View style={styles.handle} />
+
+        <View style={styles.header}>
+          <Text style={styles.title}>Criar Grupo</Text>
+          <TouchableOpacity onPress={onDismiss} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <MaterialIcons name="close" size={22} color={AppTheme.colors.placeholderText} />
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView showsVerticalScrollIndicator={false}>
+          <Text style={styles.label}>Nome do grupo *</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Ex: Grupo de Apoio – Quimioterapia"
+            placeholderTextColor={AppTheme.colors.placeholderText}
+            value={name}
+            onChangeText={setName}
+            maxLength={80}
           />
-          
-          <AddButton
-            text="Entrar no Grupo"
-            onPress={handleJoin}
-            style={styles.addButton}
+
+          <Text style={styles.label}>Descrição</Text>
+          <TextInput
+            style={[styles.input, styles.textArea]}
+            placeholder="Descreva o propósito do grupo..."
+            placeholderTextColor={AppTheme.colors.placeholderText}
+            value={description}
+            onChangeText={setDescription}
+            multiline
+            maxLength={300}
+            textAlignVertical="top"
           />
-          
-        </ModalContainer>
-      </Modal>
-    </Portal>
+
+          <Text style={styles.label}>Categoria</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.topicsRow}
+          >
+            {TOPICS.map(t => (
+              <TouchableOpacity
+                key={t}
+                onPress={() => setTopic(t)}
+                style={[styles.topicChip, topic === t && styles.topicChipActive]}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.topicChipText, topic === t && styles.topicChipTextActive]}>
+                  {t}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          <TouchableOpacity
+            style={[styles.createBtn, !canCreate && styles.createBtnDisabled]}
+            onPress={handleCreate}
+            disabled={!canCreate || loading}
+            activeOpacity={0.8}
+          >
+            {loading ? (
+              <ActivityIndicator size="small" color={AppTheme.colors.cardBackground} />
+            ) : (
+              <Text style={styles.createBtnText}>Criar Grupo</Text>
+            )}
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+    </Modal>
   );
 };
 
 const styles = StyleSheet.create({
-    modalOuter: {
-        flex: 1,
-        justifyContent: 'center',
-    },
-    searchInput: {
-        width: '100%',
-        marginBottom: 20,
-    },
-    addButton: {
-        width: '100%',
-        maxWidth: 300, 
-    },
+  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
+  sheet: {
+    backgroundColor: AppTheme.colors.cardBackground,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 32,
+    maxHeight: '80%',
+  },
+  handle: {
+    width: 40, height: 4,
+    backgroundColor: AppTheme.colors.dotsColor,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  title: {
+    fontFamily: AppTheme.fonts.titleMedium.fontFamily,
+    fontSize: AppTheme.fonts.titleMedium.fontSize,
+    color: AppTheme.colors.textColor,
+  },
+  label: {
+    fontFamily: AppTheme.fonts.labelMedium.fontFamily,
+    fontSize: AppTheme.fonts.labelMedium.fontSize,
+    color: AppTheme.colors.placeholderText,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    marginBottom: 6,
+    marginTop: 16,
+  },
+  input: {
+    backgroundColor: AppTheme.colors.background,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontFamily: AppTheme.fonts.bodyMedium.fontFamily,
+    fontSize: AppTheme.fonts.bodyMedium.fontSize,
+    color: AppTheme.colors.textColor,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.dotsColor,
+  },
+  textArea: { minHeight: 80 },
+  topicsRow: { paddingVertical: 4, gap: 8 },
+  topicChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.dotsColor,
+    backgroundColor: AppTheme.colors.background,
+  },
+  topicChipActive: {
+    backgroundColor: AppTheme.colors.tertiary,
+    borderColor: AppTheme.colors.tertiary,
+  },
+  topicChipText: {
+    fontSize: 12,
+    fontFamily: AppTheme.fonts.labelMedium.fontFamily,
+    color: AppTheme.colors.placeholderText,
+    fontWeight: '500',
+  },
+  topicChipTextActive: { color: AppTheme.colors.cardBackground, fontWeight: '700' },
+  createBtn: {
+    marginTop: 24,
+    backgroundColor: AppTheme.colors.tertiary,
+    borderRadius: 14,
+    paddingVertical: 15,
+    alignItems: 'center',
+  },
+  createBtnDisabled: { backgroundColor: AppTheme.colors.dotsColor },
+  createBtnText: {
+    color: AppTheme.colors.cardBackground,
+    fontFamily: AppTheme.fonts.labelLarge.fontFamily,
+    fontSize: 15,
+    fontWeight: '700',
+  },
 });
 
-export default GroupAdd;
+export default GroupAddModal;

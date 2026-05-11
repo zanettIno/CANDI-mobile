@@ -1,22 +1,37 @@
 import * as React from 'react';
 import { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, Alert, Keyboard, Dimensions, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  Alert,
+  Keyboard,
+  TouchableOpacity,
+} from 'react-native';
 import { PaperProvider } from 'react-native-paper';
 import { AppTheme } from '../../../theme';
 import { StatusBar } from 'expo-status-bar';
 import EmergencyContactCard, { EmergencyContact } from '../../../components/EmergencyContactCard';
 import Timeline from '../../../components/Timeline';
-import CommunityShortcut from "../../../components/Community-Shortcut";
-import CarouselComponent from "../../../components/Carousel/carousel";
+import CommunityShortcut from '../../../components/Community-Shortcut';
+import CarouselComponent from '../../../components/Carousel/carousel';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_BASE_URL } from '../../../constants/api'; 
+import { API_BASE_URL } from '../../../constants/api';
 import { makePhoneCall } from '../../../services/PhoneService';
-import { createPost } from '@/services/feedService'; 
+import { createPost } from '@/services/feedService';
 import { useRouter } from 'expo-router';
-import NewPassageFAB from '../../../components/NewPassageFAB'; 
+import { MaterialIcons } from '@expo/vector-icons';
 
 const userEndpoint = `${API_BASE_URL}/auth/me`;
 const contactsEndpoint = `${API_BASE_URL}/emergency-contact`;
+
+const getGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Bom dia';
+  if (hour < 18) return 'Boa tarde';
+  return 'Boa noite';
+};
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -32,12 +47,7 @@ export default function HomeScreen() {
     { title: 'Rede Feminina', image: require('../../../../assets/images/site-rede-feminina.jpeg') },
   ];
 
-  const handleOpenNewPassage = () => {
-    router.push('/screens/diary/passagemAdd'); 
-  };
-
   const handleCallContact = (contact: EmergencyContact) => {
-    console.log(`Iniciando chamada para ${contact.name} no número ${contact.phoneNumber}...`);
     makePhoneCall(contact.phoneNumber);
   };
 
@@ -49,12 +59,11 @@ export default function HomeScreen() {
     if (!postContent.trim()) return;
     setIsPosting(true);
     try {
-      await createPost(postContent, 'Feed'); 
-      Alert.alert('Sucesso', 'Sua mensagem foi enviada para a comunidade!');
-      setPostContent(''); 
-      Keyboard.dismiss(); 
+      await createPost(postContent, 'GERAL');
+      Alert.alert('Publicado!', 'Sua mensagem foi enviada para a comunidade.');
+      setPostContent('');
+      Keyboard.dismiss();
     } catch (error) {
-      console.error(error);
       Alert.alert('Erro', 'Não foi possível enviar a postagem.');
     } finally {
       setIsPosting(false);
@@ -67,126 +76,200 @@ export default function HomeScreen() {
         const token = await AsyncStorage.getItem('accessToken');
         if (!token) return;
 
-        const userRes = await fetch(userEndpoint, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const [userRes, contactRes] = await Promise.all([
+          fetch(userEndpoint, { headers: { Authorization: `Bearer ${token}` } }),
+          fetch(contactsEndpoint, { headers: { Authorization: `Bearer ${token}` } }),
+        ]);
+
         if (userRes.ok) {
           const userData = await userRes.json();
           setUserName(userData.profile_name);
         }
 
-        // Busca Contatos de Emergência do Backend
-        const contactRes = await fetch(contactsEndpoint, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        
         if (contactRes.ok) {
           const contactsData = await contactRes.json();
           const mapped: EmergencyContact[] = contactsData.map((c: any) => ({
             name: c.name,
-            role: c.relationship, 
+            role: c.relationship,
             phoneNumber: c.phone,
             photoUrl: c.photoUrl,
           }));
           setContacts(mapped);
         }
       } catch (error) {
-        console.error("Erro ao carregar dados:", error);
+        console.error('Erro ao carregar dados:', error);
       }
     };
 
     fetchData();
   }, []);
 
+  const firstName = userName ? userName.split(' ')[0] : '';
+
   return (
     <PaperProvider theme={AppTheme}>
-      <StatusBar style="dark"/>
-      <ScrollView contentContainerStyle={styles.container}>
+      <StatusBar style="dark" />
+      <ScrollView
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header / Saudação */}
         <View style={styles.header}>
-          <Text style={styles.greeting}>
-            OLÁ, {userName ? userName.toUpperCase() : '...'}
-          </Text>
-        
-          <Text style={styles.subtitle}>Veja quanto falta para o fim do seu tratamento!</Text>
+          <View style={styles.greetingRow}>
+            <View>
+              <Text style={styles.greeting}>
+                {getGreeting()}{firstName ? `, ${firstName}` : ''}! 👋
+              </Text>
+              <Text style={styles.subtitle}>
+                Acompanhe seu tratamento e conecte-se com a comunidade.
+              </Text>
+            </View>
+          </View>
+
+          <Text style={styles.sectionLabel}>Progresso do tratamento</Text>
           <Timeline onPress={handleOpenMarcos} />
         </View>
 
-        <View>
+        {/* Carrossel */}
+        <View style={styles.carouselSection}>
           <CarouselComponent data={carouselData} />
         </View>
 
+        {/* Contatos de emergência */}
         <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Contatos</Text>
-            {contacts.length > 0 ? (
-              contacts.map((c, i) => (
-                <EmergencyContactCard key={i} contact={c} onPress={handleCallContact}/>
-              ))
-            ) : (
-              <Text style={styles.emptyText}>Nenhum contato cadastrado ainda.</Text>
-            )}
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Contatos de emergência</Text>
+            <TouchableOpacity
+              onPress={() => router.push('/screens/profile/contatosView')}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.seeAll}>Ver todos</Text>
+            </TouchableOpacity>
           </View>
 
+          {contacts.length > 0 ? (
+            contacts.slice(0, 3).map((c, i) => (
+              <EmergencyContactCard key={i} contact={c} onPress={handleCallContact} />
+            ))
+          ) : (
+            <View style={styles.emptyContacts}>
+              <MaterialIcons name="person-add" size={32} color={AppTheme.colors.dotsColor} />
+              <Text style={styles.emptyText}>Nenhum contato cadastrado ainda.</Text>
+              <TouchableOpacity
+                onPress={() => router.push('/screens/profile/contatosAdd')}
+                style={styles.addContactBtn}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.addContactBtnText}>Adicionar contato</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+
+        {/* Atalho comunidade */}
         <View style={styles.sectionCommunity}>
-            <CommunityShortcut 
-              value={postContent}
-              onChangeText={setPostContent}
-              onSend={handleDirectPost}
-              loading={isPosting}
-            />
-          </View>
+          <CommunityShortcut
+            value={postContent}
+            onChangeText={setPostContent}
+            onSend={handleDirectPost}
+            loading={isPosting}
+          />
+        </View>
       </ScrollView>
-      
     </PaperProvider>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    paddingBottom: 30,
+    paddingBottom: 40,
   },
   header: {
     paddingHorizontal: 20,
-    marginTop: 60,
-    marginBottom: 10,
+    paddingTop: 60,
+    marginBottom: 8,
+  },
+  greetingRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 16,
   },
   greeting: {
-    fontFamily: AppTheme.fonts.titleLarge.fontFamily,
-    fontSize: AppTheme.fonts.titleLarge.fontSize + 8,
-    paddingTop: '8%',
+    fontFamily: AppTheme.fonts.headlineSmall.fontFamily,
+    fontSize: AppTheme.fonts.headlineSmall.fontSize,
     color: AppTheme.colors.textColor,
-    lineHeight: AppTheme.fonts.headlineLarge.fontSize * 1.1,
-    fontStyle: AppTheme.fonts.headlineLarge.fontStyle,
-    fontWeight: 'bold',
+    lineHeight: 32,
   },
   subtitle: {
-    paddingHorizontal: 20,
-    marginBottom: '1%',
-    marginTop: '5%',
-    fontSize: AppTheme.fonts.bodyMedium.fontSize,
     fontFamily: AppTheme.fonts.bodyMedium.fontFamily,
+    fontSize: AppTheme.fonts.bodyMedium.fontSize,
+    color: AppTheme.colors.placeholderText,
+    marginTop: 4,
+    lineHeight: 20,
+  },
+  sectionLabel: {
+    fontFamily: AppTheme.fonts.labelLarge.fontFamily,
+    fontSize: AppTheme.fonts.labelLarge.fontSize,
+    color: AppTheme.colors.placeholderText,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginTop: 20,
+    marginBottom: 8,
+  },
+  carouselSection: {
+    marginTop: 8,
   },
   section: {
-    paddingHorizontal: 10,
+    marginTop: 24,
+    paddingHorizontal: 4,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    marginBottom: 4,
   },
   sectionTitle: {
-    fontSize: AppTheme.fonts.titleLarge.fontSize,
     fontFamily: AppTheme.fonts.titleLarge.fontFamily,
+    fontSize: AppTheme.fonts.titleMedium.fontSize,
     color: AppTheme.colors.textColor,
-    marginLeft: 10,
+  },
+  seeAll: {
+    fontFamily: AppTheme.fonts.labelMedium.fontFamily,
+    fontSize: AppTheme.fonts.labelMedium.fontSize,
+    color: AppTheme.colors.tertiary,
+    fontWeight: '600',
+  },
+  emptyContacts: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+  },
+  emptyText: {
+    fontFamily: AppTheme.fonts.bodyMedium.fontFamily,
+    fontSize: AppTheme.fonts.bodyMedium.fontSize,
+    color: AppTheme.colors.placeholderText,
+    marginTop: 8,
+    fontStyle: 'italic',
+  },
+  addContactBtn: {
+    marginTop: 12,
+    backgroundColor: AppTheme.colors.secondary,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  addContactBtnText: {
+    fontFamily: AppTheme.fonts.labelLarge.fontFamily,
+    fontSize: AppTheme.fonts.labelLarge.fontSize,
+    color: AppTheme.colors.tertiary,
+    fontWeight: '600',
   },
   sectionCommunity: {
-    marginTop: '8%',
+    marginTop: 24,
     paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-
-  emptyText: { marginLeft: 20, marginTop: 10, color: AppTheme.colors.placeholderText, fontStyle: 'italic' },
-
-  fab: {
-    position: 'absolute',
-    margin: 16,
-    right: 0,
-    bottom: 0,
-    zIndex: 10,
   },
 });

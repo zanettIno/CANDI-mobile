@@ -1,72 +1,8 @@
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
-import styled from 'styled-components/native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { AppTheme } from '@/theme'; 
-
-
-const CardContainer = styled(TouchableOpacity)`
-  flex-direction: row;
-  align-items: center;
-  padding: 12px 16px;
-  border-bottom-width: 1px;
-  border-bottom-color: ${AppTheme.colors.dotsColor}; /* Linha separadora sutil */
-  background-color: ${AppTheme.colors.cardBackground};
-`;
-
-const AvatarPlaceholder = styled(View)`
-  width: 50px;
-  height: 50px;
-  border-radius: 25px;
-  background-color: ${AppTheme.colors.placeholderBackground};
-  margin-right: 12px;
-`;
-
-const ContentContainer = styled(View)`
-  flex: 1;
-  justify-content: center;
-`;
-
-const NameText = styled(Text)`
-  font-size: ${AppTheme.fonts.bodyMedium.fontSize}px;
-  font-weight: ${AppTheme.fonts.bodyMedium.fontWeight};
-  color: ${AppTheme.colors.nameText};
-`;
-
-const LastMessageText = styled(Text)`
-  font-size: ${AppTheme.fonts.bodyMedium.fontSize}px;
-  color: ${AppTheme.colors.roleText};
-  margin-top: 2px;
-`;
-
-const InfoContainer = styled(View)`
-  align-items: flex-end;
-  justify-content: space-between;
-  height: 100%;
-  margin-left: 8px;
-`;
-
-const TimeText = styled(Text)`
-  font-size: ${AppTheme.fonts.bodySmall.fontSize}px;
-  color: ${AppTheme.colors.roleText};
-`;
-
-const UnreadBadge = styled(View)<{ isUnread: boolean }>`
-  width: 20px;
-  height: 20px;
-  border-radius: 10px;
-  background-color: ${props => props.isUnread ? AppTheme.colors.secondary : 'transparent'}; 
-  align-items: center;
-  justify-content: center;
-  margin-top: 4px;
-`;
-
-const UnreadCountText = styled(Text)`
-  font-size: ${AppTheme.fonts.bodySmall.fontSize}px;
-  font-weight: bold;
-  color: ${AppTheme.colors.cardBackground}; 
-`;
-
+import { AppTheme } from '@/theme';
+import Avatar from '@/components/Avatar';
 
 interface MessageCardProps {
   userName: string;
@@ -85,32 +21,106 @@ export const MessageCard: React.FC<MessageCardProps> = ({
   isRead = false,
   onPress,
 }) => {
-  const isUnread = (unreadCount && unreadCount > 0) || !isRead;
+  const hasUnread = (unreadCount && unreadCount > 0) || !isRead;
 
   return (
-    <CardContainer onPress={onPress}>
-      <AvatarPlaceholder />
-      
-      <ContentContainer>
-        <NameText>{userName}</NameText>
-        <LastMessageText numberOfLines={1}>{lastMessage}</LastMessageText>
-      </ContentContainer>
+    <TouchableOpacity
+      style={styles.container}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      <Avatar name={userName} size={50} />
 
-      <InfoContainer>
-        <TimeText>{time}</TimeText>
-        
-        <UnreadBadge isUnread={isUnread}>
-          {unreadCount ? (
-            <UnreadCountText>{unreadCount}</UnreadCountText>
-          ) : isRead ? (
-            <MaterialIcons name="done" size={16} color={AppTheme.colors.secondary} />
+      <View style={styles.content}>
+        <View style={styles.row}>
+          <Text style={[styles.name, hasUnread && styles.nameBold]} numberOfLines={1}>
+            {userName}
+          </Text>
+          <Text style={styles.time}>{time}</Text>
+        </View>
+
+        <View style={styles.row}>
+          <Text
+            style={[styles.lastMessage, hasUnread && styles.lastMessageBold]}
+            numberOfLines={1}
+          >
+            {lastMessage}
+          </Text>
+
+          {hasUnread ? (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>
+                {unreadCount && unreadCount > 0 ? Math.min(unreadCount, 99) : '●'}
+              </Text>
+            </View>
           ) : (
-            <MaterialIcons name="done" size={16} color={AppTheme.colors.roleText} />
+            <MaterialIcons name="done-all" size={16} color={AppTheme.colors.tertiary} />
           )}
-        </UnreadBadge>
-      </InfoContainer>
-    </CardContainer>
+        </View>
+      </View>
+    </TouchableOpacity>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: AppTheme.colors.dotsColor,
+    backgroundColor: AppTheme.colors.cardBackground,
+  },
+  content: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 3,
+  },
+  name: {
+    flex: 1,
+    fontSize: AppTheme.fonts.bodyMedium.fontSize,
+    fontFamily: AppTheme.fonts.bodyMedium.fontFamily,
+    color: AppTheme.colors.nameText,
+    marginRight: 8,
+  },
+  nameBold: {
+    fontWeight: '700',
+  },
+  lastMessage: {
+    flex: 1,
+    fontSize: AppTheme.fonts.bodySmall.fontSize,
+    fontFamily: AppTheme.fonts.bodySmall.fontFamily,
+    color: AppTheme.colors.roleText,
+    marginRight: 8,
+  },
+  lastMessageBold: {
+    fontWeight: '600',
+    color: AppTheme.colors.textColor,
+  },
+  time: {
+    fontSize: AppTheme.fonts.labelSmall.fontSize,
+    color: AppTheme.colors.roleText,
+  },
+  badge: {
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: AppTheme.colors.tertiary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  badgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: AppTheme.colors.cardBackground,
+  },
+});
 
 export default MessageCard;

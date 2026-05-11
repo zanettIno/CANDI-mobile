@@ -77,7 +77,7 @@ export default function HomeScreen() {
         if (!profile || !profile.profile_picture_last_updated) {
             return undefined;
         }
-        const baseUrl = `https://candi-image-uploads.s3.us-east-1.amazonaws.com/profile-images/${profile.profile_id}.jpg`;
+        const baseUrl = `https://awscandi-image-uploads.s3.us-east-2.amazonaws.com/profile-images/${profile.profile_id}.jpg`;
         return `${baseUrl}?timestamp=${profile.profile_picture_last_updated || new Date().getTime()}`;
     };
 

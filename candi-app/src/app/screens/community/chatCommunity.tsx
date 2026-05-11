@@ -1,280 +1,336 @@
-// src/app/screens/community/chatCommunity.tsx
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { View, Text, FlatList, StatusBar, ActivityIndicator, Alert, Platform } from 'react-native';
-import styled from 'styled-components/native';
+import {
+  View,
+  Text,
+  FlatList,
+  StatusBar,
+  ActivityIndicator,
+  Alert,
+  Platform,
+  StyleSheet,
+  KeyboardAvoidingView,
+} from 'react-native';
+import { io, Socket } from 'socket.io-client';
 import { AppTheme } from '../../../theme/index';
 import { MessageBubble } from '@/components/Bubble/messageBubble';
 import { MessageInput } from '@/components/Inputs/inputMessage';
 import LoginSignupBackground from '@/components/LoginSignupBackground';
 import BackIconButton from '@/components/BackIconButton';
+import Avatar from '@/components/Avatar';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { getMessages, sendMessage } from '@/services/chatService'; 
+import { getMessages } from '@/services/chatService';
+import { getValidAccessToken } from '@/services/authService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Buffer } from 'buffer'; // 🔹 Importado para decodificação
+import { Buffer } from 'buffer';
+import { API_BASE_URL } from '@/constants/api';
+import { formatTime } from '@/utils/dateFormat';
 
-// Interface de Mensagem do Backend
 interface ChatMessage {
   conversation_id: string;
-  timestamp: string; // Ex: 2025-01-01T...Z#uuid
+  timestamp: string;
   sender_id: string;
   sender_name: string;
   message_content: string;
 }
 
-// ... (Estilos Styled-Components aqui) ...
-const ScreenContainer = styled(View)`
-  flex: 1;
-  background-color: ${AppTheme.colors.background};
-`;
-const BackgroundWrapper = styled(View)`
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 120px;
-  z-index: 0;
-`;
-const ContentWrapper = styled(View)`
-  flex: 1;
-  z-index: 1;
-`;
-const HeaderContainer = styled(View)`
-  height: 120px;
-  flex-direction: row;
-  align-items: center;
-  padding-horizontal: 20px;
-  padding-top: ${StatusBar.currentHeight || 48}px;
-`;
-const UserInfoContainer = styled(View)`
-  flex-direction: row;
-  align-items: center;
-  margin-left: 25px;
-`;
-const AvatarPlaceholder = styled(View)`
-  width: 64px;
-  height: 64px;
-  border-radius: 32px;
-  background-color: ${AppTheme.colors.cardBackground};
-  margin-right: 14px;
-  elevation: 3;
-  shadow-color: #000;
-  shadow-opacity: 0.1;
-  shadow-radius: 3px;
-`;
-const UserName = styled(Text)`
-  font-size: 22px;
-  font-weight: 700;
-  color: ${AppTheme.colors.textColor};
-`;
-const MessageListContainer = styled(View)`
-  flex: 1;
-  padding-horizontal: 16px;
-`;
-const FooterContainer = styled(View)`
-  background-color: ${AppTheme.colors.cardBackground};
-  border-top-width: 1px;
-  border-top-color: #eee;
-  padding-bottom: 10px;
-`;
-const CenteredView = styled(View)`
-  flex: 1;
-  justify-content: center;
-  align-items: center;
-`;
-// ... (Fim dos Estilos Styled-Components) ...
+const STATUS_BAR_HEIGHT = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 44;
+const SOCKET_URL = API_BASE_URL.replace('/api', '');
 
-
-// 🔹 LÓGICA DO CHAT 🔹
 export const ChatCommunity: React.FC = () => {
   const router = useRouter();
-  const { conversationId, userName } = useLocalSearchParams<{ conversationId: string, userName: string }>();
+  const { conversationId, userName } = useLocalSearchParams<{
+    conversationId: string;
+    userName: string;
+  }>();
 
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isConnected, setIsConnected] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  const [typingUser, setTypingUser] = useState('');
+  const socketRef = useRef<Socket | null>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // 🔹 1. LÓGICA PARA OBTER O ID DO USUÁRIO LOGADO E CARREGAR MENSAGENS 🔹
-  const loadChat = useCallback(async (showLoading: boolean = true) => {
-    if (!conversationId) {
-      Alert.alert('Erro', 'ID da conversa não encontrado.');
-      router.back();
-      return;
-    }
-    
-    if(showLoading) setIsLoading(true);
+  const getUserId = async (): Promise<string | null> => {
+    const token = await AsyncStorage.getItem('accessToken');
+    if (!token) return null;
+    const payloadB64 = token.split('.')[1];
+    const decoded = Platform.OS === 'web'
+      ? JSON.parse(atob(payloadB64))
+      : JSON.parse(Buffer.from(payloadB64, 'base64').toString());
+    return decoded.id;
+  };
 
+  // Carrega histórico inicial via REST
+  const loadHistory = useCallback(async () => {
+    if (!conversationId) return;
+    setIsLoading(true);
     try {
-      // 1. Pega o ID do usuário (usando a decodificação do JWT)
-      if (!currentUserId) {
-        const token = await AsyncStorage.getItem('accessToken');
-        if (token) {
-            // Decodifica o payload do JWT (parte do meio)
-            // Necessita do polyfill de Buffer se estiver no ambiente web/RN
-            const payloadBase64 = token.split('.')[1];
-            if (Platform.OS === 'web') {
-                const payload = JSON.parse(atob(payloadBase64)); // atob para web
-                setCurrentUserId(payload.id);
-            } else {
-                const payload = JSON.parse(Buffer.from(payloadBase64, 'base64').toString()); // Buffer para RN
-                setCurrentUserId(payload.id);
-            }
-        }
-      }
-      
-      // 2. Busca as mensagens
-      const messagesData: ChatMessage[] = await getMessages(conversationId);
-      
-      // 3. Define as mensagens. O FlatList está "inverted", então a ordem deve ser invertida no estado.
-      setMessages(messagesData.reverse()); 
-
-    } catch (err: any) {
-      console.error('Erro ao carregar chat:', err);
-      if (showLoading) Alert.alert('Erro', 'Não foi possível carregar o histórico.');
+      const [id, history] = await Promise.all([getUserId(), getMessages(conversationId)]);
+      if (id) setCurrentUserId(id);
+      setMessages([...history].reverse());
+    } catch {
+      Alert.alert('Erro', 'Não foi possível carregar o histórico.');
     } finally {
-      if(showLoading) setIsLoading(false);
+      setIsLoading(false);
     }
-  }, [conversationId, currentUserId]);
+  }, [conversationId]);
 
-
-  // 🔹 SEGUNDO USE EFFECT: POLLING (ATUALIZAÇÃO CONSTANTE) 🔹
-  const reloadMessages = useCallback(async () => {
+  // Conecta ao Socket.io
+  useEffect(() => {
     if (!conversationId) return;
 
-    try {
-      const messagesData: ChatMessage[] = await getMessages(conversationId);
-      
-      // Checa se o número de mensagens é diferente
-      if (messagesData.length !== messages.length) {
-          setMessages(messagesData.reverse());
-      }
-      // Se o tamanho for igual, mas a última mensagem (mais recente) for diferente
-      else if (messagesData.length > 0 && messagesData[messagesData.length - 1].timestamp !== messages[0].timestamp) {
-          setMessages(messagesData.reverse());
-      }
+    const connect = async () => {
+      const token = await getValidAccessToken();
 
-    } catch (err) {
-      console.warn("Erro no Polling de mensagens: ", err);
-    }
-  }, [conversationId, messages.length, messages[0]?.timestamp]);
+      const socket = io(`${SOCKET_URL}/chat`, {
+        auth: { token },
+        transports: ['websocket'],
+        reconnection: true,
+        reconnectionDelay: 1000,
+      });
 
+      socket.on('connect', () => {
+        setIsConnected(true);
+        socket.emit('join_conversation', { conversationId });
+      });
 
-  // Efeito principal: carrega o chat na abertura
-  useEffect(() => {
-    loadChat();
-  }, [loadChat]);
+      socket.on('disconnect', () => setIsConnected(false));
 
-  // Efeito de Polling: roda a cada 5 segundos
-  useEffect(() => {
-    const interval = setInterval(() => {
-      reloadMessages(); 
-    }, 5000); // 5 segundos
-
-    return () => clearInterval(interval);
-  }, [reloadMessages]);
-  
-  // 🔹 FUNÇÃO DE ENVIO DE MENSAGEM 🔹
-  const handleSend = useCallback(async () => {
-    if (message.trim() && conversationId) {
-      const textToSend = message.trim();
-      setMessage(''); 
-      const senderName = messages[0]?.sender_name || userName || 'Você'; // Tenta pegar o nome
-      
-      // Adiciona a mensagem imediatamente (otimista)
-      const optimisticMessage: ChatMessage = {
-          conversation_id: conversationId,
-          timestamp: new Date().toISOString() + '#temp', // Temporário
-          sender_id: currentUserId || 'local', 
-          sender_name: senderName,
-          message_content: textToSend,
-      };
-      setMessages(prev => [optimisticMessage, ...prev]);
-
-      try {
-        const newMessage = await sendMessage(conversationId, textToSend);
-        
-        // Substitui a mensagem temporária pela real no estado
+      socket.on('new_message', (msg: ChatMessage) => {
         setMessages(prev => {
-            const index = prev.findIndex(m => m.timestamp === optimisticMessage.timestamp);
-            if (index > -1) {
-                prev[index] = newMessage;
-            }
-            return [...prev]; // Força a atualização do estado
+          // Remove mensagem otimista correspondente (pelo conteúdo + sender)
+          const withoutOptimistic = prev.filter(
+            m => !(m.timestamp.includes('#temp') && m.message_content === msg.message_content),
+          );
+          // Adiciona a real ao topo (lista invertida)
+          return [msg, ...withoutOptimistic];
         });
+      });
 
-      } catch (err: any) {
-        Alert.alert('Erro', 'Não foi possível enviar a mensagem. Tente novamente.');
-        setMessages(prev => prev.filter(m => m.timestamp !== optimisticMessage.timestamp)); // Remove a mensagem otimista
-        setMessage(textToSend); // Devolve o texto
+      socket.on('user_typing', ({ name, isTyping: typing }: { name: string; isTyping: boolean }) => {
+        setIsTyping(typing);
+        setTypingUser(name);
+      });
+
+      socket.on('error', (err: any) => {
+        console.warn('[Socket error]', err);
+      });
+
+      socketRef.current = socket;
+    };
+
+    connect();
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.emit('leave_conversation', { conversationId });
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+    };
+  }, [conversationId]);
+
+  useEffect(() => {
+    loadHistory();
+  }, []);
+
+  const handleTypingEvent = useCallback((text: string) => {
+    setMessage(text);
+    if (!socketRef.current || !conversationId) return;
+
+    socketRef.current.emit('typing', { conversationId, isTyping: true });
+
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => {
+      socketRef.current?.emit('typing', { conversationId, isTyping: false });
+    }, 1500);
+  }, [conversationId]);
+
+  const handleSend = useCallback(async () => {
+    if (!message.trim() || !conversationId) return;
+
+    const textToSend = message.trim();
+    setMessage('');
+
+    // Para o indicador de digitação
+    socketRef.current?.emit('typing', { conversationId, isTyping: false });
+
+    // Mensagem otimista
+    const optimistic: ChatMessage = {
+      conversation_id: conversationId,
+      timestamp: `${new Date().toISOString()}#temp-${Date.now()}`,
+      sender_id: currentUserId || 'local',
+      sender_name: userName || 'Você',
+      message_content: textToSend,
+    };
+    setMessages(prev => [optimistic, ...prev]);
+
+    if (socketRef.current?.connected) {
+      // Envia via Socket — o gateway persiste e emite 'new_message'
+      socketRef.current.emit('send_message', {
+        conversationId,
+        messageContent: textToSend,
+      });
+    } else {
+      // Fallback REST se socket desconectado
+      try {
+        const { sendMessage } = await import('@/services/chatService');
+        const real = await sendMessage(conversationId, textToSend);
+        setMessages(prev => {
+          const idx = prev.findIndex(m => m.timestamp === optimistic.timestamp);
+          if (idx > -1) {
+            const updated = [...prev];
+            updated[idx] = real;
+            return updated;
+          }
+          return prev;
+        });
+      } catch {
+        Alert.alert('Erro', 'Não foi possível enviar a mensagem.');
+        setMessages(prev => prev.filter(m => m.timestamp !== optimistic.timestamp));
+        setMessage(textToSend);
       }
     }
-  }, [message, conversationId, currentUserId, messages]);
+  }, [message, conversationId, currentUserId, userName]);
 
-
-  // 🔹 RENDERIZAÇÃO 🔹
   const renderItem = ({ item }: { item: ChatMessage }) => (
     <MessageBubble
       message={item.message_content}
-      time={new Date(item.timestamp.split('#')[0]).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-      // 🔹 Lógica: Se o ID do remetente for o seu, é uma bolha enviada.
+      time={formatTime(item.timestamp)}
       isSent={item.sender_id === currentUserId}
     />
   );
 
   if (isLoading) {
     return (
-        <CenteredView>
-            <ActivityIndicator size="large" color={AppTheme.colors.primary} />
-        </CenteredView>
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color={AppTheme.colors.tertiary} />
+        <Text style={styles.loadingText}>Carregando conversa...</Text>
+      </View>
     );
   }
 
   return (
-    <ScreenContainer>
-      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
-      <BackgroundWrapper>
+    <KeyboardAvoidingView
+      style={styles.screen}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+
+      {/* Fundo colorido do header */}
+      <View style={styles.headerBg}>
         <LoginSignupBackground />
-      </BackgroundWrapper>
-      <ContentWrapper>
-        <HeaderContainer>
-          
-          <BackIconButton 
-            color={AppTheme.colors.cardBackground}
-            onPress={() => router.back()} 
-            top={60}
-          />
-          
-          <UserInfoContainer>
-            <AvatarPlaceholder />
-            <UserName>{userName || 'Chat'}</UserName>
-          </UserInfoContainer>
-        </HeaderContainer>
+      </View>
 
-        <MessageListContainer>
-          <FlatList
-            data={messages}
-            renderItem={renderItem}
-            keyExtractor={(item) => item.timestamp} 
-            inverted 
-            contentContainerStyle={{ paddingVertical: 10 }}
-            ListEmptyComponent={
-                <CenteredView style={{paddingTop: 50}}>
-                    <Text style={{color: AppTheme.colors.placeholderText}}>Inicie a conversa!</Text>
-                </CenteredView>
-            }
-          />
-        </MessageListContainer>
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: STATUS_BAR_HEIGHT }]}>
+        <BackIconButton color={AppTheme.colors.cardBackground} onPress={() => router.back()} top={0} />
+        <View style={styles.userInfo}>
+          <Avatar name={userName || '?'} size={44} />
+          <View style={styles.userMeta}>
+            <Text style={styles.userName} numberOfLines={1}>{userName || 'Chat'}</Text>
+            <View style={styles.statusRow}>
+              <View style={[styles.dot, { backgroundColor: isConnected ? '#4ade80' : '#aaa' }]} />
+              <Text style={styles.userStatus}>{isConnected ? 'online' : 'reconectando...'}</Text>
+            </View>
+          </View>
+        </View>
+      </View>
 
-        <FooterContainer>
-          <MessageInput
-            value={message}
-            onChangeText={setMessage}
-            onSend={handleSend}
-          />
-        </FooterContainer>
-      </ContentWrapper>
-    </ScreenContainer>
+      {/* Mensagens */}
+      <View style={styles.messageList}>
+        <FlatList
+          data={messages}
+          renderItem={renderItem}
+          keyExtractor={item => item.timestamp}
+          inverted
+          contentContainerStyle={styles.flatListContent}
+          showsVerticalScrollIndicator={false}
+          ListHeaderComponent={
+            isTyping ? (
+              <View style={styles.typingRow}>
+                <Text style={styles.typingText}>{typingUser} está digitando...</Text>
+              </View>
+            ) : null
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyChat}>
+              <Text style={styles.emptyChatText}>Inicie a conversa! 👋</Text>
+            </View>
+          }
+        />
+      </View>
+
+      {/* Input */}
+      <View style={styles.footer}>
+        <MessageInput
+          value={message}
+          onChangeText={handleTypingEvent}
+          onSend={handleSend}
+        />
+      </View>
+    </KeyboardAvoidingView>
   );
 };
+
+const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: AppTheme.colors.background },
+  centered: {
+    flex: 1, justifyContent: 'center', alignItems: 'center',
+    backgroundColor: AppTheme.colors.background,
+  },
+  loadingText: {
+    marginTop: 12,
+    color: AppTheme.colors.placeholderText,
+    fontFamily: AppTheme.fonts.bodyMedium.fontFamily,
+    fontSize: AppTheme.fonts.bodyMedium.fontSize,
+  },
+  headerBg: { position: 'absolute', top: 0, left: 0, right: 0, height: 130, zIndex: 0 },
+  header: {
+    height: 130,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    zIndex: 1,
+    gap: 12,
+  },
+  userInfo: { flexDirection: 'row', alignItems: 'center', flex: 1, marginLeft: 8 },
+  userMeta: { marginLeft: 12, flex: 1 },
+  userName: {
+    fontSize: 18, fontWeight: '700',
+    color: AppTheme.colors.cardBackground,
+    fontFamily: AppTheme.fonts.titleMedium.fontFamily,
+  },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 3 },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  userStatus: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.8)',
+    fontFamily: AppTheme.fonts.bodySmall.fontFamily,
+  },
+  messageList: { flex: 1, paddingHorizontal: 12 },
+  flatListContent: { paddingVertical: 10 },
+  typingRow: { paddingHorizontal: 8, paddingBottom: 6 },
+  typingText: {
+    fontSize: 12,
+    color: AppTheme.colors.placeholderText,
+    fontStyle: 'italic',
+    fontFamily: AppTheme.fonts.bodySmall.fontFamily,
+  },
+  emptyChat: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80 },
+  emptyChatText: {
+    color: AppTheme.colors.placeholderText,
+    fontFamily: AppTheme.fonts.bodyMedium.fontFamily,
+    fontSize: AppTheme.fonts.bodyMedium.fontSize,
+  },
+  footer: {
+    backgroundColor: AppTheme.colors.cardBackground,
+    borderTopWidth: 1,
+    borderTopColor: AppTheme.colors.dotsColor,
+  },
+});
 
 export default ChatCommunity;

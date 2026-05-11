@@ -1,70 +1,37 @@
-import React, { useState, useCallback } from 'react'; // 🔹 Importa 'useCallback'
-import { View, Text, FlatList, StatusBar, SafeAreaView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native'; // 🔹 Importa 'ActivityIndicator' e 'Alert'
-import styled from 'styled-components/native';
+import React, { useState, useCallback } from 'react';
+import {
+  View,
+  Text,
+  FlatList,
+  StatusBar,
+  SafeAreaView,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+  StyleSheet,
+  Platform,
+} from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useRouter, useFocusEffect } from 'expo-router'; // 🔹 Importa 'useFocusEffect'
+import { useRouter, useFocusEffect } from 'expo-router';
 import { AppTheme } from '@/theme';
-import HomeBackground from '@/components/HomeBackground';
 import MessageCard from '@/components/Card/messageCard';
 import SearchInput from '@/components/Inputs/inputSearch';
+import EmptyState from '@/components/EmptyState';
 import MessagesAdd from '@/components/Modals/MessagesAddModal';
-import { getInbox, startConversationByEmail } from '@/services/chatService'; // 🔹 IMPORTA O SERVIÇO
+import { getInbox, startConversationByEmail } from '@/services/chatService';
+import { formatTime } from '@/utils/dateFormat';
 
-// 🔹 MOCK_MESSAGES removido
-
-const ScreenContainer = styled(SafeAreaView)`
-  flex: 1;
-  background-color: ${AppTheme.colors.background};
-`;
-// ... (Componentes Styled continuam iguais) ...
-const HeaderContainer = styled(View)`
-  padding: 0 16px;
-  flex-direction: row;
-  justify-content: center;
-  align-items: center;
-  position: relative;
-`;
-const TitleText = styled(Text)`
-  font-size: ${AppTheme.fonts.titleLarge.fontSize}px;
-  font-family: ${AppTheme.fonts.titleLarge.fontFamily};
-  font-weight: ${AppTheme.fonts.titleLarge.fontWeight};
-  color: ${AppTheme.colors.textColor};
-`;
-const AddButton = styled(TouchableOpacity)`
-  position: absolute;
-  right: 16px;
-`;
-const MessagesCountText = styled(Text)`
-  font-size: ${AppTheme.fonts.bodyMedium.fontSize}px;
-  font-family: ${AppTheme.fonts.bodyMedium.fontFamily};
-  font-weight: ${AppTheme.fonts.bodyMedium.fontWeight};
-  color: ${AppTheme.colors.textColor};
-  margin-top: 12px;  
-  margin-left: 20px;
-  margin-bottom: 16px;
-`;
-const ListContainer = styled(View)`
-  flex: 1;
-  background-color: ${AppTheme.colors.cardBackground};
-`;
-const CenteredView = styled(View)`
-  flex: 1;
-  justify-content: center;
-  align-items: center;
-  background-color: ${AppTheme.colors.cardBackground};
-`;
+const STATUS_BAR_HEIGHT = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 0;
 
 export default function MessagesScreen() {
   const [searchText, setSearchText] = useState('');
   const [isModalVisible, setIsModalVisible] = useState(false);
   const router = useRouter();
 
-  // 🔹 NOVOS ESTADOS
-  const [conversations, setConversations] = useState([]);
+  const [conversations, setConversations] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // 🔹 FUNÇÃO PARA CARREGAR O INBOX
   const loadInbox = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -78,7 +45,6 @@ export default function MessagesScreen() {
     }
   }, []);
 
-  // 🔹 CHAMA O 'loadInbox' TODA VEZ QUE A TELA GANHA FOCO
   useFocusEffect(
     useCallback(() => {
       loadInbox();
@@ -88,104 +54,118 @@ export default function MessagesScreen() {
   const filteredMessages = conversations.filter(
     (msg: any) =>
       msg.other_user_name.toLowerCase().includes(searchText.toLowerCase()) ||
-      msg.last_message.toLowerCase().includes(searchText.toLowerCase())
+      msg.last_message?.toLowerCase().includes(searchText.toLowerCase())
   );
 
   const handleOpenModal = () => setIsModalVisible(true);
   const handleCloseModal = () => setIsModalVisible(false);
 
-  // 🔹 FUNÇÃO DE ADICIONAR CONVERSA ATUALIZADA
   const handleAddConversation = async (email: string) => {
+    if (!email || !email.includes('@')) {
+      Alert.alert('Erro', 'Por favor, insira um e-mail válido.');
+      return;
+    }
+    handleCloseModal();
     try {
-      if (!email || !email.includes('@')) {
-        Alert.alert('Erro', 'Por favor, insira um e-mail válido.');
-        return;
-      }
-      handleCloseModal();
-      // Chama o serviço para criar/encontrar a conversa
       const newConversation = await startConversationByEmail(email);
-      
-      // Navega para a tela de chat com os dados da nova conversa
-      handleOpenChat(
-        newConversation.conversation_id,
-        newConversation.other_user_name
-      );
-
+      handleOpenChat(newConversation.conversation_id, newConversation.other_user_name);
     } catch (err: any) {
       Alert.alert('Erro', err.message || 'Não foi possível iniciar a conversa.');
     }
   };
 
-  // 🔹 FUNÇÃO DE ABRIR CHAT ATUALIZADA
   const handleOpenChat = (conversationId: string, userName: string) => {
     router.push({
       pathname: '/screens/community/chatCommunity',
-      // Passa os parâmetros necessários para a próxima tela
-      params: { conversationId, userName }, 
+      params: { conversationId, userName },
     });
   };
 
-  return (
-    <ScreenContainer>
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-      <HomeBackground />
-      <View style={{ flex: 1, marginTop: -540, zIndex: 1 }}>
-        <HeaderContainer>
-          <TitleText>MENSAGENS</TitleText>
-          <AddButton onPress={handleOpenModal}>
-            <MaterialIcons name="add" size={26} color={AppTheme.colors.textColor} />
-          </AddButton>
-        </HeaderContainer>
-
-        <View style={{ marginHorizontal: 16, marginTop: 16 }}>
-          <SearchInput
-            value={searchText}
-            onChangeText={setSearchText}
-            placeholder="Pesquisar"
-          />
+  const renderContent = () => {
+    if (isLoading) {
+      return (
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={AppTheme.colors.tertiary} />
         </View>
+      );
+    }
 
-        <MessagesCountText>Mensagens {conversations.length}</MessagesCountText>
+    if (error) {
+      return (
+        <EmptyState
+          icon="wifi-off"
+          title="Sem conexão"
+          subtitle={error}
+          actionLabel="Tentar novamente"
+          onAction={loadInbox}
+        />
+      );
+    }
 
-        <ListContainer>
-          {/* 🔹 LÓGICA DE RENDERIZAÇÃO ATUALIZADA */}
-          {isLoading ? (
-            <CenteredView>
-              <ActivityIndicator size="large" color={AppTheme.colors.primary} />
-            </CenteredView>
-          ) : error ? (
-            <CenteredView>
-              <Text style={{color: 'red'}}>{error}</Text>
-            </CenteredView>
-          ) : (
-            <FlatList
-              data={filteredMessages}
-              keyExtractor={(item: any) => item.conversation_id}
-              renderItem={({ item }: { item: any }) => (
-                <MessageCard
-                  // Mapeia os dados do backend para os props do seu componente
-                  userName={item.other_user_name}
-                  lastMessage={item.last_message || '...'}
-                  time={new Date(item.last_message_timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                  unreadCount={item.unread_count}
-                  isRead={item.unread_count === 0}
-                  onPress={() => handleOpenChat(item.conversation_id, item.other_user_name)}
-                />
-              )}
-              contentContainerStyle={{
-                paddingTop: 8,
-                paddingBottom: 12,
-              }}
-              ListEmptyComponent={
-                <CenteredView style={{padding: 20}}>
-                  <Text style={{color: AppTheme.colors.placeholderText, textAlign: 'center'}}>
-                    Nenhuma conversa encontrada. Clique no '+' para iniciar uma.
-                  </Text>
-                </CenteredView>
-              }
-            />
-          )}
-        </ListContainer>
+    return (
+      <FlatList
+        data={filteredMessages}
+        keyExtractor={(item: any) => item.conversation_id}
+        renderItem={({ item }: { item: any }) => (
+          <MessageCard
+            userName={item.other_user_name}
+            lastMessage={item.last_message || '...'}
+            time={item.last_message_timestamp ? formatTime(item.last_message_timestamp) : ''}
+            unreadCount={item.unread_count}
+            isRead={item.unread_count === 0}
+            onPress={() => handleOpenChat(item.conversation_id, item.other_user_name)}
+          />
+        )}
+        contentContainerStyle={{ flexGrow: 1 }}
+        ListEmptyComponent={
+          <EmptyState
+            icon="chat-bubble-outline"
+            title="Nenhuma conversa"
+            subtitle="Toque em + para iniciar uma conversa com outro paciente."
+            actionLabel="Nova conversa"
+            onAction={handleOpenModal}
+          />
+        }
+      />
+    );
+  };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+
+      {/* Header fixo com safe area manual */}
+      <View style={[styles.header, { paddingTop: STATUS_BAR_HEIGHT + 12 }]}>
+        <Text style={styles.title}>MENSAGENS</Text>
+        <TouchableOpacity
+          onPress={handleOpenModal}
+          style={styles.addButton}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          activeOpacity={0.7}
+        >
+          <MaterialIcons name="add" size={26} color={AppTheme.colors.tertiary} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Search */}
+      <View style={styles.searchWrapper}>
+        <SearchInput
+          value={searchText}
+          onChangeText={setSearchText}
+          placeholder="Pesquisar conversas..."
+        />
+      </View>
+
+      {/* Count */}
+      {!isLoading && conversations.length > 0 && (
+        <Text style={styles.countText}>
+          {conversations.length} {conversations.length === 1 ? 'conversa' : 'conversas'}
+        </Text>
+      )}
+
+      {/* List */}
+      <View style={styles.listContainer}>
+        {renderContent()}
       </View>
 
       <MessagesAdd
@@ -193,6 +173,58 @@ export default function MessagesScreen() {
         onDismiss={handleCloseModal}
         onAddConversation={handleAddConversation}
       />
-    </ScreenContainer>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: AppTheme.colors.background,
+  },
+  header: {
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: AppTheme.colors.cardBackground,
+    position: 'relative',
+    borderBottomWidth: 1,
+    borderBottomColor: AppTheme.colors.dotsColor,
+  },
+  title: {
+    fontFamily: AppTheme.fonts.titleLarge.fontFamily,
+    fontSize: AppTheme.fonts.titleLarge.fontSize,
+    fontWeight: '700',
+    color: AppTheme.colors.textColor,
+  },
+  addButton: {
+    position: 'absolute',
+    right: 16,
+    bottom: 12,
+  },
+  searchWrapper: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: AppTheme.colors.cardBackground,
+  },
+  countText: {
+    fontSize: AppTheme.fonts.bodySmall.fontSize,
+    fontFamily: AppTheme.fonts.bodySmall.fontFamily,
+    color: AppTheme.colors.placeholderText,
+    marginTop: 12,
+    marginLeft: 20,
+    marginBottom: 8,
+  },
+  listContainer: {
+    flex: 1,
+    backgroundColor: AppTheme.colors.cardBackground,
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+});

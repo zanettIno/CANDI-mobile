@@ -5,6 +5,7 @@ import * as Kadwa from '@expo-google-fonts/kadwa';
 import * as Inter from '@expo-google-fonts/inter';
 import { useEffect } from 'react';
 import { pt, registerTranslation } from "react-native-paper-dates";
+import { ProfileProvider } from '@/context/ProfileContext';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -20,19 +21,20 @@ export default function RootLayout() {
     }
   }, [fontsLoaded, fontError]);
 
-  if (!fontsLoaded && !fontError) {
-    return null;
-  }
+  if (!fontsLoaded && !fontError) return null;
 
   registerTranslation("pt", pt);
 
   return (
     <PaperProvider theme={AppTheme}>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index"/>
-        <Stack.Screen name="cadastro"/>
-        <Stack.Screen name="screens/community/chatCommunity" />
-      </Stack>
+      <ProfileProvider>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="index" />
+          <Stack.Screen name="cadastro" />
+          <Stack.Screen name="screens/community/chatCommunity" />
+          <Stack.Screen name="screens/community/groupCommunity" />
+        </Stack>
+      </ProfileProvider>
     </PaperProvider>
   );
 }
