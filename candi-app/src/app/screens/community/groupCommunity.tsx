@@ -151,7 +151,16 @@ export default function GroupCommunity() {
       setChatLoading(false);
 
       const token = await getValidAccessToken();
-      const socket = io(`${SOCKET_URL}/chat`, { auth: { token }, transports: ['websocket'], reconnection: true });
+      const socket = io(`${SOCKET_URL}/chat`, {
+        auth: { token },
+        transports: ['polling', 'websocket'],
+        upgrade: true,
+        reconnection: true,
+        reconnectionDelay: 1000,
+        reconnectionAttempts: Infinity,
+        pingInterval: 25000,
+        pingTimeout: 60000,
+      });
 
       socket.on('connect', () => {
         setIsConnected(true);

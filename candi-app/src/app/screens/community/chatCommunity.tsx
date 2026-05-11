@@ -92,9 +92,16 @@ export const ChatCommunity: React.FC = () => {
 
       const socket = io(`${SOCKET_URL}/chat`, {
         auth: { token },
-        transports: ['websocket'],
+        // Começa com polling (funciona 100% através de qualquer proxy/Cloudflare)
+        // e faz upgrade para WebSocket quando possível
+        transports: ['polling', 'websocket'],
+        upgrade: true,
         reconnection: true,
         reconnectionDelay: 1000,
+        reconnectionAttempts: Infinity,
+        // Mantém conexão viva além do timeout do Cloudflare (100s)
+        pingInterval: 25000,
+        pingTimeout: 60000,
       });
 
       socket.on('connect', () => {
