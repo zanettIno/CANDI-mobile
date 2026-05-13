@@ -3,7 +3,7 @@ import {
   View, Text, FlatList, StatusBar, ActivityIndicator,
   Alert, Platform, StyleSheet, KeyboardAvoidingView,
 } from 'react-native';
-import { io, Socket } from 'socket.io-client';
+import { Socket } from 'socket.io-client';
 import { AppTheme } from '../../../theme/index';
 import { MessageBubble } from '@/components/Bubble/messageBubble';
 import { MessageInput } from '@/components/Inputs/inputMessage';
@@ -12,11 +12,9 @@ import BackIconButton from '@/components/BackIconButton';
 import Avatar from '@/components/Avatar';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { getMessages } from '@/services/chatService';
-// @ts-ignore – authService is a JS file without type declarations
-import { getValidAccessToken } from '@/services/authService';
+import { initializeSocket } from '@/services/socketService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Buffer } from 'buffer';
-import { API_BASE_URL } from '@/constants/api';
 import { formatTime } from '@/utils/dateFormat';
 
 interface ChatMessage {
@@ -28,7 +26,6 @@ interface ChatMessage {
 }
 
 const STATUS_BAR_HEIGHT = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 44;
-const SOCKET_URL = API_BASE_URL.replace('/api', '');
 
 const decodeJwtId = async (): Promise<string | null> => {
   const token = await AsyncStorage.getItem('accessToken');
@@ -61,7 +58,7 @@ export const ChatCommunity: React.FC = () => {
     let mounted = true;
 
     const init = async () => {
-      // 1. Resolve myId e otherUserId antes de qualquer coisa
+      // 1. Resolve myId
       const myId = await decodeJwtId();
       if (!mounted) return;
 
@@ -83,73 +80,58 @@ export const ChatCommunity: React.FC = () => {
         if (mounted) setIsLoading(false);
       }
 
-      // 3. Conecta socket (já tem otherUserIdRef resolvido)
-      const token = await getValidAccessToken();
-      if (!mounted) return;
+      // 3. Inicializa socket global (reutiliza se já conectado)
+      try {
+        const socket = await initializeSocket();
+        socketRef.current = socket;
 
-      const socket = io(`${SOCKET_URL}/chat`, {
-        auth: { token },
-        transports: ['websocket', 'polling'],
-        reconnection: true,
-        reconnectionDelay: 10000,
-        reconnectionAttempts: Infinity,
-        timeout: 10000,
-      });
+        // Setup listeners
+        const handleNewMessage = (msg: ChatMessage) => {
+          if (!mounted) return;
+          console.log('[Socket] Mensagem recebida:', msg.message_content, 'de', msg.sender_id);
+          setMessages(prev => {
+            const without = prev.filter(
+              m => !(m.timestamp.includes('#temp') && m.message_content === msg.message_content && m.sender_id === msg.sender_id),
+            );
+            if (without.some(m => m.timestamp === msg.timestamp)) return without;
+            return [msg, ...without];
+          });
+        };
 
-      socket.on('connect', () => {
-        if (!mounted) return;
-        console.log('[Socket] Conectado ao servidor, socket.id:', socket.id);
-        socket.emit('join_conversation', { conversationId });
-      });
+        const handleTyping = ({ isTyping: typing }: { name: string; isTyping: boolean }) => {
+          if (!mounted) return;
+          setIsTyping(typing);
+        };
 
-      socket.on('disconnect', (reason) => {
-        console.log('[Socket] Desconectado:', reason);
-      });
+        socket.on('new_message', handleNewMessage);
+        socket.on('user_typing', handleTyping);
 
-      socket.on('joined', ({ conversationId: cid, room }) => {
-        console.log('[Socket] Entrou na sala:', room, 'para conversa:', cid);
-      });
+        // Join conversation
+        if (socket.connected) {
+          socket.emit('join_conversation', { conversationId });
+        } else {
+          socket.once('connect', () => {
+            socket.emit('join_conversation', { conversationId });
+          });
+        }
 
-      socket.on('error', (err) => {
-        console.error('[Socket] Erro:', err);
-      });
-
-      socket.on('connect_error', (err) => {
-        console.error('[Socket] Erro de conexão:', err);
-      });
-
-      socket.on('new_message', (msg: ChatMessage) => {
-        if (!mounted) return;
-        console.log('[Socket] Mensagem recebida:', msg.message_content, 'de', msg.sender_id);
-        setMessages(prev => {
-          const without = prev.filter(
-            m => !(m.timestamp.includes('#temp') && m.message_content === msg.message_content && m.sender_id === msg.sender_id),
-          );
-          if (without.some(m => m.timestamp === msg.timestamp)) return without;
-          return [msg, ...without];
-        });
-      });
-
-
-      socket.on('user_typing', ({ isTyping: typing }: { name: string; isTyping: boolean }) => {
-        if (!mounted) return;
-        setIsTyping(typing);
-      });
-
-      socket.on('error', (err: any) => console.warn('[Socket error]', err));
-
-      socketRef.current = socket;
+        return () => {
+          socket.off('new_message', handleNewMessage);
+          socket.off('user_typing', handleTyping);
+          socket.emit('leave_conversation', { conversationId });
+        };
+      } catch (error) {
+        console.error('[Socket] Erro ao inicializar:', error);
+        if (mounted) Alert.alert('Erro', 'Falha ao conectar ao chat.');
+      }
     };
 
-    init();
+    init().then(cleanup => {
+      return cleanup;
+    });
 
     return () => {
       mounted = false;
-      if (socketRef.current) {
-        socketRef.current.emit('leave_conversation', { conversationId });
-        socketRef.current.disconnect();
-        socketRef.current = null;
-      }
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     };
   }, [conversationId]);
