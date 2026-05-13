@@ -317,29 +317,29 @@ const styles = StyleSheet.create({
   },
 
   messageList: { flex: 1 },
-  flatListContent: { paddingHorizontal: 12, paddingVertical: 12 },
+  flatListContent: { paddingHorizontal: 10, paddingVertical: 8 },
 
   messageRow: {
     flexDirection: 'row',
-    marginVertical: 2,
+    marginVertical: 1,
     alignItems: 'flex-end',
-    gap: 6,
+    gap: 4,
   },
   rowSent: { justifyContent: 'flex-end' },
   rowReceived: { justifyContent: 'flex-start' },
-  avatarSlot: { width: 32, alignItems: 'center', justifyContent: 'flex-end' },
-  bubbleWrap: { maxWidth: '78%' },
+  avatarSlot: { width: 28, alignItems: 'center', justifyContent: 'flex-end' },
+  bubbleWrap: { maxWidth: '85%' },
   bubbleWrapSent: { alignItems: 'flex-end' },
   bubbleWrapReceived: { alignItems: 'flex-start' },
   senderName: {
-    fontSize: 11, color: AppTheme.colors.placeholderText,
+    fontSize: 10, color: AppTheme.colors.placeholderText,
     fontFamily: AppTheme.fonts.labelSmall.fontFamily,
-    marginBottom: 2, marginLeft: 4,
+    marginBottom: 1, marginLeft: 2,
   },
   sending: {
-    fontSize: 10, color: AppTheme.colors.placeholderText,
+    fontSize: 9, color: AppTheme.colors.placeholderText,
     fontFamily: AppTheme.fonts.bodySmall.fontFamily,
-    marginTop: 2,
+    marginTop: 1,
   },
 
   typingBubble: {

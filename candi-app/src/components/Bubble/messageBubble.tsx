@@ -184,8 +184,8 @@ const sharedStyles = StyleSheet.create({
 
 const styles = StyleSheet.create({
   container: {
-    maxWidth: '82%',
-    marginVertical: 3,
+    maxWidth: '90%',
+    marginVertical: 2,
   },
   containerSent: {
     alignSelf: 'flex-end',
@@ -194,9 +194,9 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   bubble: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
@@ -218,9 +218,9 @@ const styles = StyleSheet.create({
     borderColor: AppTheme.colors.dotsColor,
   },
   message: {
-    fontSize: 15,
-    lineHeight: 21,
-    marginBottom: 4,
+    fontSize: 14,
+    lineHeight: 19,
+    marginBottom: 2,
   },
   messageSent: {
     color: AppTheme.colors.cardBackground,
@@ -231,12 +231,13 @@ const styles = StyleSheet.create({
     fontFamily: AppTheme.fonts.bodyMedium.fontFamily,
   },
   time: {
-    fontSize: 11,
+    fontSize: 10,
     alignSelf: 'flex-end',
     fontFamily: AppTheme.fonts.bodySmall.fontFamily,
+    marginTop: 2,
   },
   timeSent: {
-    color: 'rgba(255,255,255,0.7)',
+    color: 'rgba(255,255,255,0.65)',
   },
   timeReceived: {
     color: AppTheme.colors.placeholderText,
