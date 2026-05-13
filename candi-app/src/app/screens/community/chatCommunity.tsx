@@ -123,6 +123,7 @@ export const ChatCommunity: React.FC = () => {
 
       socket.on('new_message', (msg: ChatMessage) => {
         if (!mounted) return;
+        console.log('[Socket] Mensagem recebida:', msg.message_content, 'de', msg.sender_id);
         setMessages(prev => {
           const without = prev.filter(
             m => !(m.timestamp.includes('#temp') && m.message_content === msg.message_content && m.sender_id === msg.sender_id),
