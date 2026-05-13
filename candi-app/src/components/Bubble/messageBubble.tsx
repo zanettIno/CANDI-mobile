@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Image, StyleSheet, Platform, TouchableOpacity } from 'react-native';
+import { View, Text, Image, StyleSheet, Platform, TouchableOpacity, ViewStyle } from 'react-native';
 import { AppTheme } from '../../theme/index';
 import { MaterialIcons } from '@expo/vector-icons';
 
@@ -111,9 +111,12 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, time, isS
         <Text style={[styles.message, isSent ? styles.messageSent : styles.messageReceived]}>
           {message}
         </Text>
-        <Text style={[styles.time, isSent ? styles.timeSent : styles.timeReceived]}>
-          {time}
-        </Text>
+        <View style={styles.footer}>
+          <Text style={[styles.time, isSent ? styles.timeSent : styles.timeReceived]}>
+            {time}
+          </Text>
+          {isSent && <MaterialIcons name="done" size={12} color="rgba(255,255,255,0.65)" />}
+        </View>
       </View>
     </View>
   );
@@ -220,7 +223,7 @@ const styles = StyleSheet.create({
   message: {
     fontSize: 14,
     lineHeight: 19,
-    marginBottom: 2,
+    marginBottom: 4,
   },
   messageSent: {
     color: AppTheme.colors.cardBackground,
@@ -230,11 +233,15 @@ const styles = StyleSheet.create({
     color: AppTheme.colors.textColor,
     fontFamily: AppTheme.fonts.bodyMedium.fontFamily,
   },
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 2,
+  },
   time: {
     fontSize: 10,
-    alignSelf: 'flex-end',
     fontFamily: AppTheme.fonts.bodySmall.fontFamily,
-    marginTop: 2,
   },
   timeSent: {
     color: 'rgba(255,255,255,0.65)',
