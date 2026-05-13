@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
-import { io, Socket } from 'socket.io-client';
+import { Socket } from 'socket.io-client';
 import { AppTheme } from '@/theme';
 import LoginSignupBackground from '@/components/LoginSignupBackground';
 import BackIconButton from '@/components/BackIconButton';
@@ -23,6 +23,7 @@ import {
   removeMember, updateMemberRole, deleteGroupPost,
 } from '@/services/communityService';
 import { getMessages, sendMessage as sendChatMessage } from '@/services/chatService';
+import { initializeSocket } from '@/services/socketService';
 // @ts-ignore – authService is a JS file without type declarations
 import { getValidAccessToken } from '@/services/authService';
 import { useProfile } from '@/context/ProfileContext';
@@ -154,82 +155,81 @@ export default function GroupCommunity() {
       setChatMessages([...history].reverse());
       setChatLoading(false);
 
-      const token = await getValidAccessToken();
-      const socket = io(`${SOCKET_URL}/chat`, {
-        auth: { token },
-        transports: ['websocket', 'polling'],
-        reconnection: true,
-        reconnectionDelay: 10000,
-        reconnectionAttempts: Infinity,
-        timeout: 10000,
-      });
+      try {
+        const socket = await initializeSocket();
+        socketRef.current = socket;
+        setIsConnected(socket.connected);
 
-      socket.on('connect', () => {
-        console.log('[Socket] Conectado ao servidor');
-        setIsConnected(true);
-        socket.emit('join_conversation', { conversationId: convId });
-      });
-      socket.on('disconnect', (reason) => {
-        console.log('[Socket] Desconectado:', reason);
-        setIsConnected(false);
-      });
-      socket.on('error', (err) => {
-        console.error('[Socket] Erro:', err);
-      });
-      socket.on('connect_error', (err) => {
-        console.error('[Socket] Erro de conexão:', err);
-      });
-      socket.on('new_message', (msg: ChatMessage) => {
-        if (!mounted) return;
-        setChatMessages(prev => {
-          const without = prev.filter(m => !(m.timestamp.includes('#temp') && m.message_content === msg.message_content && m.sender_id === msg.sender_id));
-          if (without.some(m => m.timestamp === msg.timestamp)) return without;
-          return [msg, ...without];
-        });
-        // Show notification if message is from someone else
-        if (msg.sender_id !== currentUserId) {
-          showNotification({
-            title: msg.sender_name,
-            message: msg.message_content,
-            type: 'info',
-            duration: 4000,
+        const handleNewMessage = (msg: ChatMessage) => {
+          if (!mounted) return;
+          setChatMessages(prev => {
+            const without = prev.filter(m => !(m.timestamp.includes('#temp') && m.message_content === msg.message_content && m.sender_id === msg.sender_id));
+            if (without.some(m => m.timestamp === msg.timestamp)) return without;
+            return [msg, ...without];
+          });
+          if (msg.sender_id !== currentUserId) {
+            showNotification({
+              title: msg.sender_name,
+              message: msg.message_content,
+              type: 'info',
+              duration: 4000,
+            });
+          }
+        };
+
+        const handleOnlineUsers = (data: { online: string[] }) => {
+          if (!mounted) return;
+          setOnlineUsers(new Set(data.online));
+        };
+
+        const handleUserOnline = (data: { profile_id: string }) => {
+          if (!mounted) return;
+          setOnlineUsers(prev => new Set([...prev, data.profile_id]));
+        };
+
+        const handleUserOffline = (data: { profile_id: string }) => {
+          if (!mounted) return;
+          setOnlineUsers(prev => {
+            const n = new Set(prev);
+            n.delete(data.profile_id);
+            return n;
+          });
+        };
+
+        socket.on('new_message', handleNewMessage);
+        socket.on('online_users', handleOnlineUsers);
+        socket.on('user_online', handleUserOnline);
+        socket.on('user_offline', handleUserOffline);
+
+        if (socket.connected) {
+          socket.emit('join_conversation', { conversationId: convId });
+        } else {
+          socket.once('connect', () => {
+            socket.emit('join_conversation', { conversationId: convId });
           });
         }
-      });
 
-      socket.on('online_users', (data: { online: string[] }) => {
-        if (!mounted) return;
-        setOnlineUsers(new Set(data.online));
-      });
-
-      socket.on('user_online', (data: { profile_id: string }) => {
-        if (!mounted) return;
-        setOnlineUsers(prev => new Set([...prev, data.profile_id]));
-      });
-
-      socket.on('user_offline', (data: { profile_id: string }) => {
-        if (!mounted) return;
-        setOnlineUsers(prev => {
-          const n = new Set(prev);
-          n.delete(data.profile_id);
-          return n;
-        });
-      });
-
-      socketRef.current = socket;
+        return () => {
+          socket.off('new_message', handleNewMessage);
+          socket.off('online_users', handleOnlineUsers);
+          socket.off('user_online', handleUserOnline);
+          socket.off('user_offline', handleUserOffline);
+          socket.emit('leave_conversation', { conversationId: convId });
+        };
+      } catch (error) {
+        console.error('[Socket] Erro ao inicializar:', error);
+        if (mounted) Alert.alert('Erro', 'Falha ao conectar ao chat.');
+      }
     };
 
-    initChat();
+    initChat().then(cleanup => {
+      return cleanup;
+    });
 
     return () => {
       mounted = false;
-      if (socketRef.current) {
-        socketRef.current.emit('leave_conversation', { conversationId: convId });
-        socketRef.current.disconnect();
-        socketRef.current = null;
-      }
     };
-  }, [tab, isMember]);
+  }, [tab, isMember, currentUserId]);
 
   const handleSendChat = useCallback(async () => {
     if (!chatText.trim()) return;
