@@ -2,7 +2,6 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View, Text, FlatList, StatusBar, ActivityIndicator,
   Alert, Platform, StyleSheet, KeyboardAvoidingView,
-  TouchableOpacity,
 } from 'react-native';
 import { io, Socket } from 'socket.io-client';
 import { AppTheme } from '../../../theme/index';
@@ -52,13 +51,10 @@ export const ChatCommunity: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isConnected, setIsConnected] = useState(false);
-  const [isOtherOnline, setIsOtherOnline] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const socketRef = useRef<Socket | null>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const otherUserIdRef = useRef<string | null>(null);
-  const onlineUsersRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (!conversationId) return;
@@ -103,14 +99,11 @@ export const ChatCommunity: React.FC = () => {
       socket.on('connect', () => {
         if (!mounted) return;
         console.log('[Socket] Conectado ao servidor');
-        setIsConnected(true);
         socket.emit('join_conversation', { conversationId });
-        socket.emit('get_online_users');
       });
 
       socket.on('disconnect', (reason) => {
         console.log('[Socket] Desconectado:', reason);
-        if (mounted) setIsConnected(false);
       });
 
       socket.on('error', (err) => {
@@ -133,25 +126,6 @@ export const ChatCommunity: React.FC = () => {
         });
       });
 
-      socket.on('online_users', ({ online }: { online: string[] }) => {
-        if (!mounted) return;
-        onlineUsersRef.current = new Set(online);
-        if (otherUserIdRef.current) {
-          setIsOtherOnline(onlineUsersRef.current.has(otherUserIdRef.current));
-        }
-      });
-
-      socket.on('user_online', ({ profile_id }: { profile_id: string }) => {
-        if (!mounted) return;
-        onlineUsersRef.current.add(profile_id);
-        if (otherUserIdRef.current === profile_id) setIsOtherOnline(true);
-      });
-
-      socket.on('user_offline', ({ profile_id }: { profile_id: string }) => {
-        if (!mounted) return;
-        onlineUsersRef.current.delete(profile_id);
-        if (otherUserIdRef.current === profile_id) setIsOtherOnline(false);
-      });
 
       socket.on('user_typing', ({ isTyping: typing }: { name: string; isTyping: boolean }) => {
         if (!mounted) return;
@@ -205,7 +179,12 @@ export const ChatCommunity: React.FC = () => {
       console.log('[Socket] Enviando mensagem via socket:', textToSend);
       socketRef.current.emit('send_message', { conversationId, messageContent: textToSend });
     } else {
-      console.log('[Socket] Socket não conectado, usando API fallback');
+      console.log('[Socket] Socket não conectado. Estado:', {
+        socket: !!socketRef.current,
+        connected: socketRef.current?.connected,
+        id: socketRef.current?.id,
+      });
+      console.log('[Socket] Usando API fallback');
       try {
         const { sendMessage } = await import('@/services/chatService');
         const real = await sendMessage(conversationId, textToSend);
@@ -274,16 +253,6 @@ export const ChatCommunity: React.FC = () => {
         <Avatar name={userName || '?'} size={42} />
         <View style={styles.userMeta}>
           <Text style={styles.userName} numberOfLines={1}>{userName || 'Chat'}</Text>
-          <View style={styles.statusRow}>
-            <View style={[styles.dot, {
-              backgroundColor: isOtherOnline ? '#4ade80' : 'rgba(255,255,255,0.4)',
-            }]} />
-            <Text style={styles.statusText}>
-              {isConnected
-                ? (isOtherOnline ? 'online agora' : 'offline')
-                : 'reconectando...'}
-            </Text>
-          </View>
         </View>
       </View>
 
