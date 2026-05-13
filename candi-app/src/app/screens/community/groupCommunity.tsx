@@ -78,6 +78,7 @@ export default function GroupCommunity() {
   const [chatText, setChatText] = useState('');
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
   const socketRef = useRef<Socket | null>(null);
   const typingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -182,6 +183,25 @@ export default function GroupCommunity() {
           const without = prev.filter(m => !(m.timestamp.includes('#temp') && m.message_content === msg.message_content && m.sender_id === msg.sender_id));
           if (without.some(m => m.timestamp === msg.timestamp)) return without;
           return [msg, ...without];
+        });
+      });
+
+      socket.on('online_users', (data: { online: string[] }) => {
+        if (!mounted) return;
+        setOnlineUsers(new Set(data.online));
+      });
+
+      socket.on('user_online', (data: { profile_id: string }) => {
+        if (!mounted) return;
+        setOnlineUsers(prev => new Set([...prev, data.profile_id]));
+      });
+
+      socket.on('user_offline', (data: { profile_id: string }) => {
+        if (!mounted) return;
+        setOnlineUsers(prev => {
+          const n = new Set(prev);
+          n.delete(data.profile_id);
+          return n;
         });
       });
 
@@ -382,6 +402,7 @@ export default function GroupCommunity() {
     const badge = roleBadge(m.role);
     const isMe = m.profile_id === myProfileId;
     const targetIsAdmin = m.role === 'admin';
+    const isOnline = onlineUsers.has(m.profile_id);
 
     const targetIsCoLeader = m.role === 'co-leader';
     // Admin pode promover/rebaixar co-líder e remover qualquer um (exceto si mesmo e outro admin)
@@ -394,7 +415,10 @@ export default function GroupCommunity() {
       <View style={s.memberRow}>
         <Avatar name={m.member_name} size={42} />
         <View style={{ flex: 1 }}>
-          <Text style={s.memberName}>{m.member_name}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <View style={[s.onlineIndicator, { backgroundColor: isOnline ? '#10b981' : '#9ca3af' }]} />
+            <Text style={s.memberName}>{m.member_name}</Text>
+          </View>
           <Text style={s.memberSince}>desde {new Date(m.joined_at).toLocaleDateString('pt-BR')}</Text>
         </View>
         {badge && (
@@ -693,6 +717,7 @@ const s = StyleSheet.create({
   pendingRow: { borderColor: '#fde68a', backgroundColor: '#fffbeb' },
   memberName: { fontFamily: AppTheme.fonts.bodyMedium.fontFamily, fontSize: AppTheme.fonts.bodyMedium.fontSize, fontWeight: '600', color: AppTheme.colors.nameText },
   memberSince: { fontSize: 12, color: AppTheme.colors.placeholderText, fontFamily: AppTheme.fonts.bodySmall.fontFamily, marginTop: 2 },
+  onlineIndicator: { width: 8, height: 8, borderRadius: 4 },
   badge: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
   badgeText: { fontSize: 11, fontWeight: '700', fontFamily: AppTheme.fonts.labelSmall.fontFamily },
   approveBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#22c55e', alignItems: 'center', justifyContent: 'center' },
