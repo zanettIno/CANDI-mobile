@@ -93,7 +93,7 @@ export const ChatCommunity: React.FC = () => {
 
       const socket = io(`${SOCKET_URL}/chat`, {
         auth: { token },
-        transports: ['polling'],
+        transports: ['websocket', 'polling'],
         reconnection: true,
         reconnectionDelay: 10000,
         reconnectionAttempts: Infinity,
