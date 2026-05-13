@@ -98,12 +98,16 @@ export const ChatCommunity: React.FC = () => {
 
       socket.on('connect', () => {
         if (!mounted) return;
-        console.log('[Socket] Conectado ao servidor');
+        console.log('[Socket] Conectado ao servidor, socket.id:', socket.id);
         socket.emit('join_conversation', { conversationId });
       });
 
       socket.on('disconnect', (reason) => {
         console.log('[Socket] Desconectado:', reason);
+      });
+
+      socket.on('joined', ({ conversationId: cid, room }) => {
+        console.log('[Socket] Entrou na sala:', room, 'para conversa:', cid);
       });
 
       socket.on('error', (err) => {
@@ -163,6 +167,14 @@ export const ChatCommunity: React.FC = () => {
   const handleSend = useCallback(async () => {
     if (!message.trim() || !conversationId) return;
     const textToSend = message.trim();
+    console.log('[Send] Tentando enviar mensagem');
+    console.log('[Send] Socket state:', {
+      exists: !!socketRef.current,
+      connected: socketRef.current?.connected,
+      id: socketRef.current?.id,
+      readyState: socketRef.current?.io?.engine?.readyState,
+    });
+
     setMessage('');
     socketRef.current?.emit('typing', { conversationId, isTyping: false });
 
@@ -179,12 +191,7 @@ export const ChatCommunity: React.FC = () => {
       console.log('[Socket] Enviando mensagem via socket:', textToSend);
       socketRef.current.emit('send_message', { conversationId, messageContent: textToSend });
     } else {
-      console.log('[Socket] Socket não conectado. Estado:', {
-        socket: !!socketRef.current,
-        connected: socketRef.current?.connected,
-        id: socketRef.current?.id,
-      });
-      console.log('[Socket] Usando API fallback');
+      console.log('[Socket] Socket não conectado. Usando API fallback');
       try {
         const { sendMessage } = await import('@/services/chatService');
         const real = await sendMessage(conversationId, textToSend);
