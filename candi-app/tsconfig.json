@@ -1,7 +1,9 @@
 {
   "compilerOptions": {
     "target": "ESNext",
-    "lib": ["ESNext"],
+    "lib": [
+      "ESNext"
+    ],
     "module": "ESNext",
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
@@ -14,7 +16,9 @@
     "baseUrl": "./src",
     "ignoreDeprecations": "6.0",
     "paths": {
-      "@/*": ["*"]
+      "@/*": [
+        "*"
+      ]
     }
   },
   "include": [
@@ -22,5 +26,6 @@
     "src/**/*.tsx",
     "expo-env.d.ts",
     ".expo/types/**/*.ts"
-  ]
+  ],
+  "extends": "expo/tsconfig.base"
 }

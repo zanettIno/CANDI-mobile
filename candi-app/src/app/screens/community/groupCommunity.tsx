@@ -162,10 +162,20 @@ export default function GroupCommunity() {
       });
 
       socket.on('connect', () => {
+        console.log('[Socket] Conectado ao servidor');
         setIsConnected(true);
         socket.emit('join_conversation', { conversationId: convId });
       });
-      socket.on('disconnect', () => setIsConnected(false));
+      socket.on('disconnect', (reason) => {
+        console.log('[Socket] Desconectado:', reason);
+        setIsConnected(false);
+      });
+      socket.on('error', (err) => {
+        console.error('[Socket] Erro:', err);
+      });
+      socket.on('connect_error', (err) => {
+        console.error('[Socket] Erro de conexão:', err);
+      });
       socket.on('new_message', (msg: ChatMessage) => {
         if (!mounted) return;
         setChatMessages(prev => {
