@@ -17,7 +17,7 @@ import Avatar from '@/components/Avatar';
 import { MessageBubble } from '@/components/Bubble/messageBubble';
 import {
   getGroup, getGroupMembers, getGroupPosts,
-  joinGroup, leaveGroup, deleteGroup,
+  joinGroup, leaveGroup, updateGroup, deleteGroup,
   getUserLikedPosts, getMyFavorites,
   getMyMemberStatus, getPendingRequests, handleJoinRequest,
   removeMember, updateMemberRole, deleteGroupPost,
@@ -310,6 +310,31 @@ export default function GroupCommunity() {
     );
   };
 
+  const handleEditGroup = () => {
+    if (!isAdmin) return;
+    const editName = group?.name || '';
+    const editDesc = group?.description || '';
+    const editTopic = group?.topic || 'GERAL';
+
+    Alert.prompt(
+      'Editar grupo',
+      'Nome do grupo:',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Editar', onPress: async (newName?: string) => {
+          if (!newName?.trim()) { Alert.alert('Erro', 'Nome não pode estar vazio'); return; }
+          try {
+            const updated = await updateGroup(groupId!, { name: newName.trim(), description: editDesc, topic: editTopic });
+            setGroup(updated);
+            Alert.alert('Sucesso', 'Grupo atualizado');
+          } catch (err: any) { Alert.alert('Erro', err.message); }
+        }},
+      ],
+      'plain-text',
+      editName
+    );
+  };
+
   const handleDeleteGroup = () => {
     Alert.alert(
       'Excluir grupo',
@@ -595,6 +620,7 @@ export default function GroupCommunity() {
           <TouchableOpacity
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             onPress={() => Alert.alert(group?.name || 'Grupo', 'Ações do administrador', [
+              { text: 'Editar grupo', onPress: handleEditGroup },
               { text: 'Excluir grupo', style: 'destructive', onPress: handleDeleteGroup },
               { text: 'Cancelar', style: 'cancel' },
             ])}

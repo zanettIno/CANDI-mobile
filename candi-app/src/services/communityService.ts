@@ -59,6 +59,9 @@ export const joinGroup = (groupId: string) =>
 export const leaveGroup = (groupId: string) =>
   fetchAPI(`/community/groups/${groupId}/leave`, { method: 'DELETE' });
 
+export const updateGroup = (groupId: string, data: { name?: string; description?: string; topic?: string }) =>
+  fetchAPI(`/community/groups/${groupId}`, { method: 'PATCH', body: JSON.stringify(data) });
+
 export const deleteGroup = (groupId: string) =>
   fetchAPI(`/community/groups/${groupId}`, { method: 'DELETE' });
 
