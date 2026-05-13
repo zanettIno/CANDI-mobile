@@ -26,6 +26,7 @@ import { getMessages, sendMessage as sendChatMessage } from '@/services/chatServ
 // @ts-ignore – authService is a JS file without type declarations
 import { getValidAccessToken } from '@/services/authService';
 import { useProfile } from '@/context/ProfileContext';
+import { useNotification } from '@/context/NotificationContext';
 import { formatTime, formatRelativeDate } from '@/utils/dateFormat';
 import { API_BASE_URL } from '@/constants/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -57,6 +58,7 @@ export default function GroupCommunity() {
   const router = useRouter();
   const { groupId, groupName } = useLocalSearchParams<{ groupId: string; groupName: string }>();
   const { profileId: myProfileId, profileName: myName } = useProfile();
+  const { showNotification } = useNotification();
 
   const [tab, setTab] = useState<Tab>('posts');
   const [group, setGroup] = useState<any>(null);
@@ -184,6 +186,15 @@ export default function GroupCommunity() {
           if (without.some(m => m.timestamp === msg.timestamp)) return without;
           return [msg, ...without];
         });
+        // Show notification if message is from someone else
+        if (msg.sender_id !== currentUserId) {
+          showNotification({
+            title: msg.sender_name,
+            message: msg.message_content,
+            type: 'info',
+            duration: 4000,
+          });
+        }
       });
 
       socket.on('online_users', (data: { online: string[] }) => {

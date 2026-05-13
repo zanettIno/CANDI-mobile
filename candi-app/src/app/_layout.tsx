@@ -6,6 +6,8 @@ import * as Inter from '@expo-google-fonts/inter';
 import { useEffect } from 'react';
 import { pt, registerTranslation } from "react-native-paper-dates";
 import { ProfileProvider } from '@/context/ProfileContext';
+import { NotificationProvider } from '@/context/NotificationContext';
+import NotificationDisplay from '@/components/NotificationDisplay';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -27,15 +29,18 @@ export default function RootLayout() {
 
   return (
     <PaperProvider theme={AppTheme}>
-      <ProfileProvider>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="index" />
-          <Stack.Screen name="cadastro" />
-          <Stack.Screen name="screens/community/chatCommunity" />
-          <Stack.Screen name="screens/community/groupCommunity" />
-          <Stack.Screen name="screens/community/postDetail" />
-        </Stack>
-      </ProfileProvider>
+      <NotificationProvider>
+        <ProfileProvider>
+          <NotificationDisplay />
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="index" />
+            <Stack.Screen name="cadastro" />
+            <Stack.Screen name="screens/community/chatCommunity" />
+            <Stack.Screen name="screens/community/groupCommunity" />
+            <Stack.Screen name="screens/community/postDetail" />
+          </Stack>
+        </ProfileProvider>
+      </NotificationProvider>
     </PaperProvider>
   );
 }

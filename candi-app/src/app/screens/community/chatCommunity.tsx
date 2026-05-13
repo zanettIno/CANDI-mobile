@@ -13,6 +13,7 @@ import Avatar from '@/components/Avatar';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { getMessages } from '@/services/chatService';
 import { initializeSocket } from '@/services/socketService';
+import { useNotification } from '@/context/NotificationContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Buffer } from 'buffer';
 import { formatTime } from '@/utils/dateFormat';
@@ -43,6 +44,7 @@ export const ChatCommunity: React.FC = () => {
     conversationId: string;
     userName: string;
   }>();
+  const { showNotification } = useNotification();
 
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -96,6 +98,15 @@ export const ChatCommunity: React.FC = () => {
             if (without.some(m => m.timestamp === msg.timestamp)) return without;
             return [msg, ...without];
           });
+          // Show notification if message is from someone else
+          if (msg.sender_id !== currentUserId) {
+            showNotification({
+              title: msg.sender_name,
+              message: msg.message_content,
+              type: 'info',
+              duration: 4000,
+            });
+          }
         };
 
         const handleTyping = ({ isTyping: typing }: { name: string; isTyping: boolean }) => {
