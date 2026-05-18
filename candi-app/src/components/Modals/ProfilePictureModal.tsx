@@ -1,188 +1,191 @@
-import React from 'react';
-import { Modal, Portal, Button, IconButton } from 'react-native-paper';
-import { StyleSheet, View, Image, Alert, Platform } from 'react-native';
-import styled from 'styled-components/native';
+import React, { useState } from 'react';
+import {
+  Modal, View, Text, TouchableOpacity, StyleSheet,
+  Image, Alert, Platform, ActivityIndicator,
+} from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AppTheme } from '../../theme';
 import { API_BASE_URL } from '../../constants/api';
 
-interface ProfilePictureModalProps {
+const S3_BASE = 'https://awscandi-image-uploads.s3.us-east-2.amazonaws.com/profile-images';
+
+interface Props {
   visible: boolean;
   onDismiss: () => void;
-  user: {
-    profile_id: string;
-    profile_picture_last_updated?: number;
-  };
+  user: { profile_id: string; profile_picture_last_updated?: number };
   onPictureUpdate: (isDeletion: boolean) => void;
 }
 
-const ModalContainer = styled.View`
-  background-color: white;
-  margin: 20px;
-  border-radius: 12px;
-  overflow: hidden;
-  align-items: center;
-  padding: 24px;
-`;
+const ProfilePictureModal: React.FC<Props> = ({ visible, onDismiss, user, onPictureUpdate }) => {
+  const [uploading, setUploading] = useState(false);
 
-const ModalTitle = styled.Text`
-  font-size: 18px;
-  font-weight: 700;
-  margin-bottom: 8px;
-`;
+  const avatarUri = user.profile_picture_last_updated
+    ? `${S3_BASE}/${user.profile_id}.jpg?t=${user.profile_picture_last_updated}`
+    : undefined;
 
-const ModalText = styled.Text`
-  font-size: 14px;
-  text-align: center;
-  margin-bottom: 20px;
-`;
+  const pickAndUpload = async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) { Alert.alert('Permissão necessária', 'Permita o acesso à galeria.'); return; }
 
-const ProfileImage = styled(Image)`
-  width: 120px;
-  height: 120px;
-  border-radius: 60px;
-  margin-bottom: 24px;
-`;
-
-const CloseButton = styled(IconButton)`
-  position: absolute;
-  top: 10px;
-  right: 10px;
-`;
-
-const ProfilePictureModal: React.FC<ProfilePictureModalProps> = ({
-  visible,
-  onDismiss,
-  user,
-  onPictureUpdate,
-}) => {
-  const handleEditPicture = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permissão necessária', 'Precisamos de acesso às suas fotos.');
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
+    const res = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 1,
+      allowsEditing: true, aspect: [1, 1], quality: 0.9,
     });
+    if (res.canceled || !res.assets?.[0]) return;
 
-    if (result.canceled) return;
-
-    const image = result.assets[0];
-    const formData = new FormData();
-
+    const img = res.assets[0];
+    const fd = new FormData();
     if (Platform.OS === 'web') {
-        const response = await fetch(image.uri);
-        const blob = await response.blob();
-        formData.append('file', blob, `profile-picture.jpg`);
+      const blob = await (await fetch(img.uri)).blob();
+      fd.append('file', blob, 'profile.jpg');
     } else {
-        formData.append('file', {
-            uri: image.uri,
-            name: `profile-picture.jpg`,
-            type: 'image/jpeg',
-        } as any);
+      fd.append('file', { uri: img.uri, name: 'profile.jpg', type: 'image/jpeg' } as any);
     }
 
+    setUploading(true);
     try {
       const token = await AsyncStorage.getItem('accessToken');
-      if (!token) throw new Error("Token não encontrado");
-
-      const response = await fetch(`${API_BASE_URL}/profile-image/upload`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-        body: formData,
+      const r = await fetch(`${API_BASE_URL}/profile-image/upload`, {
+        method: 'POST', body: fd,
+        headers: { Authorization: `Bearer ${token}` },
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Falha ao enviar a imagem.');
-      }
-
+      if (!r.ok) throw new Error((await r.json()).message || 'Erro ao enviar');
       onPictureUpdate(false);
-      Alert.alert('Sucesso!', 'Foto de perfil atualizada.');
       onDismiss();
-    } catch (error) {
-      console.error('Erro ao fazer upload da imagem:', error);
-      Alert.alert('Erro', 'Não foi possível atualizar sua foto.');
-    }
+    } catch (e: any) {
+      Alert.alert('Erro', e.message || 'Não foi possível atualizar a foto.');
+    } finally { setUploading(false); }
   };
 
-  const handleRemovePicture = async () => {
-    try {
-      const token = await AsyncStorage.getItem('accessToken');
-      if (!token) throw new Error("Token não encontrado");
-
-      const response = await fetch(`${API_BASE_URL}/profile-image`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Falha ao remover a imagem.');
-      }
-
-      onPictureUpdate(true);
-      Alert.alert('Sucesso!', 'Foto de perfil removida.');
-    } catch (error) {
-      console.error('Erro ao remover a imagem:', error);
-      Alert.alert('Erro', 'Não foi possível remover sua foto.');
-    }
-  };
-
-  const getModalAvatarSource = () => {
-      if (user.profile_picture_last_updated) {
-          const uri = `https://awscandi-image-uploads.s3.us-east-2.amazonaws.com/profile-images/${user.profile_id}.jpg?timestamp=${user.profile_picture_last_updated}`;
-          return { uri };
-      }
-      return require('../../../assets/default-avatar.jpg');
+  const removePicture = () => {
+    Alert.alert('Remover foto', 'Tem certeza?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Remover', style: 'destructive', onPress: async () => {
+          setUploading(true);
+          try {
+            const token = await AsyncStorage.getItem('accessToken');
+            await fetch(`${API_BASE_URL}/profile-image`, {
+              method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
+            });
+            onPictureUpdate(true);
+            onDismiss();
+          } catch { Alert.alert('Erro', 'Não foi possível remover a foto.'); }
+          finally { setUploading(false); }
+        }
+      },
+    ]);
   };
 
   return (
-    <Portal>
-      <Modal visible={visible} onDismiss={onDismiss} contentContainerStyle={styles.modalOuter}>
-        <ModalContainer>
-          <CloseButton icon="close" size={24} onPress={onDismiss} />
-          <ModalTitle>FOTO DE PERFIL</ModalTitle>
-          <ModalText>Sua foto de perfil poderá ser visível para os outros usuários da comunidade</ModalText>
-          <ProfileImage
-            key={user.profile_picture_last_updated || 'default-avatar'}
-            source={getModalAvatarSource()}
-          />
-          <Button mode="contained" onPress={handleEditPicture} style={styles.button}>
-            Editar foto de Perfil
-          </Button>
-          <Button mode="outlined" onPress={handleRemovePicture} style={[styles.button, styles.removeButton]}>
-            Remover foto de Perfil
-          </Button>
-        </ModalContainer>
-      </Modal>
-    </Portal>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onDismiss} statusBarTranslucent>
+      <View style={s.overlay}>
+        <View style={s.sheet}>
+          <View style={s.handle} />
+
+          <View style={s.header}>
+            <Text style={s.title}>Foto de Perfil</Text>
+            <TouchableOpacity onPress={onDismiss} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <MaterialIcons name="close" size={22} color={AppTheme.colors.placeholderText} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Preview */}
+          <View style={s.avatarCenter}>
+            {avatarUri ? (
+              <Image source={{ uri: avatarUri }} style={s.avatar} />
+            ) : (
+              <View style={s.avatarFallback}>
+                <MaterialIcons name="person" size={48} color={AppTheme.colors.tertiary} />
+              </View>
+            )}
+          </View>
+
+          <Text style={s.hint}>Sua foto fica visível para outros membros da comunidade.</Text>
+
+          {uploading ? (
+            <View style={s.loadingWrap}>
+              <ActivityIndicator color={AppTheme.colors.tertiary} size="large" />
+              <Text style={s.loadingText}>Enviando...</Text>
+            </View>
+          ) : (
+            <View style={s.actions}>
+              <TouchableOpacity style={s.primaryBtn} onPress={pickAndUpload} activeOpacity={0.85}>
+                <MaterialIcons name="add-a-photo" size={18} color="#fff" />
+                <Text style={s.primaryBtnText}>
+                  {avatarUri ? 'Alterar foto' : 'Adicionar foto'}
+                </Text>
+              </TouchableOpacity>
+              {avatarUri && (
+                <TouchableOpacity style={s.removeBtn} onPress={removePicture} activeOpacity={0.85}>
+                  <MaterialIcons name="delete-outline" size={18} color="#ef4444" />
+                  <Text style={s.removeBtnText}>Remover foto</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+          <View style={{ height: 16 }} />
+        </View>
+      </View>
+    </Modal>
   );
 };
 
-const styles = StyleSheet.create({
-    modalOuter: {
-        flex: 1,
-        justifyContent: 'center',
-    },
-    button: {
-        width: '100%',
-        borderRadius: 8,
-        marginBottom: 10,
-    },
-    removeButton: {
-        borderWidth: 1,
-        backgroundColor: 'transparent',
-    },
+const s = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  sheet: {
+    backgroundColor: AppTheme.colors.cardBackground,
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    paddingHorizontal: 24,
+  },
+  handle: {
+    width: 40, height: 4, borderRadius: 2,
+    backgroundColor: AppTheme.colors.dotsColor,
+    alignSelf: 'center', marginTop: 10, marginBottom: 4,
+  },
+  header: {
+    flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-between', paddingVertical: 14,
+    borderBottomWidth: 1, borderBottomColor: AppTheme.colors.dotsColor,
+  },
+  title: {
+    fontFamily: AppTheme.fonts.titleMedium.fontFamily,
+    fontSize: 17, fontWeight: '700', color: AppTheme.colors.nameText,
+  },
+  avatarCenter: { alignItems: 'center', paddingVertical: 24 },
+  avatar: { width: 110, height: 110, borderRadius: 22, borderWidth: 3, borderColor: AppTheme.colors.secondary },
+  avatarFallback: {
+    width: 110, height: 110, borderRadius: 22,
+    backgroundColor: AppTheme.colors.secondary,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderStyle: 'dashed', borderColor: AppTheme.colors.tertiary,
+  },
+  hint: {
+    textAlign: 'center', fontSize: 13, color: AppTheme.colors.placeholderText,
+    fontFamily: AppTheme.fonts.bodySmall.fontFamily, marginBottom: 20, lineHeight: 18,
+  },
+  loadingWrap: { alignItems: 'center', paddingVertical: 20, gap: 10 },
+  loadingText: { color: AppTheme.colors.placeholderText, fontFamily: AppTheme.fonts.bodySmall.fontFamily },
+  actions: { gap: 10 },
+  primaryBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: AppTheme.colors.tertiary, borderRadius: 14, paddingVertical: 14,
+  },
+  primaryBtnText: {
+    color: '#fff', fontSize: 15, fontWeight: '700',
+    fontFamily: AppTheme.fonts.labelLarge.fontFamily,
+  },
+  removeBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    borderRadius: 14, paddingVertical: 13,
+    borderWidth: 1, borderColor: '#fecaca', backgroundColor: '#fff5f5',
+  },
+  removeBtnText: {
+    color: '#ef4444', fontSize: 14, fontWeight: '600',
+    fontFamily: AppTheme.fonts.labelMedium.fontFamily,
+  },
 });
 
 export default ProfilePictureModal;

@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View, Text, ScrollView, RefreshControl, TouchableOpacity,
   ActivityIndicator, Alert, StyleSheet, Platform, StatusBar,
-  FlatList, TextInput, KeyboardAvoidingView,
+  FlatList, TextInput, KeyboardAvoidingView, Image,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -15,18 +15,22 @@ import PostCardView from '@/components/Card/postCardView';
 import EmptyState from '@/components/EmptyState';
 import Avatar from '@/components/Avatar';
 import { MessageBubble } from '@/components/Bubble/messageBubble';
+import { MessageInput } from '@/components/Inputs/inputMessage';
 import {
   getGroup, getGroupMembers, getGroupPosts,
   joinGroup, leaveGroup, updateGroup, deleteGroup,
   getUserLikedPosts, getMyFavorites,
   getMyMemberStatus, getPendingRequests, handleJoinRequest,
-  removeMember, updateMemberRole, deleteGroupPost,
+  removeMember, updateMemberRole, deleteGroupPost, uploadGroupImage,
 } from '@/services/communityService';
+import GroupEditModal from '@/components/Modals/GroupEditModal';
+import ActionSheet, { ActionSheetOption } from '@/components/ActionSheet';
 import { getMessages, sendMessage as sendChatMessage } from '@/services/chatService';
 import { initializeSocket } from '@/services/socketService';
 // @ts-ignore – authService is a JS file without type declarations
 import { getValidAccessToken } from '@/services/authService';
 import { useProfile } from '@/context/ProfileContext';
+import { useChat } from '@/context/ChatContext';
 import { useNotification } from '@/context/NotificationContext';
 import { formatTime, formatRelativeDate } from '@/utils/dateFormat';
 import { API_BASE_URL } from '@/constants/api';
@@ -34,6 +38,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Buffer } from 'buffer';
 
 const STATUS_BAR_HEIGHT = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 44;
+const S3_BASE = 'https://awscandi-image-uploads.s3.us-east-2.amazonaws.com/profile-images';
+const profilePicUri = (id?: string | null) => id ? `${S3_BASE}/${id}.jpg` : undefined;
 const SOCKET_URL = API_BASE_URL.replace('/api', '');
 
 type MemberRole = 'admin' | 'co-leader' | 'member' | 'pending' | 'none';
@@ -59,6 +65,7 @@ export default function GroupCommunity() {
   const router = useRouter();
   const { groupId, groupName } = useLocalSearchParams<{ groupId: string; groupName: string }>();
   const { profileId: myProfileId, profileName: myName } = useProfile();
+  const { setActiveConversationId } = useChat();
   const { showNotification } = useNotification();
 
   const [tab, setTab] = useState<Tab>('posts');
@@ -74,6 +81,8 @@ export default function GroupCommunity() {
   const [membersLoading, setMembersLoading] = useState(false);
   const [joining, setJoining] = useState(false);
   const [myRole, setMyRole] = useState<MemberRole>('none');
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [actionSheet, setActionSheet] = useState<{ visible: boolean; title?: string; options: ActionSheetOption[] }>({ visible: false, options: [] });
 
   // Chat state
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -82,6 +91,7 @@ export default function GroupCommunity() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
+  // Grupos não têm read receipts — status simples de entrega (sem flags de leitura)
   const socketRef = useRef<Socket | null>(null);
   const typingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -103,7 +113,10 @@ export default function GroupCommunity() {
         getMyMemberStatus(groupId),
       ]);
       if (groupData.status === 'fulfilled') setGroup(groupData.value);
-      if (postsData.status === 'fulfilled') setPosts(postsData.value);
+      if (postsData.status === 'fulfilled') {
+        const raw = postsData.value as any;
+        setPosts(Array.isArray(raw) ? raw : (raw?.items ?? []));
+      }
       if (likedIds.status === 'fulfilled') setLikedPostIds(new Set(likedIds.value as string[]));
       if (favIds.status === 'fulfilled')
         setFavoritedPostIds(new Set((favIds.value as any[]).map((f: any) => f.post_id)));
@@ -132,6 +145,54 @@ export default function GroupCommunity() {
   useEffect(() => { loadGroup(); }, []);
   useEffect(() => { if (isMod) loadPendingRequests(); }, [myRole]);
   useEffect(() => { if (tab === 'membros') { loadMembers(); if (isMod) loadPendingRequests(); } }, [tab]);
+
+  // Marca conversa de grupo como ativa quando no tab chat
+  useEffect(() => {
+    if (tab === 'chat' && isMember) {
+      setActiveConversationId(convId);
+    } else {
+      setActiveConversationId(null);
+    }
+    return () => setActiveConversationId(null);
+  }, [tab, isMember, convId]);
+
+  // ── Kick WebSocket — escuta remoção do grupo em tempo real ───────────────────
+  useEffect(() => {
+    if (!groupId) return;
+    let mounted = true;
+    let kickCleanup: (() => void) | undefined;
+
+    const setupKickListener = async () => {
+      try {
+        const socket = await initializeSocket();
+        if (!mounted) return;
+
+        const handleKicked = (data: { group_id: string }) => {
+          if (!mounted || data.group_id !== groupId) return;
+          // Navega de volta para a comunidade e mostra notificação banner
+          router.replace('/screens/(tabs)/homeCommunity');
+          setTimeout(() => {
+            showNotification({
+              title: 'Removido do grupo',
+              message: 'Você foi removido deste grupo pelo administrador.',
+              type: 'warning',
+              duration: 6000,
+            });
+          }, 300); // aguarda a navegação completar
+        };
+
+        socket.on('kicked_from_group', handleKicked);
+        kickCleanup = () => socket.off('kicked_from_group', handleKicked);
+      } catch {}
+    };
+
+    setupKickListener().then(fn => { kickCleanup = fn ?? kickCleanup; });
+
+    return () => {
+      mounted = false;
+      kickCleanup?.();
+    };
+  }, [groupId]);
 
   // ── Chat WebSocket ───────────────────────────────────────────────────────────
   const getUserId = async () => {
@@ -162,19 +223,12 @@ export default function GroupCommunity() {
 
         const handleNewMessage = (msg: ChatMessage) => {
           if (!mounted) return;
+          // FILTRO CRÍTICO: só processa mensagens deste grupo
+          if (msg.conversation_id !== convId) return;
           setChatMessages(prev => {
-            const without = prev.filter(m => !(m.timestamp.includes('#temp') && m.message_content === msg.message_content && m.sender_id === msg.sender_id));
-            if (without.some(m => m.timestamp === msg.timestamp)) return without;
-            return [msg, ...without];
+            if (prev.some(m => m.timestamp === msg.timestamp)) return prev;
+            return [msg, ...prev];
           });
-          if (msg.sender_id !== currentUserId) {
-            showNotification({
-              title: msg.sender_name,
-              message: msg.message_content,
-              type: 'info',
-              duration: 4000,
-            });
-          }
         };
 
         const handleOnlineUsers = (data: { online: string[] }) => {
@@ -222,12 +276,12 @@ export default function GroupCommunity() {
       }
     };
 
-    initChat().then(cleanup => {
-      return cleanup;
-    });
+    let socketCleanup: (() => void) | undefined;
+    initChat().then(fn => { socketCleanup = fn; });
 
     return () => {
       mounted = false;
+      socketCleanup?.(); // remove os listeners do socket corretamente
     };
   }, [tab, isMember, currentUserId]);
 
@@ -235,32 +289,17 @@ export default function GroupCommunity() {
     if (!chatText.trim()) return;
     const text = chatText.trim();
     setChatText('');
-
-    const optimistic: ChatMessage = {
-      conversation_id: convId,
-      timestamp: `${new Date().toISOString()}#temp-${Date.now()}`,
-      sender_id: currentUserId || 'local',
-      sender_name: myName || 'Você',
-      message_content: text,
-    };
-    setChatMessages(prev => [optimistic, ...prev]);
-
     if (socketRef.current?.connected) {
       socketRef.current.emit('send_message', { conversationId: convId, messageContent: text });
     } else {
       try {
         const real = await sendChatMessage(convId, text);
-        setChatMessages(prev => {
-          const idx = prev.findIndex(m => m.timestamp === optimistic.timestamp);
-          if (idx > -1) { const u = [...prev]; u[idx] = real; return u; }
-          return prev;
-        });
+        setChatMessages(prev => [real, ...prev]);
       } catch {
-        setChatMessages(prev => prev.filter(m => m.timestamp !== optimistic.timestamp));
         setChatText(text);
       }
     }
-  }, [chatText, convId, currentUserId, myName]);
+  }, [chatText, convId]);
 
   // ── Ações de grupo ──────────────────────────────────────────────────────────
   const handleJoin = async () => {
@@ -280,9 +319,8 @@ export default function GroupCommunity() {
   };
 
   const handleLeave = () => {
-    Alert.alert('Sair do grupo', 'Tem certeza?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Sair', style: 'destructive', onPress: async () => {
+    showSheet('Sair do grupo', [
+      { label: 'Confirmar saída', icon: 'logout', destructive: true, onPress: async () => {
         try {
           await leaveGroup(groupId!);
           setMyRole('none');
@@ -309,9 +347,8 @@ export default function GroupCommunity() {
   };
 
   const handleRemoveMember = (m: Member) => {
-    Alert.alert('Remover membro', `Remover ${m.member_name} do grupo?`, [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Remover', style: 'destructive', onPress: async () => {
+    showSheet(`Remover ${m.member_name}?`, [
+      { label: 'Confirmar remoção', icon: 'person-remove', destructive: true, onPress: async () => {
         try {
           await removeMember(groupId!, m.profile_id);
           setMembers(prev => prev.filter(x => x.profile_id !== m.profile_id));
@@ -324,73 +361,74 @@ export default function GroupCommunity() {
   const handleRoleUpdate = (m: Member) => {
     if (!isAdmin) return;
     const isCoLeader = m.role === 'co-leader';
-    Alert.alert(
-      isCoLeader ? 'Rebaixar membro' : 'Nomear co-líder',
-      isCoLeader ? `Remover ${m.member_name} de co-líder?` : `Nomear ${m.member_name} como co-líder?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Confirmar', onPress: async () => {
+    showSheet(m.member_name, [
+      {
+        label: isCoLeader ? 'Rebaixar para membro' : 'Nomear co-líder',
+        icon: isCoLeader ? 'person' : 'star',
+        onPress: async () => {
           try {
             await updateMemberRole(groupId!, m.profile_id, isCoLeader ? 'member' : 'co-leader');
             setMembers(prev => prev.map(x =>
               x.profile_id === m.profile_id ? { ...x, role: isCoLeader ? 'member' : 'co-leader' } : x
             ));
           } catch (err: any) { Alert.alert('Erro', err.message); }
-        }},
-      ]
-    );
+        },
+      },
+    ]);
   };
+
+  const showSheet = (title: string, options: ActionSheetOption[]) =>
+    setActionSheet({ visible: true, title, options });
+
+  const hideSheet = () => setActionSheet(prev => ({ ...prev, visible: false }));
 
   const handleEditGroup = () => {
     if (!isAdmin) return;
-    const editName = group?.name || '';
-    const editDesc = group?.description || '';
-    const editTopic = group?.topic || 'GERAL';
+    setEditModalVisible(true);
+  };
 
-    Alert.prompt(
-      'Editar grupo',
-      'Nome do grupo:',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Editar', onPress: async (newName?: string) => {
-          if (!newName?.trim()) { Alert.alert('Erro', 'Nome não pode estar vazio'); return; }
-          try {
-            const updated = await updateGroup(groupId!, { name: newName.trim(), description: editDesc, topic: editTopic });
-            setGroup(updated);
-            Alert.alert('Sucesso', 'Grupo atualizado');
-          } catch (err: any) { Alert.alert('Erro', err.message); }
-        }},
-      ],
-      'plain-text',
-      editName
-    );
+  const handleSaveGroupEdit = async (data: { name?: string; description?: string; topic?: string }) => {
+    const updated = await updateGroup(groupId!, data);
+    setGroup(updated);
+  };
+
+  const handleUploadGroupImage = async (
+    file: { uri: string; name: string; type: string },
+    type: 'photo' | 'banner',
+  ) => {
+    const updated = await uploadGroupImage(groupId!, file, type);
+    setGroup(updated);
   };
 
   const handleDeleteGroup = () => {
-    Alert.alert(
-      'Excluir grupo',
-      `Tem certeza que deseja excluir "${group?.name || 'este grupo'}"? Esta ação é irreversível.`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Excluir', style: 'destructive', onPress: async () => {
+    showSheet(`Excluir "${group?.name || 'grupo'}"?`, [
+      {
+        label: 'Confirmar exclusão (irreversível)',
+        icon: 'delete-forever',
+        destructive: true,
+        onPress: async () => {
           try {
             await deleteGroup(groupId!);
             router.back();
           } catch (err: any) { Alert.alert('Erro', err.message); }
-        }},
-      ]
-    );
+        },
+      },
+    ]);
   };
 
   const handleDeletePost = (post: Post) => {
-    Alert.alert('Remover publicação', 'Remover esta publicação do grupo?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Remover', style: 'destructive', onPress: async () => {
-        try {
-          await deleteGroupPost(groupId!, post.post_id);
-          setPosts(prev => prev.filter(p => p.post_id !== post.post_id));
-        } catch (err: any) { Alert.alert('Erro', err.message); }
-      }},
+    showSheet('Remover publicação do grupo?', [
+      {
+        label: 'Confirmar remoção',
+        icon: 'delete-outline',
+        destructive: true,
+        onPress: async () => {
+          try {
+            await deleteGroupPost(groupId!, post.post_id);
+            setPosts(prev => prev.filter(p => p.post_id !== post.post_id));
+          } catch (err: any) { Alert.alert('Erro', err.message); }
+        },
+      },
     ]);
   };
 
@@ -424,7 +462,7 @@ export default function GroupCommunity() {
 
     return (
       <View style={s.memberRow}>
-        <Avatar name={m.member_name} size={42} />
+        <Avatar uri={profilePicUri(m.profile_id)} name={m.member_name} size={42} />
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <View style={[s.onlineIndicator, { backgroundColor: isOnline ? '#10b981' : '#9ca3af' }]} />
@@ -441,22 +479,19 @@ export default function GroupCommunity() {
           <TouchableOpacity
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             onPress={() => {
-              const options: any[] = [];
-              if (canPromote) {
-                options.push({
-                  text: m.role === 'co-leader' ? 'Rebaixar para membro' : 'Nomear co-líder',
-                  onPress: () => handleRoleUpdate(m),
-                });
-              }
-              if (canRemove) {
-                options.push({
-                  text: 'Remover do grupo',
-                  style: 'destructive',
-                  onPress: () => handleRemoveMember(m),
-                });
-              }
-              options.push({ text: 'Cancelar', style: 'cancel' });
-              Alert.alert(m.member_name, 'O que deseja fazer?', options);
+              const opts: ActionSheetOption[] = [];
+              if (canPromote) opts.push({
+                label: m.role === 'co-leader' ? 'Rebaixar para membro' : 'Nomear co-líder',
+                icon: m.role === 'co-leader' ? 'person' : 'star',
+                onPress: () => handleRoleUpdate(m),
+              });
+              if (canRemove) opts.push({
+                label: 'Remover do grupo',
+                icon: 'person-remove',
+                destructive: true,
+                onPress: () => handleRemoveMember(m),
+              });
+              showSheet(m.member_name, opts);
             }}
           >
             <MaterialIcons name="more-vert" size={22} color={AppTheme.colors.placeholderText} />
@@ -468,7 +503,7 @@ export default function GroupCommunity() {
 
   const renderPending = ({ item: m }: { item: Member }) => (
     <View style={[s.memberRow, s.pendingRow]}>
-      <Avatar name={m.member_name} size={42} />
+      <Avatar uri={profilePicUri(m.profile_id)} name={m.member_name} size={42} />
       <View style={{ flex: 1 }}>
         <Text style={s.memberName}>{m.member_name}</Text>
         <Text style={s.memberSince}>Aguardando aprovação</Text>
@@ -482,24 +517,64 @@ export default function GroupCommunity() {
     </View>
   );
 
+  const getDateLabel = (ts: string) => {
+    try {
+      const d = new Date(ts.split('#')[0]);
+      const today = new Date(); const y = new Date(today); y.setDate(today.getDate() - 1);
+      if (d.toDateString() === today.toDateString()) return 'Hoje';
+      if (d.toDateString() === y.toDateString()) return 'Ontem';
+      return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' });
+    } catch { return ''; }
+  };
+
+  const isSameDay = (ts1: string, ts2: string) => {
+    try { return new Date(ts1.split('#')[0]).toDateString() === new Date(ts2.split('#')[0]).toDateString(); }
+    catch { return true; }
+  };
+
   const renderChatItem = ({ item, index }: { item: ChatMessage; index: number }) => {
     const isSent = item.sender_id === currentUserId;
-    const prev = chatMessages[index + 1];
-    const showAvatar = !isSent && (!prev || prev.sender_id !== item.sender_id);
-    const showName = !isSent && showAvatar;
+    const prev = chatMessages[index + 1]; // mais antiga (FlatList invertida)
+    const next = chatMessages[index - 1]; // mais recente
+    const isLastFromSender = !next || next.sender_id !== item.sender_id;
+    const isFirstFromSender = !prev || prev.sender_id !== item.sender_id;
+    const showDateSep = !prev || !isSameDay(item.timestamp, prev.timestamp);
+    const tight = prev && prev.sender_id === item.sender_id;
+
     return (
-      <View style={[s.chatRow, isSent ? s.chatRowSent : s.chatRowReceived]}>
-        {!isSent && <View style={s.chatAvatarSlot}>{showAvatar && <Avatar name={item.sender_name} size={28} />}</View>}
-        <View style={{ maxWidth: '78%' }}>
-          {showName && <Text style={s.chatSenderName}>{item.sender_name}</Text>}
-          <MessageBubble
-            message={item.message_content}
-            time={formatTime(item.timestamp)}
-            isSent={isSent}
-            onPressSharedPost={(p) => router.push({ pathname: '/screens/community/postDetail', params: p })}
-          />
+      <>
+        {showDateSep && (
+          <View style={s.dateSep}>
+            <View style={s.dateLine} />
+            <Text style={s.dateLabel}>{getDateLabel(item.timestamp)}</Text>
+            <View style={s.dateLine} />
+          </View>
+        )}
+        <View style={[
+          s.chatRow,
+          isSent ? s.chatRowSent : s.chatRowReceived,
+          tight ? { marginVertical: 1 } : { marginVertical: 3 },
+        ]}>
+          {!isSent && (
+            <View style={s.chatAvatarSlot}>
+              {isLastFromSender && (
+                <Avatar uri={profilePicUri(item.sender_id)} name={item.sender_name} size={28} />
+              )}
+            </View>
+          )}
+          <View style={{ maxWidth: '80%' }}>
+            {!isSent && isFirstFromSender && (
+              <Text style={s.chatSenderName}>{item.sender_name}</Text>
+            )}
+            <MessageBubble
+              message={item.message_content}
+              time={formatTime(item.timestamp)}
+              isSent={isSent}
+              onPressSharedPost={(p) => router.push({ pathname: '/screens/community/postDetail', params: p })}
+            />
+          </View>
         </View>
-      </View>
+      </>
     );
   };
 
@@ -527,7 +602,8 @@ export default function GroupCommunity() {
               initialLikeCount={p.like_count || 0} initialCommentCount={p.comment_count || 0}
               initialLiked={likedPostIds.has(p.post_id)} initialFavorited={favoritedPostIds.has(p.post_id)}
               onLikeToggle={handleLikeToggle} onFavoriteToggle={handleFavoriteToggle}
-              onAdminDelete={isMod ? () => handleDeletePost(p) : undefined}
+              onAdminDelete={isMod && p.profile_id !== myProfileId ? () => handleDeletePost(p) : undefined}
+              onDelete={(id) => setPosts(prev => prev.filter(x => x.post_id !== id))}
               canDeleteAnyComment={isMod}
               groupId={groupId}
             />
@@ -543,7 +619,7 @@ export default function GroupCommunity() {
       return <EmptyState icon="chat-bubble-outline" title="Entre no grupo" subtitle="Apenas membros podem usar o chat." />;
     }
     return (
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <KeyboardAvoidingView style={s.chatContainer} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         {chatLoading ? (
           <View style={s.centered}><ActivityIndicator size="large" color={AppTheme.colors.tertiary} /></View>
         ) : (
@@ -561,21 +637,12 @@ export default function GroupCommunity() {
             }
           />
         )}
-        <View style={s.chatInputBar}>
-          <TextInput
-            style={s.chatInput}
-            value={chatText}
-            onChangeText={setChatText}
-            placeholder="Mensagem no grupo..."
-            placeholderTextColor={AppTheme.colors.placeholderText}
-            multiline
-            returnKeyType="send"
-            onSubmitEditing={handleSendChat}
-          />
-          <TouchableOpacity style={s.chatSendBtn} onPress={handleSendChat} disabled={!chatText.trim()}>
-            <MaterialIcons name="send" size={20} color={chatText.trim() ? '#fff' : 'rgba(255,255,255,0.4)'} />
-          </TouchableOpacity>
-        </View>
+        <MessageInput
+          value={chatText}
+          onChangeText={setChatText}
+          onSend={handleSendChat}
+          placeholder="Mensagem no grupo..."
+        />
       </KeyboardAvoidingView>
     );
   };
@@ -619,14 +686,27 @@ export default function GroupCommunity() {
   return (
     <View style={s.screen}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      <View style={s.headerBg}><LoginSignupBackground /></View>
+      {/* Fundo: banner do grupo ou gradiente padrão */}
+      <View style={s.headerBg}>
+        {group?.banner_url ? (
+          <Image source={{ uri: group.banner_url }} style={s.bannerImg} resizeMode="cover" />
+        ) : (
+          <LoginSignupBackground />
+        )}
+        <View style={s.bannerOverlay} />
+      </View>
 
       <View style={[s.header, { paddingTop: STATUS_BAR_HEIGHT }]}>
         <BackIconButton color={AppTheme.colors.cardBackground} onPress={() => router.back()} top={0} />
         <View style={s.headerInfo}>
-          <View style={s.groupIcon}>
-            <Text style={s.groupIconText}>{(groupName || group?.name || '?')[0].toUpperCase()}</Text>
-          </View>
+          {/* Foto do grupo ou inicial */}
+          {group?.photo_url ? (
+            <Image source={{ uri: group.photo_url }} style={s.groupPhoto} />
+          ) : (
+            <View style={s.groupIcon}>
+              <Text style={s.groupIconText}>{(groupName || group?.name || '?')[0].toUpperCase()}</Text>
+            </View>
+          )}
           <View style={{ flex: 1 }}>
             <Text style={s.headerTitle} numberOfLines={1}>{groupName || group?.name || 'Grupo'}</Text>
             <Text style={s.headerSub}>
@@ -654,10 +734,9 @@ export default function GroupCommunity() {
         {isAdmin && (
           <TouchableOpacity
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            onPress={() => Alert.alert(group?.name || 'Grupo', 'Ações do administrador', [
-              { text: 'Editar grupo', onPress: handleEditGroup },
-              { text: 'Excluir grupo', style: 'destructive', onPress: handleDeleteGroup },
-              { text: 'Cancelar', style: 'cancel' },
+            onPress={() => showSheet(group?.name || 'Grupo', [
+              { label: 'Editar grupo', icon: 'edit', onPress: handleEditGroup },
+              { label: 'Excluir grupo', icon: 'delete-outline', destructive: true, onPress: handleDeleteGroup },
             ])}
           >
             <MaterialIcons name="more-vert" size={24} color="#fff" />
@@ -680,6 +759,28 @@ export default function GroupCommunity() {
       {tab === 'posts' && renderPosts()}
       {tab === 'chat' && renderChat()}
       {tab === 'membros' && renderMembers()}
+
+      {isAdmin && (
+        <GroupEditModal
+          visible={editModalVisible}
+          groupId={groupId!}
+          initialName={group?.name || ''}
+          initialDescription={group?.description || ''}
+          initialTopic={group?.topic || 'GERAL'}
+          initialPhotoUrl={group?.photo_url}
+          initialBannerUrl={group?.banner_url}
+          onDismiss={() => setEditModalVisible(false)}
+          onSave={handleSaveGroupEdit}
+          onUploadImage={handleUploadGroupImage}
+        />
+      )}
+
+      <ActionSheet
+        visible={actionSheet.visible}
+        title={actionSheet.title}
+        options={actionSheet.options}
+        onDismiss={hideSheet}
+      />
     </View>
   );
 }
@@ -689,6 +790,9 @@ const s = StyleSheet.create({
   headerBg: { position: 'absolute', top: 0, left: 0, right: 0, height: 130, zIndex: 0 },
   header: { height: 130, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, zIndex: 1, gap: 10 },
   headerInfo: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  bannerImg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
+  bannerOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.35)' },
+  groupPhoto: { width: 44, height: 44, borderRadius: 12, borderWidth: 2, borderColor: 'rgba(255,255,255,0.6)' },
   groupIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
   groupIconText: { fontSize: 20, fontWeight: '700', color: '#fff', fontFamily: AppTheme.fonts.titleLarge.fontFamily },
   headerTitle: { fontSize: 17, fontWeight: '700', color: '#fff', fontFamily: AppTheme.fonts.titleMedium.fontFamily },
@@ -709,15 +813,21 @@ const s = StyleSheet.create({
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 40 },
 
   // Chat
-  chatList: { paddingHorizontal: 12, paddingVertical: 10 },
-  chatRow: { flexDirection: 'row', marginVertical: 2, alignItems: 'flex-end', gap: 6 },
+  chatContainer: { flex: 1, backgroundColor: '#efeae2' },
+  chatList: { paddingHorizontal: 8, paddingVertical: 10 },
+  chatRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 4 },
   chatRowSent: { justifyContent: 'flex-end' },
   chatRowReceived: { justifyContent: 'flex-start' },
+  dateSep: { flexDirection: 'row', alignItems: 'center', marginVertical: 10, paddingHorizontal: 4 },
+  dateLine: { flex: 1, height: 1, backgroundColor: 'rgba(0,0,0,0.08)' },
+  dateLabel: {
+    fontSize: 11.5, color: '#666', fontWeight: '600',
+    fontFamily: AppTheme.fonts.labelSmall.fontFamily,
+    paddingHorizontal: 10, backgroundColor: '#ddd8d0',
+    borderRadius: 10, paddingVertical: 3,
+  },
   chatAvatarSlot: { width: 30, alignItems: 'center', justifyContent: 'flex-end' },
   chatSenderName: { fontSize: 11, color: AppTheme.colors.placeholderText, fontFamily: AppTheme.fonts.labelSmall.fontFamily, marginBottom: 2, marginLeft: 4 },
-  chatInputBar: { flexDirection: 'row', alignItems: 'flex-end', backgroundColor: AppTheme.colors.cardBackground, borderTopWidth: 1, borderTopColor: AppTheme.colors.dotsColor, paddingHorizontal: 12, paddingVertical: 8, gap: 8 },
-  chatInput: { flex: 1, backgroundColor: AppTheme.colors.background, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, fontSize: AppTheme.fonts.bodyMedium.fontSize, fontFamily: AppTheme.fonts.bodyMedium.fontFamily, color: AppTheme.colors.textColor, maxHeight: 100, borderWidth: 1, borderColor: AppTheme.colors.dotsColor },
-  chatSendBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: AppTheme.colors.tertiary, alignItems: 'center', justifyContent: 'center' },
   emptyChat: { color: AppTheme.colors.placeholderText, fontFamily: AppTheme.fonts.bodyMedium.fontFamily, fontSize: 15 },
 
   // Members

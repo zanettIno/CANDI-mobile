@@ -113,6 +113,7 @@ export default function MessagesScreen() {
             time={item.last_message_timestamp ? formatTime(item.last_message_timestamp) : ''}
             unreadCount={item.unread_count}
             isRead={item.unread_count === 0}
+            otherUserId={item.other_user_id}
             onPress={() => handleOpenChat(item.conversation_id, item.other_user_name)}
           />
         )}

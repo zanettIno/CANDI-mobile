@@ -8,7 +8,8 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { AppTheme } from '../../theme';
 import Avatar from '@/components/Avatar';
 import { formatRelativeDate } from '@/utils/dateFormat';
-import { toggleLike, toggleFavorite, getComments, addComment, deleteComment as deleteCommentService } from '@/services/communityService';
+import { toggleLike, toggleFavorite, getComments, addComment, deleteComment as deleteCommentService, deleteGroupPost } from '@/services/communityService';
+import { deletePost as deleteOwnPost } from '@/services/feedService';
 import SharePostModal from '@/components/Modals/SharePostModal';
 import { useProfile } from '@/context/ProfileContext';
 
@@ -65,6 +66,7 @@ interface PostCardViewProps {
   onLikeToggle?: (postId: string, liked: boolean) => void;
   onFavoriteToggle?: (postId: string, favorited: boolean) => void;
   onAdminDelete?: () => void;
+  onDelete?: (postId: string) => void;
   canDeleteAnyComment?: boolean;
   groupId?: string;
 }
@@ -74,22 +76,15 @@ export const PostCardView: React.FC<PostCardViewProps> = ({
   postId, userName, userHandle, timeAgo, content, fileUrl, profileId,
   initialLikeCount = 0, initialCommentCount = 0,
   initialLiked = false, initialFavorited = false,
-  onLikeToggle, onFavoriteToggle, onAdminDelete, canDeleteAnyComment = false, groupId,
+  onLikeToggle, onFavoriteToggle, onAdminDelete, onDelete, canDeleteAnyComment = false, groupId,
 }) => {
   const { profileId: myProfileId } = useProfile();
 
+  // Estado inicializado diretamente dos props — o feedKey no FlatList garante remount a cada fetch
   const [liked, setLiked] = useState(initialLiked);
   const [likeCount, setLikeCount] = useState(initialLikeCount);
   const [favorited, setFavorited] = useState(initialFavorited);
   const [commentCount, setCommentCount] = useState(initialCommentCount);
-
-  // Sincroniza quando o pai recarrega os dados (volta ao feed)
-  const [prevInitialLiked, setPrevInitialLiked] = useState(initialLiked);
-  const [prevInitialFavorited, setPrevInitialFavorited] = useState(initialFavorited);
-  const [prevInitialLikeCount, setPrevInitialLikeCount] = useState(initialLikeCount);
-  if (initialLiked !== prevInitialLiked) { setPrevInitialLiked(initialLiked); setLiked(initialLiked); }
-  if (initialFavorited !== prevInitialFavorited) { setPrevInitialFavorited(initialFavorited); setFavorited(initialFavorited); }
-  if (initialLikeCount !== prevInitialLikeCount) { setPrevInitialLikeCount(initialLikeCount); setLikeCount(initialLikeCount); }
   const [likePending, setLikePending] = useState(false);
   const [favPending, setFavPending] = useState(false);
 
@@ -112,20 +107,21 @@ export const PostCardView: React.FC<PostCardViewProps> = ({
     const wasLiked = liked;
     const newLiked = !wasLiked;
     setLiked(newLiked);
-    setLikeCount(prev => wasLiked ? Math.max(0, prev - 1) : prev + 1);
+    // Otimista imediato
+    setLikeCount(wasLiked ? Math.max(0, likeCount - 1) : likeCount + 1);
     try {
       const res = await toggleLike(postId);
-      // Usa o count real retornado pelo servidor
+      // Usa count real do servidor (ReturnValues: 'UPDATED_NEW' — sempre preciso)
       if (typeof res?.like_count === 'number') setLikeCount(res.like_count);
       onLikeToggle?.(postId, newLiked);
     } catch {
       setLiked(wasLiked);
-      setLikeCount(prev => wasLiked ? prev + 1 : Math.max(0, prev - 1));
+      setLikeCount(likeCount); // rollback
       Alert.alert('Erro', 'Não foi possível registrar o like.');
     } finally {
       setLikePending(false);
     }
-  }, [postId, liked, likePending, onLikeToggle]);
+  }, [postId, liked, likeCount, likePending, onLikeToggle]);
 
   // ── Favoritar ───────────────────────────────────────────────────────────────
   const handleFavorite = useCallback(async () => {
@@ -158,9 +154,24 @@ export const PostCardView: React.FC<PostCardViewProps> = ({
     } else if (action === 'report') {
       Alert.alert('Denúncia enviada', 'Agradecemos por manter a comunidade segura.');
     } else if (action === 'delete') {
+      const doDelete = async () => {
+        try {
+          if (groupId) {
+            // Grupo: chama API diretamente (backend aceita dono OU mod)
+            await deleteGroupPost(groupId, postId);
+            onDelete?.(postId);
+          } else {
+            // Feed geral: dono exclui o próprio post
+            await deleteOwnPost(postId);
+            onDelete?.(postId);
+          }
+        } catch (err: any) {
+          Alert.alert('Erro', err.message || 'Não foi possível excluir a publicação.');
+        }
+      };
       Alert.alert('Excluir postagem', 'Esta ação não pode ser desfeita.', [
         { text: 'Cancelar', style: 'cancel' },
-        { text: 'Excluir', style: 'destructive', onPress: () => Alert.alert('Funcionalidade em breve') },
+        { text: 'Excluir', style: 'destructive', onPress: doDelete },
       ]);
     }
   };
@@ -290,15 +301,22 @@ export const PostCardView: React.FC<PostCardViewProps> = ({
             ) : (
               comments.map(c => (
                 <View key={c.comment_id} style={styles.commentItem}>
-                  <View style={styles.commentHeader}>
-                    <Text style={styles.commentAuthor}>{c.author_name}</Text>
-                    {(c.profile_id === myProfileId || canDeleteAnyComment) && (
-                      <TouchableOpacity onPress={() => handleDeleteComment(c.comment_id)} hitSlop={HIT_SLOP} activeOpacity={0.7}>
-                        <MaterialIcons name="delete-outline" size={14} color={AppTheme.colors.placeholderText} />
-                      </TouchableOpacity>
-                    )}
+                  <Avatar
+                    uri={c.profile_id ? `${S3_BASE}/${c.profile_id}.jpg` : undefined}
+                    name={c.author_name || ''}
+                    size={26}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <View style={styles.commentHeader}>
+                      <Text style={styles.commentAuthor}>{c.author_name}</Text>
+                      {(c.profile_id === myProfileId || canDeleteAnyComment) && (
+                        <TouchableOpacity onPress={() => handleDeleteComment(c.comment_id)} hitSlop={HIT_SLOP} activeOpacity={0.7}>
+                          <MaterialIcons name="delete-outline" size={14} color={AppTheme.colors.placeholderText} />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                    <Text style={styles.commentText}>{c.text}</Text>
                   </View>
-                  <Text style={styles.commentText}>{c.text}</Text>
                 </View>
               ))
             )}
@@ -433,7 +451,7 @@ const styles = StyleSheet.create({
     fontFamily: AppTheme.fonts.bodySmall.fontFamily,
     textAlign: 'center', paddingVertical: 8,
   },
-  commentItem: { marginBottom: 10 },
+  commentItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 10 },
   commentHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
   commentAuthor: {
     fontSize: 13, fontWeight: '600', color: AppTheme.colors.nameText,

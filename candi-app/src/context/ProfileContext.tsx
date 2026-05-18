@@ -37,11 +37,9 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setProfileId(data.profile_id);
       setProfileName(data.profile_name || '');
 
-      if (data.profile_picture_last_updated) {
-        setAvatarUri(`${S3_BASE}/${data.profile_id}.jpg?t=${data.profile_picture_last_updated}`);
-      } else {
-        setAvatarUri(null);
-      }
+      // Sempre tenta carregar do S3 — Avatar component faz fallback para iniciais se 404
+      const ts = data.profile_picture_last_updated ? `?t=${data.profile_picture_last_updated}` : '';
+      setAvatarUri(`${S3_BASE}/${data.profile_id}.jpg${ts}`);
     } catch {
       // falha silenciosa — não bloqueia o app
     }

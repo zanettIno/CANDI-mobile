@@ -10,6 +10,7 @@ import {
   Alert,
   StyleSheet,
   Platform,
+  Image,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
@@ -77,6 +78,7 @@ export const GroupView: React.FC = () => {
       setGroups(prev => [newGroup, ...prev]);
       setMyGroupIds(prev => new Set([...prev, newGroup.group_id]));
       Alert.alert('Grupo criado!', `O grupo "${newGroup.name}" foi criado com sucesso.`);
+      return newGroup; // necessário para upload de foto após criar
     } catch (err: any) {
       Alert.alert('Erro', err.message || 'Não foi possível criar o grupo.');
       throw err;
@@ -99,11 +101,15 @@ export const GroupView: React.FC = () => {
     return (
       <View style={styles.groupCard}>
         <View style={styles.groupCardTop}>
-          <View style={styles.groupIconWrapper}>
-            <Text style={styles.groupIcon}>
-              {item.name.charAt(0).toUpperCase()}
-            </Text>
-          </View>
+          {(item as any).photo_url ? (
+            <Image source={{ uri: (item as any).photo_url }} style={styles.groupPhoto} />
+          ) : (
+            <View style={styles.groupIconWrapper}>
+              <Text style={styles.groupIcon}>
+                {item.name.charAt(0).toUpperCase()}
+              </Text>
+            </View>
+          )}
           <View style={styles.groupInfo}>
             <Text style={styles.groupName} numberOfLines={1}>{item.name}</Text>
             <View style={styles.groupMeta}>
@@ -272,6 +278,7 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
   },
   groupCardTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  groupPhoto: { width: 48, height: 48, borderRadius: 12 },
   groupIconWrapper: {
     width: 48,
     height: 48,

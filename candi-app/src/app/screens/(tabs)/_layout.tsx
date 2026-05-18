@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import { pt, registerTranslation } from "react-native-paper-dates";
 import { Platform, StyleSheet } from 'react-native';
 import { MaterialIcons } from "@expo/vector-icons";
+import { useChat } from '@/context/ChatContext';
 
 registerTranslation("pt", pt);
 
@@ -21,6 +22,7 @@ export default function RootLayout() {
     ...Kadwa,
     ...Inter,
   });
+  const { totalUnread } = useChat();
 
   useEffect(() => {
     if (Platform.OS === 'web') {
@@ -54,6 +56,8 @@ export default function RootLayout() {
           name="homeCommunity"
           options={{
             title: 'Comunidade',
+            tabBarBadge: totalUnread > 0 ? (totalUnread > 99 ? '99+' : totalUnread) : undefined,
+            tabBarBadgeStyle: styles.badge,
             tabBarIcon: ({ color, focused }) => (
               <MaterialIcons
                 name={focused ? 'people' : 'people-outline'}
@@ -68,12 +72,8 @@ export default function RootLayout() {
           name="homeAgenda"
           options={{
             title: 'Agenda',
-            tabBarIcon: ({ color, focused }) => (
-              <MaterialIcons
-                name={focused ? 'event' : 'event'}
-                size={TAB_ICON_SIZE}
-                color={color}
-              />
+            tabBarIcon: ({ color }) => (
+              <MaterialIcons name="event" size={TAB_ICON_SIZE} color={color} />
             ),
           }}
         />
@@ -81,12 +81,8 @@ export default function RootLayout() {
           name="home"
           options={{
             title: 'Início',
-            tabBarIcon: ({ color, focused }) => (
-              <MaterialIcons
-                name={focused ? 'home' : 'home'}
-                size={TAB_ICON_SIZE + 2}
-                color={color}
-              />
+            tabBarIcon: ({ color }) => (
+              <MaterialIcons name="home" size={TAB_ICON_SIZE + 2} color={color} />
             ),
           }}
         />
@@ -94,12 +90,8 @@ export default function RootLayout() {
           name="homeDiary"
           options={{
             title: 'Diário',
-            tabBarIcon: ({ color, focused }) => (
-              <MaterialIcons
-                name={focused ? 'book' : 'book'}
-                size={TAB_ICON_SIZE}
-                color={color}
-              />
+            tabBarIcon: ({ color }) => (
+              <MaterialIcons name="book" size={TAB_ICON_SIZE} color={color} />
             ),
           }}
         />
@@ -141,5 +133,14 @@ const styles = StyleSheet.create({
   },
   tabItem: {
     paddingVertical: 4,
+  },
+  badge: {
+    backgroundColor: '#ef4444',
+    fontSize: 10,
+    fontFamily: AppTheme.fonts.labelSmall.fontFamily,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    lineHeight: 18,
   },
 });

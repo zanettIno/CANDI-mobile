@@ -5,6 +5,9 @@ import {
 } from 'react-native';
 import { AppTheme } from '@/theme';
 import Avatar from '@/components/Avatar';
+
+const S3_BASE = 'https://awscandi-image-uploads.s3.us-east-2.amazonaws.com/profile-images';
+const profilePicUri = (id?: string | null) => id ? `${S3_BASE}/${id}.jpg` : undefined;
 import { getInbox } from '@/services/chatService';
 import { sharePostToChat, getMyGroups } from '@/services/communityService';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -18,7 +21,7 @@ interface SharePostModalProps {
 
 type ListItem =
   | { kind: 'header'; label: string }
-  | { kind: 'target'; id: string; name: string; isGroup: boolean };
+  | { kind: 'target'; id: string; name: string; isGroup: boolean; userId?: string };
 
 export const SharePostModal: React.FC<SharePostModalProps> = ({
   visible, postId, postContent, onDismiss,
@@ -41,7 +44,7 @@ export const SharePostModal: React.FC<SharePostModalProps> = ({
 
         if (dms.length > 0) {
           list.push({ kind: 'header', label: 'Conversas' });
-          dms.forEach(c => list.push({ kind: 'target', id: c.conversation_id, name: c.other_user_name || 'Conversa', isGroup: false }));
+          dms.forEach(c => list.push({ kind: 'target', id: c.conversation_id, name: c.other_user_name || 'Conversa', isGroup: false, userId: c.other_user_id }));
         }
         if (activeGroups.length > 0) {
           list.push({ kind: 'header', label: 'Grupos' });
@@ -109,7 +112,7 @@ export const SharePostModal: React.FC<SharePostModalProps> = ({
                 >
                   {item.isGroup
                     ? <View style={styles.groupIcon}><MaterialIcons name="group" size={20} color={AppTheme.colors.tertiary} /></View>
-                    : <Avatar name={item.name} size={44} />
+                    : <Avatar uri={profilePicUri(item.userId)} name={item.name} size={44} />
                   }
                   <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
                   {isSending

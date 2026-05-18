@@ -24,19 +24,15 @@ import Avatar from '@/components/Avatar';
 import GroupAddModal from '@/components/Modals/GroupAddModal';
 import MessagesAdd from '@/components/Modals/MessagesAddModal';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { getPosts } from '@/services/feedService';
+import { getPosts, type Post as FeedPost } from '@/services/feedService';
 import { listGroups, getMyGroups, joinGroup, createGroup, getUserLikedPosts, getMyFavorites, getMyFavoritedPosts } from '@/services/communityService';
 import { getInbox, startConversationByEmail } from '@/services/chatService';
 import { useProfile } from '@/context/ProfileContext';
+import { useChat } from '@/context/ChatContext';
 import { formatTime } from '@/utils/dateFormat';
 
 type Section = 'feed' | 'grupos' | 'mensagens' | 'favoritos';
-
-interface Post {
-  post_id: string; profile_id: string; profile_name: string;
-  content: string; file_url?: string; created_at: string; topic: string;
-  like_count?: number; comment_count?: number;
-}
+type Post = FeedPost;
 interface Group {
   group_id: string; name: string; description: string;
   topic: string; member_count: number; created_at: string;
@@ -45,17 +41,22 @@ interface Group {
 export default function CommunityScreen() {
   const router = useRouter();
   const { avatarUri, profileName } = useProfile();
+  const { setTotalUnread, inboxRefreshKey, feedRefreshKey } = useChat();
   const [section, setSection] = React.useState<Section>('feed');
 
   // Feed
   const [search, setSearch] = React.useState('');
   const [activeHashtag, setActiveHashtag] = React.useState<string | null>(null);
   const [posts, setPosts] = React.useState<Post[]>([]);
+  const [feedNextKey, setFeedNextKey] = React.useState<string | null>(null);
+  const [feedLoadingMore, setFeedLoadingMore] = React.useState(false);
   const [feedLoading, setFeedLoading] = React.useState(true);
   const [feedRefreshing, setFeedRefreshing] = React.useState(false);
   const [feedError, setFeedError] = React.useState<string | null>(null);
   const [likedPostIds, setLikedPostIds] = React.useState<Set<string>>(new Set());
   const [favoritedPostIds, setFavoritedPostIds] = React.useState<Set<string>>(new Set());
+  // Incrementa a cada fetch para forçar remount do FlatList → PostCardViews recebem estado limpo
+  const [feedKey, setFeedKey] = React.useState(0);
 
   // Favoritos tab
   const [favoritedPosts, setFavoritedPosts] = React.useState<Post[]>([]);
@@ -79,35 +80,54 @@ export default function CommunityScreen() {
   const [msgModal, setMsgModal] = React.useState(false);
 
   // ── Feed ────────────────────────────────────────────────────────────────────
-  const fetchPosts = React.useCallback(async (hashtag?: string, silent = false) => {
-    if (!silent) setFeedLoading(true);
+  const fetchPosts = React.useCallback(async (hashtag?: string) => {
+    setFeedLoading(true);
     setFeedError(null);
+    setFeedNextKey(null);
     try {
-      const [fetchedPosts, likedIds, favIds] = await Promise.allSettled([
-        getPosts(hashtag),
+      const [fetchedData, likedIds, favIds] = await Promise.allSettled([
+        getPosts(hashtag || undefined, 5),
         getUserLikedPosts(),
         getMyFavorites(),
       ]);
-      if (fetchedPosts.status === 'fulfilled') setPosts(fetchedPosts.value);
-      else setPosts([]);
-      if (likedIds.status === 'fulfilled') {
-        setLikedPostIds(new Set(likedIds.value as string[]));
+      if (fetchedData.status === 'fulfilled') {
+        setPosts(fetchedData.value.items);
+        setFeedNextKey(fetchedData.value.nextKey);
+        setFeedKey(k => k + 1); // força remount do FlatList → estado limpo em cada PostCardView
+      } else {
+        setPosts([]);
+        const err = fetchedData.reason;
+        setFeedError(err.message?.toLowerCase().includes('token')
+          ? 'Sessão expirada.' : (err.message || 'Erro ao carregar.'));
       }
-      if (favIds.status === 'fulfilled') {
-        setFavoritedPostIds(new Set((favIds.value as any[]).map((f: any) => f.post_id)));
-      }
-      if (fetchedPosts.status === 'rejected') {
-        const err = fetchedPosts.reason;
-        const isAuth = err.message?.toLowerCase().includes('token');
-        setFeedError(isAuth ? 'Sessão expirada. Faça login novamente.' : (err.message || 'Erro ao carregar.'));
-      }
+      if (likedIds.status === 'fulfilled') setLikedPostIds(new Set(likedIds.value as string[]));
+      if (favIds.status === 'fulfilled') setFavoritedPostIds(new Set((favIds.value as any[]).map((f: any) => f.post_id)));
     } finally { setFeedLoading(false); setFeedRefreshing(false); }
   }, []);
 
-  useFocusEffect(React.useCallback(() => { fetchPosts(activeHashtag || undefined); }, [activeHashtag]));
+  const loadMorePosts = React.useCallback(async () => {
+    if (!feedNextKey || feedLoadingMore) return;
+    setFeedLoadingMore(true);
+    try {
+      const data = await getPosts(activeHashtag || undefined, 5, feedNextKey);
+      // Deduplicação — nunca mostra o mesmo post duas vezes
+      setPosts(prev => {
+        const seen = new Set(prev.map(p => p.post_id));
+        return [...prev, ...data.items.filter((p: any) => !seen.has(p.post_id))];
+      });
+      setFeedNextKey(data.nextKey);
+    } catch { /* silently ignore */ }
+    finally { setFeedLoadingMore(false); }
+  }, [feedNextKey, feedLoadingMore, activeHashtag]);
 
-  // When hashtag filter changes, reload
-  React.useEffect(() => { fetchPosts(activeHashtag || undefined); }, [activeHashtag]);
+  // Busca ao focar a aba
+  useFocusEffect(React.useCallback(() => { fetchPosts(activeHashtag || undefined); }, [activeHashtag]));
+  // Busca ao voltar para seção feed (ex: estava em grupos e voltou)
+  React.useEffect(() => { if (section === 'feed') fetchPosts(activeHashtag || undefined); }, [section]);
+  // Busca quando hashtag muda
+  React.useEffect(() => { if (section === 'feed') fetchPosts(activeHashtag || undefined); }, [activeHashtag]);
+  // Busca quando chega novo post via WS
+  React.useEffect(() => { if (feedRefreshKey > 0 && section === 'feed') fetchPosts(activeHashtag || undefined); }, [feedRefreshKey]);
 
   const handleSearchSubmit = () => {
     const trimmed = search.trim();
@@ -173,6 +193,7 @@ export default function CommunityScreen() {
       const g = await createGroup(data);
       setGroups(prev => [g, ...prev]);
       setMyGroupIds(prev => new Set([...prev, g.group_id]));
+      return g; // necessário para o GroupAddModal fazer upload da foto após criar
     } catch (err: any) {
       Alert.alert('Erro', err.message || 'Não foi possível criar o grupo.');
       throw err;
@@ -188,12 +209,22 @@ export default function CommunityScreen() {
   // ── Messages ─────────────────────────────────────────────────────────────────
   const loadInbox = React.useCallback(async () => {
     setMsgsLoading(true); setMsgsError('');
-    try { setConversations(await getInbox()); }
+    try {
+      const data = await getInbox();
+      setConversations(data);
+      const unread = data.reduce((acc: number, c: any) => acc + (c.unread_count || 0), 0);
+      setTotalUnread(unread);
+    }
     catch (err: any) { setMsgsError(err.message || 'Erro ao carregar.'); }
     finally { setMsgsLoading(false); }
-  }, []);
+  }, [setTotalUnread]);
 
   React.useEffect(() => { if (section === 'mensagens') loadInbox(); }, [section]);
+  // Refresh automático inbox via socket
+  React.useEffect(() => { if (inboxRefreshKey > 0) loadInbox(); }, [inboxRefreshKey]);
+  // Refresh automático feed via socket (nova publicação em tempo real)
+  // Quando chega novo post via WS, recarrega o feed do início (sem silent para mostrar novos)
+  React.useEffect(() => { if (feedRefreshKey > 0) fetchPosts(activeHashtag || undefined); }, [feedRefreshKey]);
 
   // ── Favoritos ────────────────────────────────────────────────────────────────
   const loadFavorites = React.useCallback(async () => {
@@ -258,20 +289,8 @@ export default function CommunityScreen() {
     </ScrollView>
   );
 
-  const renderFeed = () => (
-    <ScrollView
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={{ flexGrow: 1 }}
-      refreshControl={
-        <RefreshControl
-          refreshing={feedRefreshing}
-          onRefresh={() => { setFeedRefreshing(true); fetchPosts(activeHashtag || undefined, true); }}
-          colors={[AppTheme.colors.tertiary]}
-          tintColor={AppTheme.colors.tertiary}
-        />
-      }
-    >
-      {/* Search / hashtag bar */}
+  const FeedHeader = React.useMemo(() => (
+    <View>
       <View style={s.feedSearch}>
         <View style={s.searchRow}>
           <MaterialIcons name="search" size={18} color={AppTheme.colors.placeholderText} style={{ marginRight: 6 }} />
@@ -293,7 +312,6 @@ export default function CommunityScreen() {
             </TouchableOpacity>
           )}
         </View>
-        {/* Active hashtag chip */}
         {activeHashtag && (
           <View style={s.hashtagChipRow}>
             <View style={s.hashtagChip}>
@@ -305,36 +323,67 @@ export default function CommunityScreen() {
           </View>
         )}
       </View>
-
       <PostCard onPostSuccess={(p: Post) => {
-        if (!activeHashtag) setPosts(prev => [p, ...prev]);
+        if (!activeHashtag) setPosts(prev => [p as Post, ...prev]);
       }} />
+    </View>
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ), [search, activeHashtag]);
 
-      {feedLoading ? (
+  const renderFeed = () => {
+    if (feedLoading) {
+      return (
         <View style={s.centered}>
           <ActivityIndicator size="large" color={AppTheme.colors.tertiary} />
         </View>
-      ) : feedError ? (
-        <EmptyState icon="wifi-off" title="Erro ao carregar" subtitle={feedError}
-          actionLabel="Tentar novamente" onAction={() => fetchPosts(activeHashtag || undefined)} />
-      ) : filteredPosts.length === 0 ? (
-        <EmptyState icon="article"
-          title={activeHashtag ? `Nenhum post com ${activeHashtag}` : 'Nenhuma postagem ainda'}
-          subtitle={activeHashtag ? 'Tente outra hashtag.' : 'Seja o primeiro a compartilhar algo!'} />
-      ) : filteredPosts.map(p => (
-        <PostCardView key={p.post_id} postId={p.post_id} userName={p.profile_name}
-          userHandle={p.profile_id.substring(0, 8)} timeAgo={p.created_at}
-          content={p.content} fileUrl={p.file_url} profileId={p.profile_id}
-          initialLikeCount={p.like_count || 0}
-          initialCommentCount={p.comment_count || 0}
-          initialLiked={likedPostIds.has(p.post_id)}
-          initialFavorited={favoritedPostIds.has(p.post_id)}
-          onLikeToggle={handleLikeToggle}
-          onFavoriteToggle={handleFavoriteToggle} />
-      ))}
-      <View style={{ height: 20 }} />
-    </ScrollView>
-  );
+      );
+    }
+    return (
+      <FlatList
+        key={feedKey}
+        data={filteredPosts}
+        keyExtractor={p => p.post_id}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ flexGrow: 1 }}
+        ListHeaderComponent={FeedHeader}
+        refreshControl={
+          <RefreshControl
+            refreshing={feedRefreshing}
+            onRefresh={() => { setFeedRefreshing(true); fetchPosts(activeHashtag || undefined, true); }}
+            colors={[AppTheme.colors.tertiary]}
+            tintColor={AppTheme.colors.tertiary}
+          />
+        }
+        renderItem={({ item: p }) => (
+          <PostCardView
+            postId={p.post_id} userName={p.profile_name}
+            userHandle={p.profile_id.substring(0, 8)} timeAgo={p.created_at}
+            content={p.content} fileUrl={p.file_url} profileId={p.profile_id}
+            initialLikeCount={p.like_count || 0}
+            initialCommentCount={p.comment_count || 0}
+            initialLiked={likedPostIds.has(p.post_id)}
+            initialFavorited={favoritedPostIds.has(p.post_id)}
+            onLikeToggle={handleLikeToggle}
+            onFavoriteToggle={handleFavoriteToggle}
+            onDelete={(id) => setPosts(prev => prev.filter(x => x.post_id !== id))}
+          />
+        )}
+        onEndReached={loadMorePosts}
+        onEndReachedThreshold={0.3}
+        ListFooterComponent={feedLoadingMore ? (
+          <ActivityIndicator size="small" color={AppTheme.colors.tertiary} style={{ marginVertical: 16 }} />
+        ) : feedError ? (
+          <EmptyState icon="wifi-off" title="Erro" subtitle={feedError}
+            actionLabel="Tentar novamente" onAction={() => fetchPosts(activeHashtag || undefined)} />
+        ) : null}
+        ListEmptyComponent={!feedError ? (
+          <EmptyState icon="article"
+            title={activeHashtag ? `Nenhum post com ${activeHashtag}` : 'Nenhuma postagem ainda'}
+            subtitle={activeHashtag ? 'Tente outra hashtag.' : 'Seja o primeiro a compartilhar algo!'} />
+        ) : null}
+      />
+    );
+  };
 
   const renderGroups = () => (
     <View style={{ flex: 1 }}>
@@ -371,7 +420,11 @@ export default function CommunityScreen() {
                 })}
               >
                 <View style={s.groupRow}>
-                  <View style={s.groupIcon}><Text style={s.groupIconText}>{item.name[0].toUpperCase()}</Text></View>
+                  {(item as any).photo_url ? (
+                    <Image source={{ uri: (item as any).photo_url }} style={s.groupPhoto} />
+                  ) : (
+                    <View style={s.groupIcon}><Text style={s.groupIconText}>{item.name[0].toUpperCase()}</Text></View>
+                  )}
                   <View style={{ flex: 1 }}>
                     <Text style={s.groupName} numberOfLines={1}>{item.name}</Text>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
@@ -417,10 +470,15 @@ export default function CommunityScreen() {
         <FlatList data={filteredConvs} keyExtractor={(i: any) => i.conversation_id}
           contentContainerStyle={{ flexGrow: 1 }}
           renderItem={({ item }: any) => (
-            <MessageCard userName={item.other_user_name} lastMessage={item.last_message || '...'}
+            <MessageCard
+              userName={item.other_user_name}
+              lastMessage={item.last_message || '...'}
               time={item.last_message_timestamp ? formatTime(item.last_message_timestamp) : ''}
-              unreadCount={item.unread_count} isRead={item.unread_count === 0}
-              onPress={() => router.push({ pathname: '/screens/community/chatCommunity', params: { conversationId: item.conversation_id, userName: item.other_user_name } })} />
+              unreadCount={item.unread_count}
+              isRead={item.unread_count === 0}
+              otherUserId={item.other_user_id}
+              onPress={() => router.push({ pathname: '/screens/community/chatCommunity', params: { conversationId: item.conversation_id, userName: item.other_user_name } })}
+            />
           )}
           ListEmptyComponent={
             <EmptyState icon="chat-bubble-outline" title="Nenhuma conversa"
@@ -432,21 +490,25 @@ export default function CommunityScreen() {
     </View>
   );
 
+  const totalMsgUnread = conversations.reduce((acc: number, c: any) => acc + (c.unread_count || 0), 0);
+
   return (
     <SafeAreaView style={s.container}>
-      {/* Header */}
+      {/* Header — largura do lado direito sempre fixa em 34px para não causar shift */}
       <View style={s.topBar}>
         <TouchableOpacity onPress={() => router.push('/screens/homeProfile')}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} activeOpacity={0.7}>
           <Avatar uri={avatarUri || undefined} name={profileName} size={34} />
         </TouchableOpacity>
         <Image source={require('../../../../../assets/images/original.png')} style={s.logo} />
-        {section === 'mensagens' ? (
-          <TouchableOpacity onPress={() => setMsgModal(true)}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} activeOpacity={0.7}>
-            <MaterialIcons name="add" size={26} color={AppTheme.colors.tertiary} />
-          </TouchableOpacity>
-        ) : <View style={{ width: 34 }} />}
+        <View style={s.topBarRight}>
+          {section === 'mensagens' && (
+            <TouchableOpacity onPress={() => setMsgModal(true)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} activeOpacity={0.7}>
+              <MaterialIcons name="add" size={26} color={AppTheme.colors.tertiary} />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       {/* Section tabs */}
@@ -454,14 +516,19 @@ export default function CommunityScreen() {
         {([
           { key: 'feed', label: 'Feed', icon: 'dynamic-feed' },
           { key: 'grupos', label: 'Grupos', icon: 'groups' },
-          { key: 'mensagens', label: 'Mensagens', icon: 'chat-bubble-outline' },
+          { key: 'mensagens', label: 'Msgs', icon: 'chat-bubble-outline' },
           { key: 'favoritos', label: 'Salvos', icon: 'bookmark-border' },
         ] as { key: Section; label: string; icon: any }[]).map(tab => {
           const active = section === tab.key;
+          const showBadge = tab.key === 'mensagens' && totalMsgUnread > 0 && section !== 'mensagens';
           return (
-            <TouchableOpacity key={tab.key} onPress={() => setSection(tab.key)}
+            <TouchableOpacity key={tab.key}
+              onPress={() => setSection(tab.key)}
               style={[s.sectionTab, active && s.sectionTabActive]} activeOpacity={0.7}>
-              <MaterialIcons name={tab.icon} size={18} color={active ? AppTheme.colors.tertiary : AppTheme.colors.placeholderText} />
+              <View style={{ position: 'relative' }}>
+                <MaterialIcons name={tab.icon} size={18} color={active ? AppTheme.colors.tertiary : AppTheme.colors.placeholderText} />
+                {showBadge && <View style={s.tabBadgeDot} />}
+              </View>
               <Text style={[s.sectionTabText, active && s.sectionTabTextActive]}>{tab.label}</Text>
             </TouchableOpacity>
           );
@@ -485,7 +552,13 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     borderBottomWidth: 1, borderBottomColor: AppTheme.colors.dotsColor,
   },
+  topBarRight: { width: 34, alignItems: 'center', justifyContent: 'center' },
   logo: { width: 110, height: 44, resizeMode: 'contain' },
+  tabBadgeDot: {
+    position: 'absolute', top: -2, right: -4,
+    width: 8, height: 8, borderRadius: 4,
+    backgroundColor: '#ef4444',
+  },
   sectionTabs: {
     flexDirection: 'row',
     backgroundColor: AppTheme.colors.cardBackground,
@@ -539,6 +612,7 @@ const s = StyleSheet.create({
   groupCard: { backgroundColor: AppTheme.colors.cardBackground, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: AppTheme.colors.dotsColor },
   groupRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   groupIcon: { width: 46, height: 46, borderRadius: 12, backgroundColor: AppTheme.colors.secondary, alignItems: 'center', justifyContent: 'center' },
+  groupPhoto: { width: 46, height: 46, borderRadius: 12 },
   groupIconText: { fontSize: 20, fontWeight: '700', color: AppTheme.colors.tertiary, fontFamily: AppTheme.fonts.titleLarge.fontFamily },
   groupName: { fontFamily: AppTheme.fonts.bodyMedium.fontFamily, fontSize: AppTheme.fonts.bodyMedium.fontSize, fontWeight: '700', color: AppTheme.colors.nameText },
   groupMeta: { fontSize: 12, color: AppTheme.colors.placeholderText, fontFamily: AppTheme.fonts.bodySmall.fontFamily },

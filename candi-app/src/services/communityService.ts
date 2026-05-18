@@ -143,6 +143,34 @@ export const updateMemberRole = (groupId: string, profileId: string, role: 'co-l
 export const deleteGroupPost = (groupId: string, postId: string) =>
   fetchAPI(`/community/groups/${groupId}/posts/${postId}`, { method: 'DELETE' });
 
+// ─── IMAGEM DE GRUPO ─────────────────────────────────────────────────────────
+
+export const uploadGroupImage = async (
+  groupId: string,
+  imageFile: { uri: string; name: string; type: string },
+  type: 'photo' | 'banner' = 'photo',
+) => {
+  const token = await getValidAccessToken();
+  const formData = new FormData();
+  if (typeof document !== 'undefined') {
+    const res = await fetch(imageFile.uri);
+    const blob = await res.blob();
+    formData.append('file', blob, imageFile.name);
+  } else {
+    formData.append('file', { uri: imageFile.uri, name: imageFile.name, type: imageFile.type } as any);
+  }
+  const response = await fetch(`${API_BASE_URL}/community/groups/${groupId}/image?type=${type}`, {
+    method: 'POST',
+    body: formData,
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.message || 'Erro ao fazer upload da imagem');
+  }
+  return response.json();
+};
+
 // ─── FEED COM IMAGEM ─────────────────────────────────────────────────────────
 
 export const createPostWithImage = async (

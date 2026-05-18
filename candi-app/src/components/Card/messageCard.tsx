@@ -4,12 +4,15 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { AppTheme } from '@/theme';
 import Avatar from '@/components/Avatar';
 
+const S3_BASE = 'https://awscandi-image-uploads.s3.us-east-2.amazonaws.com/profile-images';
+
 interface MessageCardProps {
   userName: string;
   lastMessage: string;
   time: string;
   unreadCount?: number;
   isRead?: boolean;
+  otherUserId?: string; // ID do outro participante para buscar foto de perfil
   onPress: () => void;
 }
 
@@ -19,9 +22,11 @@ export const MessageCard: React.FC<MessageCardProps> = ({
   time,
   unreadCount,
   isRead = false,
+  otherUserId,
   onPress,
 }) => {
   const hasUnread = (unreadCount && unreadCount > 0) || !isRead;
+  const avatarUri = otherUserId ? `${S3_BASE}/${otherUserId}.jpg` : undefined;
 
   return (
     <TouchableOpacity
@@ -29,7 +34,7 @@ export const MessageCard: React.FC<MessageCardProps> = ({
       onPress={onPress}
       activeOpacity={0.7}
     >
-      <Avatar name={userName} size={50} />
+      <Avatar uri={avatarUri} name={userName} size={50} />
 
       <View style={styles.content}>
         <View style={styles.row}>
@@ -89,9 +94,7 @@ const styles = StyleSheet.create({
     color: AppTheme.colors.nameText,
     marginRight: 8,
   },
-  nameBold: {
-    fontWeight: '700',
-  },
+  nameBold: { fontWeight: '700' },
   lastMessage: {
     flex: 1,
     fontSize: AppTheme.fonts.bodySmall.fontSize,

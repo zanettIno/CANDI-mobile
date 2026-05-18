@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, Image, StyleSheet, Platform } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { AppTheme } from '@/theme';
 
 interface AvatarProps {
@@ -62,9 +63,13 @@ export const Avatar: React.FC<AvatarProps> = ({ uri, name = '', size = 44, borde
 
   return (
     <View style={containerStyle}>
-      <Text style={[styles.initials, { fontSize: size * 0.35 }]}>
-        {name ? getInitials(name) : '?'}
-      </Text>
+      {name ? (
+        <Text style={[styles.initials, { fontSize: size * 0.35 }]}>
+          {getInitials(name)}
+        </Text>
+      ) : (
+        <MaterialIcons name="person" size={size * 0.55} color={AppTheme.colors.cardBackground} />
+      )}
     </View>
   );
 };

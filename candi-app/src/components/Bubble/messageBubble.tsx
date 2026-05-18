@@ -1,7 +1,9 @@
 import React from 'react';
-import { View, Text, Image, StyleSheet, Platform, TouchableOpacity, ViewStyle } from 'react-native';
-import { AppTheme } from '../../theme/index';
+import { View, Text, Image, StyleSheet, Platform, TouchableOpacity } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import { AppTheme } from '../../theme/index';
+
+export type MessageStatus = 'sent' | 'delivered' | 'read';
 
 export interface SharedPostNavParams {
   postId: string;
@@ -17,9 +19,30 @@ interface MessageBubbleProps {
   message: string;
   time: string;
   isSent: boolean;
+  msgStatus?: MessageStatus;
   onPressSharedPost?: (params: SharedPostNavParams) => void;
 }
 
+// ── Ícone de status (checkmarks) ───────────────────────────────────────────
+const StatusIcon: React.FC<{ status: MessageStatus }> = ({ status }) => {
+  if (status === 'sent') {
+    return <MaterialIcons name="done" size={13} color="rgba(0,60,30,0.45)" />;
+  }
+  const color = status === 'read' ? '#29b6f6' : 'rgba(0,60,30,0.45)';
+  return (
+    <View style={si.wrap}>
+      <MaterialIcons name="done" size={13} color={color} style={si.first} />
+      <MaterialIcons name="done" size={13} color={color} />
+    </View>
+  );
+};
+
+const si = StyleSheet.create({
+  wrap: { flexDirection: 'row', alignItems: 'center' },
+  first: { marginRight: -7 },
+});
+
+// ── Shared post card ────────────────────────────────────────────────────────
 interface SharedPost {
   post_id: string;
   author_name: string;
@@ -30,74 +53,74 @@ interface SharedPost {
 }
 
 const SharedPostCard: React.FC<{ data: SharedPost; isSent: boolean }> = ({ data, isSent }) => {
-  const [imgError, setImgError] = React.useState(false);
-  const preview = data.content.length > 180 ? data.content.slice(0, 180) + '...' : data.content;
+  const [imgErr, setImgErr] = React.useState(false);
+  const preview = data.content.length > 160 ? data.content.slice(0, 160) + '…' : data.content;
+  const textCol = isSent ? '#1a3a2a' : AppTheme.colors.textColor;
+  const dimCol = isSent ? 'rgba(0,60,30,0.6)' : AppTheme.colors.placeholderText;
 
   return (
-    <View style={[sharedStyles.card, isSent ? sharedStyles.cardSent : sharedStyles.cardReceived]}>
-      {/* Cabeçalho "X compartilhou" */}
-      <View style={sharedStyles.sharedByRow}>
-        <MaterialIcons name="push-pin" size={12} color={isSent ? 'rgba(255,255,255,0.7)' : AppTheme.colors.tertiary} />
-        <Text style={[sharedStyles.sharedByText, isSent && sharedStyles.sharedByTextSent]}>
-          {data.shared_by} compartilhou
-        </Text>
+    <View style={[sp.card, isSent ? sp.cardSent : sp.cardRecv]}>
+      <View style={sp.header}>
+        <MaterialIcons name="push-pin" size={11} color={dimCol} />
+        <Text style={[sp.sharedBy, { color: dimCol }]}>{data.shared_by} compartilhou</Text>
       </View>
-
-      {/* Divider */}
-      <View style={[sharedStyles.divider, isSent && sharedStyles.dividerSent]} />
-
-      {/* Autor */}
-      <Text style={[sharedStyles.authorName, isSent && sharedStyles.textSent]}>{data.author_name}</Text>
-
-      {/* Imagem do post */}
-      {data.file_url && !imgError && (
+      <View style={[sp.divider, { backgroundColor: isSent ? 'rgba(0,60,30,0.15)' : AppTheme.colors.dotsColor }]} />
+      <Text style={[sp.author, { color: textCol }]}>{data.author_name}</Text>
+      {data.file_url && !imgErr && (
         Platform.OS === 'web' ? (
-          <img
-            src={data.file_url}
-            style={{ width: '100%', height: 130, objectFit: 'cover', borderRadius: 8, marginBottom: 6 }}
-            onError={() => setImgError(true)}
-            crossOrigin="anonymous"
-          />
+          <img src={data.file_url} style={{ width: '100%', height: 110, objectFit: 'cover', borderRadius: 8, marginBottom: 6 }}
+            onError={() => setImgErr(true)} crossOrigin="anonymous" />
         ) : (
-          <Image
-            source={{ uri: data.file_url }}
-            style={sharedStyles.postImage}
-            resizeMode="cover"
-            onError={() => setImgError(true)}
-          />
+          <Image source={{ uri: data.file_url }} style={sp.img} resizeMode="cover" onError={() => setImgErr(true)} />
         )
       )}
-
-      {/* Conteúdo do post */}
-      <Text style={[sharedStyles.postContent, isSent && sharedStyles.textSent]}>{preview}</Text>
+      <Text style={[sp.content, { color: textCol }]}>{preview}</Text>
     </View>
   );
 };
 
-export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, time, isSent, onPressSharedPost }) => {
-  // Detecta mensagem de post compartilhado
-  if (message.startsWith('__POST__:')) {
-    let sharedPost: SharedPost | null = null;
-    try {
-      sharedPost = JSON.parse(message.slice('__POST__:'.length));
-    } catch {}
+const sp = StyleSheet.create({
+  card: { borderRadius: 10, padding: 10, marginBottom: 2 },
+  cardSent: { backgroundColor: 'rgba(0,80,40,0.08)', borderWidth: 1, borderColor: 'rgba(0,80,40,0.12)' },
+  cardRecv: { backgroundColor: AppTheme.colors.background, borderWidth: 1, borderColor: AppTheme.colors.dotsColor },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 5 },
+  sharedBy: { fontSize: 11, fontFamily: AppTheme.fonts.labelSmall.fontFamily, fontWeight: '600' },
+  divider: { height: 1, marginBottom: 7 },
+  author: { fontSize: 13, fontWeight: '700', fontFamily: AppTheme.fonts.bodyMedium.fontFamily, marginBottom: 4 },
+  img: { width: '100%', height: 110, borderRadius: 8, marginBottom: 6 },
+  content: { fontSize: 13, fontFamily: AppTheme.fonts.bodyMedium.fontFamily, lineHeight: 18 },
+});
 
-    if (sharedPost) {
+// ── Bubble principal ────────────────────────────────────────────────────────
+export const MessageBubble: React.FC<MessageBubbleProps> = ({
+  message, time, isSent, msgStatus, onPressSharedPost,
+}) => {
+  const sentBg = '#d4f0e0';
+  const recvBg = AppTheme.colors.cardBackground;
+  const sentText = '#0d2d1a';
+  const recvText = AppTheme.colors.textColor;
+  const timeCol = isSent ? 'rgba(0,60,30,0.45)' : AppTheme.colors.placeholderText;
+
+  // Shared post
+  if (message.startsWith('__POST__:')) {
+    let post: SharedPost | null = null;
+    try { post = JSON.parse(message.slice('__POST__:'.length)); } catch {}
+    if (post) {
       return (
         <TouchableOpacity
           activeOpacity={onPressSharedPost ? 0.75 : 1}
           onPress={onPressSharedPost ? () => onPressSharedPost({
-            postId: sharedPost!.post_id,
-            authorName: sharedPost!.author_name,
-            content: sharedPost!.content,
-            fileUrl: sharedPost!.file_url ?? undefined,
-            createdAt: sharedPost!.created_at,
+            postId: post!.post_id, authorName: post!.author_name,
+            content: post!.content, fileUrl: post!.file_url ?? undefined,
+            createdAt: post!.created_at,
           }) : undefined}
         >
-          <View style={[styles.container, isSent ? styles.containerSent : styles.containerReceived]}>
-            <View style={[styles.bubble, isSent ? styles.bubbleSent : styles.bubbleReceived, styles.bubbleShared]}>
-              <SharedPostCard data={sharedPost!} isSent={isSent} />
-              <Text style={[styles.time, isSent ? styles.timeSent : styles.timeReceived]}>{time}</Text>
+          <View style={[s.bubble, isSent ? [s.sent, s.sentTail] : [s.recv, s.recvTail],
+            { backgroundColor: isSent ? sentBg : recvBg }]}>
+            <SharedPostCard data={post!} isSent={isSent} />
+            <View style={s.foot}>
+              <Text style={[s.time, { color: timeCol }]}>{time}</Text>
+              {msgStatus && <StatusIcon status={msgStatus} />}
             </View>
           </View>
         </TouchableOpacity>
@@ -106,148 +129,57 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, time, isS
   }
 
   return (
-    <View style={[styles.container, isSent ? styles.containerSent : styles.containerReceived]}>
-      <View style={[styles.bubble, isSent ? styles.bubbleSent : styles.bubbleReceived]}>
-        <Text style={[styles.message, isSent ? styles.messageSent : styles.messageReceived]}>
-          {message}
-        </Text>
-        <View style={styles.footer}>
-          <Text style={[styles.time, isSent ? styles.timeSent : styles.timeReceived]}>
-            {time}
-          </Text>
-          {isSent && <MaterialIcons name="done" size={12} color="rgba(255,255,255,0.65)" />}
-        </View>
+    <View style={[
+      s.bubble,
+      isSent ? [s.sent, s.sentTail] : [s.recv, s.recvTail],
+      { backgroundColor: isSent ? sentBg : recvBg },
+    ]}>
+      <Text style={[s.text, { color: isSent ? sentText : recvText }]}>{message}</Text>
+      <View style={s.foot}>
+        <Text style={[s.time, { color: timeCol }]}>{time}</Text>
+        {msgStatus && <StatusIcon status={msgStatus} />}
       </View>
     </View>
   );
 };
 
-const sharedStyles = StyleSheet.create({
-  card: {
-    borderRadius: 10,
-    padding: 10,
-    marginBottom: 4,
-  },
-  cardSent: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.25)',
-  },
-  cardReceived: {
-    backgroundColor: AppTheme.colors.background,
-    borderWidth: 1,
-    borderColor: AppTheme.colors.dotsColor,
-  },
-  sharedByRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 6,
-  },
-  sharedByText: {
-    fontSize: 11,
-    color: AppTheme.colors.tertiary,
-    fontFamily: AppTheme.fonts.labelSmall.fontFamily,
-    fontWeight: '600',
-  },
-  sharedByTextSent: {
-    color: 'rgba(255,255,255,0.75)',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: AppTheme.colors.dotsColor,
-    marginBottom: 8,
-  },
-  dividerSent: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-  },
-  authorName: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: AppTheme.colors.nameText,
-    fontFamily: AppTheme.fonts.bodyMedium.fontFamily,
-    marginBottom: 4,
-  },
-  postImage: {
-    width: '100%',
-    height: 130,
-    borderRadius: 8,
-    marginBottom: 6,
-  },
-  postContent: {
-    fontSize: 13,
-    color: AppTheme.colors.textColor,
-    fontFamily: AppTheme.fonts.bodyMedium.fontFamily,
-    lineHeight: 19,
-  },
-  textSent: {
-    color: 'rgba(255,255,255,0.9)',
-  },
-});
-
-const styles = StyleSheet.create({
-  container: {
-    maxWidth: '90%',
-    marginVertical: 2,
-  },
-  containerSent: {
-    alignSelf: 'flex-end',
-  },
-  containerReceived: {
-    alignSelf: 'flex-start',
-  },
+const s = StyleSheet.create({
   bubble: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
+    paddingHorizontal: 11,
+    paddingTop: 8,
+    paddingBottom: 6,
+    borderRadius: 18,
+    maxWidth: '100%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
     shadowRadius: 2,
     elevation: 1,
   },
-  bubbleShared: {
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-  },
-  bubbleSent: {
-    backgroundColor: AppTheme.colors.tertiary,
-    borderTopRightRadius: 4,
-  },
-  bubbleReceived: {
-    backgroundColor: AppTheme.colors.cardBackground,
-    borderTopLeftRadius: 4,
+  sent: { borderBottomRightRadius: 4 },
+  sentTail: {},
+  recv: {
+    borderBottomLeftRadius: 4,
     borderWidth: 1,
     borderColor: AppTheme.colors.dotsColor,
   },
-  message: {
-    fontSize: 14,
-    lineHeight: 19,
-    marginBottom: 4,
-  },
-  messageSent: {
-    color: AppTheme.colors.cardBackground,
+  recvTail: {},
+  text: {
+    fontSize: 14.5,
+    lineHeight: 20,
     fontFamily: AppTheme.fonts.bodyMedium.fontFamily,
+    marginBottom: 2,
   },
-  messageReceived: {
-    color: AppTheme.colors.textColor,
-    fontFamily: AppTheme.fonts.bodyMedium.fontFamily,
-  },
-  footer: {
+  foot: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
-    gap: 2,
+    gap: 3,
+    marginTop: 1,
   },
   time: {
-    fontSize: 10,
+    fontSize: 10.5,
     fontFamily: AppTheme.fonts.bodySmall.fontFamily,
-  },
-  timeSent: {
-    color: 'rgba(255,255,255,0.65)',
-  },
-  timeReceived: {
-    color: AppTheme.colors.placeholderText,
   },
 });
 

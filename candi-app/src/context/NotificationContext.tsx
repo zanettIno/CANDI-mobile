@@ -6,27 +6,40 @@ export interface Notification {
   message: string;
   type: 'info' | 'success' | 'warning' | 'error';
   duration?: number;
+  // Ações para notificações de chat
+  conversationId?: string;
+  conversationName?: string;
+  onMarkRead?: () => void;
 }
 
 interface NotificationContextType {
   notifications: Notification[];
-  showNotification: (notification: Omit<Notification, 'id'>) => void;
+  showNotification: (n: Omit<Notification, 'id'>) => void;
   dismissNotification: (id: string) => void;
 }
 
-const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
+const NotificationContext = createContext<NotificationContextType>({
+  notifications: [],
+  showNotification: () => {},
+  dismissNotification: () => {},
+});
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
-  const showNotification = useCallback((notification: Omit<Notification, 'id'>) => {
+  const showNotification = useCallback((n: Omit<Notification, 'id'>) => {
     const id = Math.random().toString(36).substring(7);
-    const duration = notification.duration ?? 4000;
-
-    setNotifications(prev => [...prev, { ...notification, id }]);
-
+    const duration = n.duration ?? 6000;
+    setNotifications(prev => {
+      // Se já existe notificação da mesma conversa, substitui em vez de acumular
+      if (n.conversationId) {
+        const filtered = prev.filter(x => x.conversationId !== n.conversationId);
+        return [...filtered, { ...n, id }];
+      }
+      return [...prev, { ...n, id }];
+    });
     if (duration > 0) {
-      setTimeout(() => dismissNotification(id), duration);
+      setTimeout(() => setNotifications(prev => prev.filter(x => x.id !== id)), duration);
     }
   }, []);
 
@@ -42,9 +55,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 };
 
 export const useNotification = () => {
-  const context = useContext(NotificationContext);
-  if (!context) {
-    throw new Error('useNotification deve ser usado dentro de NotificationProvider');
-  }
-  return context;
+  const ctx = useContext(NotificationContext);
+  if (!ctx) throw new Error('useNotification deve ser usado dentro de NotificationProvider');
+  return ctx;
 };
