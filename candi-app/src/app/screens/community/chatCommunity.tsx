@@ -55,12 +55,10 @@ export const ChatCommunity: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isTyping, setIsTyping] = useState(false);
 
-  // historyStatus: status para mensagens JÁ carregadas ao abrir o chat
-  // newMsgStatus:  status para mensagens enviadas NESTA sessão
-  // sessionCutoff: timestamp da mensagem mais recente no histórico — separa as duas
-  const [historyStatus, setHistoryStatus] = useState<'sent' | 'delivered' | 'read'>('sent');
-  const [newMsgStatus, setNewMsgStatus] = useState<'sent' | 'delivered' | 'read'>('sent');
-  const sessionCutoffRef = useRef<string>('');
+  // readUpTo: timestamp até onde o receptor leu as mensagens do remetente
+  // Mensagens com timestamp <= readUpTo → 'read'; mais novas → depende de delivery
+  const [readUpTo, setReadUpTo] = useState<string | null>(null);
+  const [newMsgDelivered, setNewMsgDelivered] = useState(false);
 
   const socketRef = useRef<Socket | null>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -99,16 +97,11 @@ export const ChatCommunity: React.FC = () => {
             : getReadStatus(conversationId),
         ]);
         if (mounted) {
-          const sorted = [...history].reverse(); // newest first para FlatList inverted
+          const sorted = [...history].reverse();
           setMessages(sorted);
-          // Cutoff = timestamp da mensagem mais recente no histórico
-          sessionCutoffRef.current = sorted.length > 0 ? sorted[0].timestamp : '';
-          const status = readStatus.isRead ? 'read'
-            : readStatus.isDelivered ? 'delivered'
-            : 'sent';
-          setHistoryStatus(status);
-          setNewMsgStatus('sent'); // novas msgs desta sessão começam como sent
-          // Atualiza badge com valor real do servidor (getMessages zerou unread_count no DB)
+          // readUpTo vem do servidor — timestamp de quando o receptor leu pela última vez
+          setReadUpTo(readStatus.readUpTo);
+          setNewMsgDelivered(readStatus.isDelivered);
           triggerInboxRefresh();
         }
       } catch {
@@ -142,17 +135,20 @@ export const ChatCommunity: React.FC = () => {
           setIsTyping(typing);
         };
 
-        const handleMessagesRead = ({ conversation_id }: { conversation_id: string }) => {
-          if (!mounted || conversation_id !== conversationId) return;
-          // Mensagens lidas: atualiza AMBOS os status
-          setHistoryStatus('read');
-          setNewMsgStatus('read');
+        const handleMessagesRead = (data: { conversation_id: string; read_up_to?: string }) => {
+          if (!mounted || data.conversation_id !== conversationId) return;
+          // Atualiza readUpTo para o timestamp mais recente possível
+          const newReadUpTo = data.read_up_to ?? new Date().toISOString();
+          setReadUpTo(prev => {
+            // Mantém o mais recente dos dois
+            if (!prev) return newReadUpTo;
+            return newReadUpTo > prev ? newReadUpTo : prev;
+          });
         };
 
         const handleMessageDelivered = ({ conversation_id }: { conversation_id: string }) => {
           if (!mounted || conversation_id !== conversationId) return;
-          // Só atualiza newMsgStatus (histórico já tem seu status definitivo)
-          setNewMsgStatus(prev => prev === 'read' ? 'read' : 'delivered');
+          setNewMsgDelivered(true);
         };
 
         socket.on('new_message', handleNewMessage);
@@ -206,8 +202,8 @@ export const ChatCommunity: React.FC = () => {
     if (!message.trim() || !conversationId) return;
     const textToSend = message.trim();
     setMessage('');
-    setNewMsgStatus('sent'); // apenas novas mensagens desta sessão voltam para 'sent'
-    // historyStatus NÃO é resetado — mensagens antigas mantêm seu status
+    setNewMsgDelivered(false); // nova mensagem enviada — aguarda entrega
+    // readUpTo NÃO muda — mensagens antigas que foram lidas continuam como 'read'
     socketRef.current?.emit('typing', { conversationId, isTyping: false });
 
     if (socketRef.current?.connected) {
@@ -251,11 +247,19 @@ export const ChatCommunity: React.FC = () => {
     const showDateSep = !prevMsg || !isSameDay(item.timestamp, prevMsg.timestamp);
     const tightGroup = prevMsg && prevMsg.sender_id === item.sender_id;
 
-    // Status correto: mensagens do histórico usam historyStatus; novas usam newMsgStatus
-    const isHistoryMsg = sessionCutoffRef.current && item.timestamp <= sessionCutoffRef.current;
-    const itemStatus = isSent
-      ? (isHistoryMsg ? historyStatus : newMsgStatus)
-      : undefined;
+    // Status por mensagem:
+    // - Se o receptor leu até readUpTo, qualquer msg com timestamp <= readUpTo → 'read'
+    // - Msgs após readUpTo → 'delivered' ou 'sent'
+    let itemStatus: 'sent' | 'delivered' | 'read' | undefined;
+    if (isSent) {
+      if (readUpTo && item.timestamp <= readUpTo) {
+        itemStatus = 'read';
+      } else if (newMsgDelivered) {
+        itemStatus = 'delivered';
+      } else {
+        itemStatus = 'sent';
+      }
+    }
 
     return (
       <>

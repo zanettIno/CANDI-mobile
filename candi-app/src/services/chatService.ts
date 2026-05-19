@@ -67,6 +67,10 @@ export const startConversationByEmail = async (email: string) => {
   });
 };
 
-export const getReadStatus = async (conversationId: string): Promise<{ isRead: boolean; isDelivered: boolean }> => {
+export const getReadStatus = async (conversationId: string): Promise<{
+  isRead: boolean;
+  isDelivered: boolean;
+  readUpTo: string | null;
+}> => {
   return fetchWithAuth(`/chat/read-status/${encodeURIComponent(conversationId)}`);
 };
