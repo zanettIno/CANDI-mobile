@@ -36,6 +36,7 @@ export const registerSupport = (data: { name: string; email: string; password: s
 export const getMyInvites = () => fetchAuth('/auth/my-invites');
 export const getSupportNetwork = () => fetchAuth('/auth/support-network');
 export const getMyPatient = () => fetchAuth('/auth/my-patient');
+export const getMyPatients = () => fetchAuth('/auth/my-patients');
 
 export const reportPost = (postId: string, reason: string) =>
   fetchAuth(`/community/posts/${postId}/report`, { method: 'POST', body: JSON.stringify({ reason }) });

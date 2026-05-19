@@ -5,6 +5,14 @@ import { API_BASE_URL } from '@/constants/api';
 const S3_BASE = 'https://awscandi-image-uploads.s3.us-east-2.amazonaws.com/profile-images';
 
 export type UserRole = 'patient' | 'admin' | 'support';
+
+export interface LinkedPatient {
+  profile_id: string;
+  profile_name: string;
+  profile_nickname?: string;
+  permissions: string[];
+  linked_at: string;
+}
 export type ProfileStatus = 'active' | 'banned';
 
 interface ProfileCtx {
@@ -13,8 +21,11 @@ interface ProfileCtx {
   avatarUri: string | null;
   role: UserRole;
   profileStatus: ProfileStatus;
-  // Para usuário suporte: permissões concedidas pelo paciente
-  supportPermissions: string[];
+  // Para usuário suporte: lista de todos os pacientes vinculados
+  linkedPatients: LinkedPatient[];
+  // Paciente atualmente selecionado (suporte pode ter vários)
+  selectedPatient: LinkedPatient | null;
+  setSelectedPatient: (p: LinkedPatient | null) => void;
   refreshProfile: () => Promise<void>;
 }
 
@@ -24,7 +35,9 @@ const ProfileContext = createContext<ProfileCtx>({
   avatarUri: null,
   role: 'patient',
   profileStatus: 'active',
-  supportPermissions: [],
+  linkedPatients: [],
+  selectedPatient: null,
+  setSelectedPatient: () => {},
   refreshProfile: async () => {},
 });
 
@@ -34,7 +47,8 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [role, setRole] = useState<UserRole>('patient');
   const [profileStatus, setProfileStatus] = useState<ProfileStatus>('active');
-  const [supportPermissions, setSupportPermissions] = useState<string[]>([]);
+  const [linkedPatients, setLinkedPatients] = useState<LinkedPatient[]>([]);
+  const [selectedPatient, setSelectedPatient] = useState<LinkedPatient | null>(null);
 
   const fetchProfile = useCallback(async () => {
     try {
@@ -55,15 +69,19 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const ts = data.profile_picture_last_updated ? `?t=${data.profile_picture_last_updated}` : '';
       setAvatarUri(`${S3_BASE}/${data.profile_id}.jpg${ts}`);
 
-      // Para usuário de suporte: carrega as permissões concedidas pelo paciente
+      // Para usuário de suporte: carrega TODOS os pacientes vinculados
       if (data.role === 'support') {
         try {
-          const patientRes = await fetch(`${API_BASE_URL}/auth/my-patient`, {
+          const patientsRes = await fetch(`${API_BASE_URL}/auth/my-patients`, {
             headers: { Authorization: `Bearer ${token}` },
           });
-          if (patientRes.ok) {
-            const patientData = await patientRes.json();
-            setSupportPermissions(patientData?.permissions || []);
+          if (patientsRes.ok) {
+            const patients: LinkedPatient[] = await patientsRes.json();
+            setLinkedPatients(patients);
+            // Auto-seleciona o primeiro se não tiver selecionado
+            if (patients.length > 0) {
+              setSelectedPatient(prev => prev ?? patients[0]);
+            }
           }
         } catch { /* silencioso */ }
       }
@@ -74,7 +92,7 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   return (
     <ProfileContext.Provider
-      value={{ profileId, profileName, avatarUri, role, profileStatus, supportPermissions, refreshProfile: fetchProfile }}
+      value={{ profileId, profileName, avatarUri, role, profileStatus, linkedPatients, selectedPatient, setSelectedPatient, refreshProfile: fetchProfile }}
     >
       {children}
     </ProfileContext.Provider>
