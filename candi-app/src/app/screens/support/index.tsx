@@ -183,6 +183,24 @@ export default function SupportHome() {
               </View>
             )}
           </>
+        ) : section === 'diary_read' && data ? (
+          <>
+            {(!data || data.length === 0) ? (
+              <View style={s.empty}>
+                <MaterialIcons name="book" size={48} color={AppTheme.colors.secondary} />
+                <Text style={s.emptyTitle}>Diário vazio</Text>
+                <Text style={s.emptySub}>Nenhuma entrada de diário registrada.</Text>
+              </View>
+            ) : data.map((entry: any, i: number) => (
+              <View key={i} style={s.itemCard}>
+                <MaterialIcons name="book" size={18} color="#8b5cf6" />
+                <View style={{ flex: 1 }}>
+                  <Text style={s.itemTitle}>{entry.date || 'Entrada'}</Text>
+                  <Text style={s.itemSub} numberOfLines={3}>{entry.content}</Text>
+                </View>
+              </View>
+            ))}
+          </>
         ) : section === 'milestones' && data ? (
           <>
             {(!data || data.length === 0) ? (
