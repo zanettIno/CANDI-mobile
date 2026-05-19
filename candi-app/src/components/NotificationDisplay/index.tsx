@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, Animated, TouchableOpacity,
-  Platform, StatusBar, Modal,
+  Platform, StatusBar,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -9,7 +9,6 @@ import { AppTheme } from '@/theme';
 import { useNotification, Notification } from '@/context/NotificationContext';
 
 const TOP = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) + 6 : 54;
-// Web não suporta useNativeDriver: true
 const USE_NATIVE = Platform.OS !== 'web';
 
 const NotifBanner: React.FC<{ notif: Notification; onDismiss: () => void }> = ({ notif, onDismiss }) => {
@@ -31,7 +30,7 @@ const NotifBanner: React.FC<{ notif: Notification; onDismiss: () => void }> = ({
     Animated.parallel([
       Animated.timing(opacity, { toValue: 0, duration: 180, useNativeDriver: USE_NATIVE }),
       Animated.timing(translateY, { toValue: -20, duration: 180, useNativeDriver: USE_NATIVE }),
-    ]).start((result) => {
+    ]).start(() => {
       onDismiss();
       if (typeof afterClose === 'function') afterClose();
     });
@@ -42,10 +41,12 @@ const NotifBanner: React.FC<{ notif: Notification; onDismiss: () => void }> = ({
     const convId = notif.conversationId;
     const convName = notif.conversationName || notif.title;
     close(() => {
-      router.push({
-        pathname: '/screens/community/chatCommunity',
-        params: { conversationId: convId, userName: convName },
-      });
+      try {
+        router.push({
+          pathname: '/screens/community/chatCommunity',
+          params: { conversationId: convId, userName: convName },
+        });
+      } catch { /* silencioso */ }
     });
   };
 
@@ -62,7 +63,6 @@ const NotifBanner: React.FC<{ notif: Notification; onDismiss: () => void }> = ({
 
   return (
     <Animated.View style={[s.wrap, { opacity, transform: [{ translateY }] }]}>
-      {/* Toque no conteúdo → vai pra conversa */}
       <TouchableOpacity style={s.main} onPress={isChat ? goToConversation : () => close()} activeOpacity={0.85}>
         <View style={[s.iconCircle, { backgroundColor: accent + '22' }]}>
           <MaterialIcons
@@ -84,7 +84,6 @@ const NotifBanner: React.FC<{ notif: Notification; onDismiss: () => void }> = ({
         </TouchableOpacity>
       </TouchableOpacity>
 
-      {/* Ações — só para chat */}
       {isChat && (
         <View style={s.footer}>
           <TouchableOpacity style={s.action} onPress={handleMarkRead} activeOpacity={0.7}>
@@ -102,11 +101,11 @@ const NotifBanner: React.FC<{ notif: Notification; onDismiss: () => void }> = ({
   );
 };
 
+// Sem Modal — usa position:absolute para não quebrar contexto do router nem bloquear interações
 const NotificationDisplay = () => {
   const { notifications, dismissNotification } = useNotification();
   if (notifications.length === 0) return null;
 
-  // Deduplica: 1 notificação por conversa (mantém a mais recente)
   const seen = new Set<string>();
   const deduped = notifications.filter(n => {
     const key = n.conversationId || n.id;
@@ -115,24 +114,13 @@ const NotificationDisplay = () => {
     return true;
   }).slice(0, 2);
 
-  const content = (
+  return (
     <View style={s.container} pointerEvents="box-none">
       {deduped.map(n => (
         <NotifBanner key={n.id} notif={n} onDismiss={() => dismissNotification(n.id)} />
       ))}
     </View>
   );
-
-  // Native: Modal transparent sempre fica acima de tudo
-  if (Platform.OS !== 'web') {
-    return (
-      <Modal transparent visible animationType="none" statusBarTranslucent>
-        {content}
-      </Modal>
-    );
-  }
-
-  return content;
 };
 
 const s = StyleSheet.create({
@@ -142,6 +130,7 @@ const s = StyleSheet.create({
     left: 10,
     right: 10,
     zIndex: 99999,
+    elevation: 99999,
     gap: 8,
   },
   wrap: {
@@ -164,45 +153,30 @@ const s = StyleSheet.create({
     gap: 10,
   },
   iconCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 38, height: 38, borderRadius: 19,
+    alignItems: 'center', justifyContent: 'center',
     flexShrink: 0,
   },
   texts: { flex: 1 },
   title: {
     fontFamily: AppTheme.fonts.labelLarge.fontFamily,
-    fontSize: 14,
-    fontWeight: '700',
-    color: AppTheme.colors.nameText,
-    marginBottom: 2,
+    fontSize: 14, fontWeight: '700', color: AppTheme.colors.nameText, marginBottom: 2,
   },
   msg: {
     fontFamily: AppTheme.fonts.bodySmall.fontFamily,
-    fontSize: 13,
-    color: AppTheme.colors.roleText,
-    lineHeight: 17,
+    fontSize: 13, color: AppTheme.colors.roleText, lineHeight: 17,
   },
   closeBtn: { padding: 2, flexShrink: 0 },
   footer: {
     flexDirection: 'row',
-    borderTopWidth: 1,
-    borderTopColor: AppTheme.colors.dotsColor,
+    borderTopWidth: 1, borderTopColor: AppTheme.colors.dotsColor,
   },
   action: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
-    paddingVertical: 9,
+    flex: 1, flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'center', gap: 5, paddingVertical: 9,
   },
   actionTxt: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: AppTheme.colors.tertiary,
+    fontSize: 12, fontWeight: '600', color: AppTheme.colors.tertiary,
     fontFamily: AppTheme.fonts.labelMedium.fontFamily,
   },
   sep: { width: 1, backgroundColor: AppTheme.colors.dotsColor, marginVertical: 4 },
