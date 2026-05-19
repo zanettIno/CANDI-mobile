@@ -24,7 +24,7 @@ import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 
 const userEndpoint = `${API_BASE_URL}/auth/me`;
-const contactsEndpoint = `${API_BASE_URL}/emergency-contact`;
+const supportNetworkEndpoint = `${API_BASE_URL}/auth/support-network`;
 
 const getGreeting = () => {
   const hour = new Date().getHours();
@@ -76,9 +76,9 @@ export default function HomeScreen() {
         const token = await AsyncStorage.getItem('accessToken');
         if (!token) return;
 
-        const [userRes, contactRes] = await Promise.all([
+        const [userRes, networkRes] = await Promise.all([
           fetch(userEndpoint, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(contactsEndpoint, { headers: { Authorization: `Bearer ${token}` } }),
+          fetch(supportNetworkEndpoint, { headers: { Authorization: `Bearer ${token}` } }),
         ]);
 
         if (userRes.ok) {
@@ -86,13 +86,14 @@ export default function HomeScreen() {
           setUserName(userData.profile_name);
         }
 
-        if (contactRes.ok) {
-          const contactsData = await contactRes.json();
-          const mapped: EmergencyContact[] = contactsData.map((c: any) => ({
-            name: c.name,
-            role: c.relationship,
-            phoneNumber: c.phone,
-            photoUrl: c.photoUrl,
+        // Rede de Apoio = pessoas que aceitaram o convite (CANDISupportLinks)
+        if (networkRes.ok) {
+          const networkData = await networkRes.json();
+          const mapped: EmergencyContact[] = networkData.map((c: any) => ({
+            name: c.support_name || c.name,
+            role: c.relationship || 'Rede de Apoio',
+            phoneNumber: c.support_phone || c.phone || '',
+            photoUrl: undefined,
           }));
           setContacts(mapped);
         }
