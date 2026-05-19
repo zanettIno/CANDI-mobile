@@ -77,9 +77,12 @@ export default function RootLayout() {
               <Stack screenOptions={{ headerShown: false }}>
                 <Stack.Screen name="index" />
                 <Stack.Screen name="cadastro" />
+                <Stack.Screen name="cadastroSupport" />
                 <Stack.Screen name="screens/community/chatCommunity" />
                 <Stack.Screen name="screens/community/groupCommunity" />
                 <Stack.Screen name="screens/community/postDetail" />
+                <Stack.Screen name="screens/admin/index" />
+                <Stack.Screen name="screens/profile/invite" />
               </Stack>
               </AuthGate>
             </ProfileProvider>

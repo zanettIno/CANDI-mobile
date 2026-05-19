@@ -11,6 +11,7 @@ import { formatRelativeDate } from '@/utils/dateFormat';
 import { toggleLike, toggleFavorite, getComments, addComment, deleteComment as deleteCommentService, deleteGroupPost } from '@/services/communityService';
 import { deletePost as deleteOwnPost } from '@/services/feedService';
 import SharePostModal from '@/components/Modals/SharePostModal';
+import ReportModal from '@/components/Modals/ReportModal';
 import ActionSheet from '@/components/ActionSheet';
 import { useProfile } from '@/context/ProfileContext';
 import { useToast } from '@/context/NotificationContext';
@@ -94,6 +95,7 @@ export const PostCardView: React.FC<PostCardViewProps> = ({
   const [shareVisible, setShareVisible] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
   const [deleteSheetVisible, setDeleteSheetVisible] = useState(false);
+  const [reportVisible, setReportVisible] = useState(false);
   const [commentsVisible, setCommentsVisible] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentsLoaded, setCommentsLoaded] = useState(false);
@@ -156,7 +158,7 @@ export const PostCardView: React.FC<PostCardViewProps> = ({
         Alert.alert('Texto', content);
       }
     } else if (action === 'report') {
-      toast.success('Denúncia enviada. Obrigado por manter a comunidade segura!', 'Denúncia');
+      setReportVisible(true); return; // ReportModal abre em separado
     } else if (action === 'delete') {
       // Abre ActionSheet — Alert.alert no web tem bug com window.confirm (botões invertidos)
       setDeleteSheetVisible(true);
@@ -360,6 +362,13 @@ export const PostCardView: React.FC<PostCardViewProps> = ({
           </View>
         )}
       </View>
+
+      {/* Modal de denúncia */}
+      <ReportModal
+        visible={reportVisible}
+        postId={postId}
+        onDismiss={() => setReportVisible(false)}
+      />
 
       {/* Share modal */}
       <SharePostModal

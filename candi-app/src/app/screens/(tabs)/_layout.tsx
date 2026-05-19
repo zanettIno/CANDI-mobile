@@ -8,6 +8,7 @@ import { pt, registerTranslation } from "react-native-paper-dates";
 import { Platform, StyleSheet } from 'react-native';
 import { MaterialIcons } from "@expo/vector-icons";
 import { useChat } from '@/context/ChatContext';
+import { useProfile } from '@/context/ProfileContext';
 
 registerTranslation("pt", pt);
 
@@ -23,6 +24,7 @@ export default function RootLayout() {
     ...Inter,
   });
   const { totalUnread } = useChat();
+  const { role } = useProfile();
 
   useEffect(() => {
     if (Platform.OS === 'web') {
@@ -108,6 +110,25 @@ export default function RootLayout() {
             ),
           }}
         />
+        {/* Aba Admin — visível apenas para role=admin via href externo */}
+        {role === 'admin' && (
+          <Tabs.Screen
+            name="adminDummy"
+            listeners={({ navigation }) => ({
+              tabPress: (e) => {
+                e.preventDefault();
+                navigation.navigate('screens/admin/index');
+              },
+            })}
+            options={{
+              title: 'Admin',
+              tabBarIcon: ({ color }) => (
+                <MaterialIcons name="shield" size={TAB_ICON_SIZE} color={color} />
+              ),
+              tabBarActiveTintColor: '#ef4444',
+            }}
+          />
+        )}
       </Tabs>
     </PaperProvider>
   );

@@ -30,7 +30,7 @@ interface UserProfile {
 
 export default function HomeProfile() {
   const router = useRouter();
-  const { refreshProfile } = useProfile();
+  const { refreshProfile, role } = useProfile();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [photoModal, setPhotoModal] = useState(false);
@@ -88,6 +88,10 @@ export default function HomeProfile() {
     { icon: 'camera-alt', label: 'Alterar foto de perfil', onPress: () => setPhotoModal(true) },
     { icon: 'contacts', label: 'Contatos de emergência', onPress: () => router.push('/screens/profile/contatosView') },
     { icon: 'flag', label: 'Meus marcos', onPress: () => router.push('/screens/profile/marcosView') },
+    // Disponível apenas para pacientes (não suporte)
+    ...(role !== 'support' ? [{ icon: 'group-add', label: 'Rede de apoio', onPress: () => router.push('/screens/profile/invite') }] : []),
+    // Apenas admin
+    ...(role === 'admin' ? [{ icon: 'shield', label: 'Painel Admin', onPress: () => router.push('/screens/admin/index') }] : []),
   ];
 
   const bottomItems = [
