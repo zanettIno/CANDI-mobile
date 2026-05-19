@@ -1,20 +1,20 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   RefreshControl, Platform, StatusBar, ActivityIndicator,
-  TextInput, Alert, Modal, Pressable,
+  TextInput, Alert, Modal,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppTheme } from '@/theme';
-import LoginSignupBackground from '@/components/LoginSignupBackground';
 import {
-  getAdminStats, getSuspendedPosts, getBannedUsers, getAdmins,
+  getAdminStats, getAllReportedPosts, getBannedUsers, getAdmins,
   approvePost, removePost, unbanUser, createAdmin, deleteAdmin,
   updateMyCredentials,
 } from '@/services/adminService';
 import { useToast } from '@/context/NotificationContext';
 import { useProfile } from '@/context/ProfileContext';
+import { API_BASE_URL } from '@/constants/api';
 
 const TOP = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 44;
 
@@ -29,40 +29,35 @@ const REASON_LABELS: Record<string, string> = {
 };
 
 export default function AdminPanel() {
-  const router = useRouter();
   const toast = useToast();
   const { profileId, profileName } = useProfile();
   const [tab, setTab] = useState<Tab>('dashboard');
   const [refreshing, setRefreshing] = useState(false);
 
-  // Data
   const [stats, setStats] = useState({ suspended_posts: 0, banned_users: 0, total_reports: 0 });
   const [posts, setPosts] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [admins, setAdmins] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Settings form
   const [currentPwd, setCurrentPwd] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [newPwd, setNewPwd] = useState('');
   const [savingCreds, setSavingCreds] = useState(false);
 
-  // Create admin modal
   const [showCreateAdmin, setShowCreateAdmin] = useState(false);
   const [newAdminName, setNewAdminName] = useState('');
   const [newAdminEmail, setNewAdminEmail] = useState('');
   const [newAdminPwd, setNewAdminPwd] = useState('');
   const [creatingAdmin, setCreatingAdmin] = useState(false);
 
-  // Expanded post (to show reports)
   const [expandedPost, setExpandedPost] = useState<string | null>(null);
 
   const loadAll = useCallback(async () => {
     try {
       const [s, p, u, a] = await Promise.all([
         getAdminStats(),
-        getSuspendedPosts(),
+        getAllReportedPosts(), // todos com pelo menos 1 denúncia
         getBannedUsers(),
         getAdmins(),
       ]);
@@ -70,21 +65,17 @@ export default function AdminPanel() {
       setPosts(p);
       setUsers(u);
       setAdmins(a);
-    } catch { /* silencioso */ }
+    } catch { }
     finally { setLoading(false); setRefreshing(false); }
   }, []);
 
   useEffect(() => { loadAll(); }, []);
-
   const onRefresh = () => { setRefreshing(true); loadAll(); };
-
-  // ── Actions ─────────────────────────────────────────────────────────────
 
   const handleApprove = async (postId: string) => {
     try {
       await approvePost(postId);
       setPosts(p => p.filter(x => x.post_id !== postId));
-      setStats(s => ({ ...s, suspended_posts: Math.max(0, s.suspended_posts - 1) }));
       toast.success('Publicação restaurada e aprovada.');
     } catch (e: any) { toast.error(e.message); }
   };
@@ -93,9 +84,8 @@ export default function AdminPanel() {
     try {
       const res = await removePost(postId);
       setPosts(p => p.filter(x => x.post_id !== postId));
-      setStats(s => ({ ...s, suspended_posts: Math.max(0, s.suspended_posts - 1) }));
-      if (res.author_banned) { toast.warning('Usuário banido automaticamente (3 posts removidos).'); loadAll(); }
-      else toast.success('Publicação removida permanentemente.');
+      if (res.author_banned) { toast.warning('Usuário banido automaticamente.'); loadAll(); }
+      else toast.success('Publicação removida.');
     } catch (e: any) { toast.error(e.message); }
   };
 
@@ -103,8 +93,7 @@ export default function AdminPanel() {
     try {
       await unbanUser(userId);
       setUsers(u => u.filter(x => x.profile_id !== userId));
-      setStats(s => ({ ...s, banned_users: Math.max(0, s.banned_users - 1) }));
-      toast.success('Usuário desbanido com sucesso.');
+      toast.success('Usuário desbanido.');
     } catch (e: any) { toast.error(e.message); }
   };
 
@@ -113,7 +102,7 @@ export default function AdminPanel() {
     setCreatingAdmin(true);
     try {
       await createAdmin({ name: newAdminName, email: newAdminEmail, password: newAdminPwd });
-      toast.success(`Admin "${newAdminName}" criado.`);
+      toast.success(`Admin criado.`);
       setShowCreateAdmin(false);
       setNewAdminName(''); setNewAdminEmail(''); setNewAdminPwd('');
       loadAll();
@@ -122,13 +111,13 @@ export default function AdminPanel() {
   };
 
   const handleDeleteAdmin = (adminId: string, adminName: string) => {
-    Alert.alert('Excluir admin', `Excluir a conta de "${adminName}"?`, [
+    Alert.alert('Excluir admin', `Excluir "${adminName}"?`, [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Excluir', style: 'destructive', onPress: async () => {
         try {
           await deleteAdmin(adminId);
           setAdmins(a => a.filter(x => x.profile_id !== adminId));
-          toast.success(`Admin "${adminName}" excluído.`);
+          toast.success('Admin excluído.');
         } catch (e: any) { toast.error(e.message); }
       }},
     ]);
@@ -136,7 +125,7 @@ export default function AdminPanel() {
 
   const handleSaveCreds = async () => {
     if (!currentPwd) { toast.error('Informe a senha atual.'); return; }
-    if (!newEmail && !newPwd) { toast.error('Informe o novo e-mail ou senha.'); return; }
+    if (!newEmail && !newPwd) { toast.error('Informe o novo e-mail ou nova senha.'); return; }
     setSavingCreds(true);
     try {
       await updateMyCredentials({ email: newEmail || undefined, password: newPwd || undefined, current_password: currentPwd });
@@ -146,130 +135,168 @@ export default function AdminPanel() {
     finally { setSavingCreds(false); }
   };
 
-  // ── Tabs config ───────────────────────────────────────────────────────────
+  const handleLogout = async () => {
+    await AsyncStorage.multiRemove(['accessToken', 'refreshToken']);
+    const { router } = await import('expo-router');
+    router.replace('/');
+  };
 
   const TABS: { key: Tab; icon: any; label: string; badge?: number }[] = [
-    { key: 'dashboard', icon: 'dashboard', label: 'Início' },
+    { key: 'dashboard', icon: 'dashboard', label: 'Visão Geral' },
     { key: 'reports', icon: 'flag', label: 'Denúncias', badge: posts.length },
     { key: 'users', icon: 'block', label: 'Banidos', badge: users.length },
     { key: 'admins', icon: 'manage-accounts', label: 'Admins' },
-    { key: 'settings', icon: 'settings', label: 'Config' },
+    { key: 'settings', icon: 'settings', label: 'Conta' },
   ];
 
-  // ── Render sections ───────────────────────────────────────────────────────
+  // ── Renders ────────────────────────────────────────────────────────────────
 
   const renderDashboard = () => (
-    <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={AppTheme.colors.tertiary} />}
-      contentContainerStyle={s.scrollContent}>
-      <Text style={s.greeting}>Olá, {profileName} 👋</Text>
-      <Text style={s.greetingSub}>Painel de administração CANDI</Text>
+    <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={AppTheme.colors.tertiary} />} contentContainerStyle={s.scrollContent}>
 
-      <View style={s.statsRow}>
+      <View style={s.statsGrid}>
         {[
-          { label: 'Posts suspensos', value: stats.suspended_posts, icon: 'flag', color: '#f59e0b' },
-          { label: 'Usuários banidos', value: stats.banned_users, icon: 'block', color: '#ef4444' },
-          { label: 'Total denúncias', value: stats.total_reports, icon: 'report', color: AppTheme.colors.tertiary },
+          { label: 'Posts denunciados', value: posts.length, icon: 'flag', color: '#f59e0b', tab: 'reports' as Tab },
+          { label: 'Usuários banidos', value: users.length, icon: 'block', color: '#ef4444', tab: 'users' as Tab },
+          { label: 'Total denúncias', value: stats.total_reports, icon: 'report', color: AppTheme.colors.tertiary, tab: 'reports' as Tab },
         ].map(card => (
-          <View key={card.label} style={s.statCard}>
-            <View style={[s.statIcon, { backgroundColor: card.color + '20' }]}>
+          <TouchableOpacity key={card.label} style={s.statCard} onPress={() => setTab(card.tab)} activeOpacity={0.8}>
+            <View style={[s.statIcon, { backgroundColor: card.color + '18' }]}>
               <MaterialIcons name={card.icon as any} size={22} color={card.color} />
             </View>
             <Text style={s.statValue}>{card.value}</Text>
             <Text style={s.statLabel}>{card.label}</Text>
-          </View>
+          </TouchableOpacity>
         ))}
       </View>
 
-      {posts.length > 0 && (
-        <View style={s.section}>
-          <Text style={s.sectionTitle}>Aguardando revisão</Text>
-          <Text style={s.sectionSub}>{posts.length} post{posts.length !== 1 ? 's' : ''} com 3+ denúncias</Text>
-          <TouchableOpacity style={s.quickAction} onPress={() => setTab('reports')} activeOpacity={0.8}>
-            <MaterialIcons name="flag" size={18} color="#fff" />
-            <Text style={s.quickActionText}>Ver posts suspensos</Text>
-            <MaterialIcons name="arrow-forward" size={18} color="rgba(255,255,255,0.8)" />
+      {posts.filter(p => p.reports?.length >= 3 && p.status === 'suspended').length > 0 && (
+        <View style={s.alertCard}>
+          <MaterialIcons name="warning" size={18} color="#f59e0b" />
+          <Text style={s.alertText}>
+            {posts.filter(p => p.reports?.length >= 3).length} post(s) com 3+ denúncias aguardando revisão
+          </Text>
+          <TouchableOpacity onPress={() => setTab('reports')}>
+            <Text style={s.alertLink}>Ver</Text>
           </TouchableOpacity>
         </View>
       )}
 
-      {users.length > 0 && (
-        <View style={s.section}>
-          <Text style={s.sectionTitle}>Usuários banidos</Text>
-          <Text style={s.sectionSub}>{users.length} conta{users.length !== 1 ? 's' : ''} suspensa{users.length !== 1 ? 's' : ''}</Text>
-          <TouchableOpacity style={[s.quickAction, { backgroundColor: '#ef4444' }]} onPress={() => setTab('users')} activeOpacity={0.8}>
-            <MaterialIcons name="block" size={18} color="#fff" />
-            <Text style={s.quickActionText}>Gerenciar usuários banidos</Text>
-            <MaterialIcons name="arrow-forward" size={18} color="rgba(255,255,255,0.8)" />
-          </TouchableOpacity>
+      {posts.length === 0 && users.length === 0 ? (
+        <View style={s.empty}>
+          <MaterialIcons name="verified-user" size={56} color={AppTheme.colors.secondary} />
+          <Text style={s.emptyTitle}>Comunidade saudável</Text>
+          <Text style={s.emptySub}>Nenhuma denúncia ou banimento pendente.</Text>
         </View>
-      )}
-
-      {posts.length === 0 && users.length === 0 && (
-        <View style={s.allClear}>
-          <MaterialIcons name="check-circle" size={56} color="#10b981" />
-          <Text style={s.allClearTitle}>Tudo em ordem!</Text>
-          <Text style={s.allClearSub}>Nenhum post suspenso ou usuário banido.</Text>
+      ) : (
+        <View style={s.quickList}>
+          {posts.slice(0, 3).map(p => (
+            <TouchableOpacity key={p.post_id} style={s.quickItem} onPress={() => setTab('reports')} activeOpacity={0.8}>
+              <View style={[s.quickBadge, { backgroundColor: p.reports?.length >= 3 ? '#fee2e2' : '#fef9c3' }]}>
+                <Text style={[s.quickBadgeNum, { color: p.reports?.length >= 3 ? '#ef4444' : '#d97706' }]}>
+                  {p.reports?.length}
+                </Text>
+              </View>
+              <Text style={s.quickItemText} numberOfLines={1}>{p.content}</Text>
+              <MaterialIcons name="chevron-right" size={18} color={AppTheme.colors.placeholderText} />
+            </TouchableOpacity>
+          ))}
+          {posts.length > 3 && (
+            <TouchableOpacity onPress={() => setTab('reports')} style={s.viewMore}>
+              <Text style={s.viewMoreText}>Ver todas as {posts.length} denúncias</Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
     </ScrollView>
   );
 
   const renderReports = () => (
-    <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={AppTheme.colors.tertiary} />}
-      contentContainerStyle={s.scrollContent}>
+    <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={AppTheme.colors.tertiary} />} contentContainerStyle={s.scrollContent}>
       {posts.length === 0 ? (
         <View style={s.empty}>
           <MaterialIcons name="check-circle" size={52} color="#10b981" />
-          <Text style={s.emptyTitle}>Nenhum post suspenso</Text>
-          <Text style={s.emptySub}>Todos os posts estão ok.</Text>
+          <Text style={s.emptyTitle}>Nenhuma denúncia</Text>
+          <Text style={s.emptySub}>Nenhum post foi denunciado ainda.</Text>
         </View>
-      ) : posts.map(p => (
-        <View key={p.post_id} style={s.card}>
-          <View style={s.cardTopRow}>
-            <View style={s.authorWrap}>
-              <MaterialIcons name="person" size={16} color={AppTheme.colors.placeholderText} />
-              <Text style={s.cardAuthor}>{p.profile_name || 'Usuário'}</Text>
+      ) : posts.map(p => {
+        const isSuspended = p.status === 'suspended';
+        const reportCount = p.reports?.length || 0;
+        const isExpanded = expandedPost === p.post_id;
+
+        return (
+          <View key={p.post_id} style={[s.card, isSuspended && s.cardSuspended]}>
+            {/* Status badge */}
+            <View style={s.cardTopRow}>
+              <View style={s.authorWrap}>
+                <MaterialIcons name="person" size={14} color={AppTheme.colors.placeholderText} />
+                <Text style={s.cardAuthor} numberOfLines={1}>{p.profile_name || 'Usuário'}</Text>
+              </View>
+              <View style={[s.countBadge,
+                reportCount >= 3 ? s.countBadgeHigh : reportCount >= 2 ? s.countBadgeMed : s.countBadgeLow
+              ]}>
+                <MaterialIcons name="flag" size={12}
+                  color={reportCount >= 3 ? '#ef4444' : reportCount >= 2 ? '#f59e0b' : '#6b7280'} />
+                <Text style={[s.countBadgeText,
+                  reportCount >= 3 ? { color: '#ef4444' } : reportCount >= 2 ? { color: '#f59e0b' } : { color: '#6b7280' }
+                ]}>
+                  {reportCount} {reportCount === 1 ? 'denúncia' : 'denúncias'}
+                </Text>
+              </View>
             </View>
-            <View style={s.reportBadge}>
-              <MaterialIcons name="flag" size={13} color="#ef4444" />
-              <Text style={s.reportBadgeText}>{p.reports?.length || p.report_count || 0} denúncias</Text>
+
+            {isSuspended && (
+              <View style={s.suspendedBanner}>
+                <MaterialIcons name="pause-circle" size={14} color="#ef4444" />
+                <Text style={s.suspendedText}>Suspenso — oculto de todos os usuários</Text>
+              </View>
+            )}
+
+            <Text style={s.cardContent}>{p.content}</Text>
+            {p.file_url && (
+              <View style={s.mediaRow}>
+                <MaterialIcons name="image" size={14} color={AppTheme.colors.tertiary} />
+                <Text style={s.mediaText}>Contém imagem</Text>
+              </View>
+            )}
+
+            {/* Motivos expandíveis */}
+            <TouchableOpacity onPress={() => setExpandedPost(isExpanded ? null : p.post_id)} style={s.reasonToggle} activeOpacity={0.7}>
+              <MaterialIcons name={isExpanded ? 'expand-less' : 'expand-more'} size={16} color={AppTheme.colors.placeholderText} />
+              <Text style={s.reasonToggleText}>
+                {isExpanded ? 'Ocultar motivos' : 'Ver motivos das denúncias'}
+              </Text>
+            </TouchableOpacity>
+
+            {isExpanded && (
+              <View style={s.reasonList}>
+                {(p.reports || []).map((r: any, i: number) => (
+                  <View key={i} style={s.reasonItem}>
+                    <View style={s.reasonDot} />
+                    <Text style={s.reasonText}>{REASON_LABELS[r.reason] || r.reason}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            <View style={s.cardActions}>
+              <TouchableOpacity style={s.approveBtn} onPress={() => handleApprove(p.post_id)} activeOpacity={0.8}>
+                <MaterialIcons name="check" size={15} color="#10b981" />
+                <Text style={s.approveTxt}>Aprovar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.removeBtn} onPress={() => handleRemove(p.post_id)} activeOpacity={0.8}>
+                <MaterialIcons name="delete-outline" size={15} color="#ef4444" />
+                <Text style={s.removeTxt}>Remover</Text>
+              </TouchableOpacity>
             </View>
           </View>
-
-          <Text style={s.cardContent}>{p.content}</Text>
-          {p.file_url && <Text style={s.cardMedia}>📷 Tem imagem/mídia</Text>}
-
-          {/* Motivos das denúncias */}
-          <TouchableOpacity onPress={() => setExpandedPost(expandedPost === p.post_id ? null : p.post_id)} style={s.reportToggle} activeOpacity={0.7}>
-            <MaterialIcons name={expandedPost === p.post_id ? 'expand-less' : 'expand-more'} size={18} color={AppTheme.colors.placeholderText} />
-            <Text style={s.reportToggleText}>Ver motivos das denúncias</Text>
-          </TouchableOpacity>
-
-          {expandedPost === p.post_id && (p.reports || []).map((r: any, i: number) => (
-            <View key={i} style={s.reportItem}>
-              <MaterialIcons name="flag" size={14} color="#f59e0b" />
-              <Text style={s.reportReason}>{REASON_LABELS[r.reason] || r.reason}</Text>
-            </View>
-          ))}
-
-          <View style={s.cardActions}>
-            <TouchableOpacity style={s.approveBtn} onPress={() => handleApprove(p.post_id)} activeOpacity={0.8}>
-              <MaterialIcons name="check" size={16} color="#10b981" />
-              <Text style={[s.actionBtnText, { color: '#10b981' }]}>Aprovar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={s.removeBtn} onPress={() => handleRemove(p.post_id)} activeOpacity={0.8}>
-              <MaterialIcons name="delete-outline" size={16} color="#ef4444" />
-              <Text style={[s.actionBtnText, { color: '#ef4444' }]}>Remover</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      ))}
+        );
+      })}
     </ScrollView>
   );
 
   const renderUsers = () => (
-    <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={AppTheme.colors.tertiary} />}
-      contentContainerStyle={s.scrollContent}>
+    <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={AppTheme.colors.tertiary} />} contentContainerStyle={s.scrollContent}>
       {users.length === 0 ? (
         <View style={s.empty}>
           <MaterialIcons name="people" size={52} color="#10b981" />
@@ -280,16 +307,16 @@ export default function AdminPanel() {
         <View key={u.profile_id} style={s.card}>
           <View style={s.cardTopRow}>
             <Text style={s.cardAuthor}>{u.profile_name}</Text>
-            <View style={[s.reportBadge, { backgroundColor: '#fee2e2', borderColor: '#fecaca' }]}>
-              <MaterialIcons name="block" size={13} color="#ef4444" />
-              <Text style={[s.reportBadgeText, { color: '#ef4444' }]}>Banido</Text>
+            <View style={s.bannedBadge}>
+              <MaterialIcons name="block" size={12} color="#ef4444" />
+              <Text style={s.bannedBadgeText}>Banido</Text>
             </View>
           </View>
           <Text style={s.cardMeta}>{u.profile_email}</Text>
-          <Text style={s.cardMeta}>{u.banned_posts_count} posts removidos · Banido em {u.banned_at ? new Date(u.banned_at).toLocaleDateString('pt-BR') : '-'}</Text>
+          <Text style={s.cardMeta}>{u.banned_posts_count} posts removidos {u.banned_at ? `· ${new Date(u.banned_at).toLocaleDateString('pt-BR')}` : ''}</Text>
           <TouchableOpacity style={s.approveBtn} onPress={() => handleUnban(u.profile_id)} activeOpacity={0.8}>
-            <MaterialIcons name="person-add" size={16} color="#10b981" />
-            <Text style={[s.actionBtnText, { color: '#10b981' }]}>Desbanir</Text>
+            <MaterialIcons name="person-add" size={15} color="#10b981" />
+            <Text style={s.approveTxt}>Desbanir</Text>
           </TouchableOpacity>
         </View>
       ))}
@@ -297,18 +324,16 @@ export default function AdminPanel() {
   );
 
   const renderAdmins = () => (
-    <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={AppTheme.colors.tertiary} />}
-      contentContainerStyle={s.scrollContent}>
-      <TouchableOpacity style={s.addAdminBtn} onPress={() => setShowCreateAdmin(true)} activeOpacity={0.85}>
+    <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={AppTheme.colors.tertiary} />} contentContainerStyle={s.scrollContent}>
+      <TouchableOpacity style={s.createBtn} onPress={() => setShowCreateAdmin(true)} activeOpacity={0.85}>
         <MaterialIcons name="person-add" size={18} color="#fff" />
-        <Text style={s.addAdminBtnText}>Criar novo admin</Text>
+        <Text style={s.createBtnText}>Criar novo admin</Text>
       </TouchableOpacity>
-
       {admins.map(a => (
         <View key={a.profile_id} style={s.card}>
           <View style={s.cardTopRow}>
             <View style={s.authorWrap}>
-              <MaterialIcons name="shield" size={16} color={AppTheme.colors.tertiary} />
+              <MaterialIcons name="shield" size={15} color={AppTheme.colors.tertiary} />
               <Text style={s.cardAuthor}>{a.profile_name}</Text>
               {a.is_superadmin && <View style={s.superBadge}><Text style={s.superBadgeText}>SUPER</Text></View>}
             </View>
@@ -328,27 +353,24 @@ export default function AdminPanel() {
   const renderSettings = () => (
     <ScrollView contentContainerStyle={s.scrollContent}>
       <View style={s.card}>
-        <Text style={s.settingsTitle}>Alterar credenciais</Text>
-        <Text style={s.settingsLabel}>Senha atual *</Text>
+        <Text style={s.cardSectionTitle}>Alterar credenciais</Text>
+        <Text style={s.fieldLabel}>Senha atual</Text>
         <TextInput style={s.input} value={currentPwd} onChangeText={setCurrentPwd} secureTextEntry placeholder="Senha atual" placeholderTextColor={AppTheme.colors.placeholderText} />
-        <Text style={s.settingsLabel}>Novo e-mail (opcional)</Text>
+        <Text style={s.fieldLabel}>Novo e-mail (opcional)</Text>
         <TextInput style={s.input} value={newEmail} onChangeText={setNewEmail} keyboardType="email-address" autoCapitalize="none" placeholder="novo@email.com" placeholderTextColor={AppTheme.colors.placeholderText} />
-        <Text style={s.settingsLabel}>Nova senha (opcional)</Text>
+        <Text style={s.fieldLabel}>Nova senha (opcional)</Text>
         <TextInput style={s.input} value={newPwd} onChangeText={setNewPwd} secureTextEntry placeholder="Mínimo 6 caracteres" placeholderTextColor={AppTheme.colors.placeholderText} />
-        <TouchableOpacity
-          style={[s.saveBtn, savingCreds && { opacity: 0.6 }]}
-          onPress={handleSaveCreds}
-          disabled={savingCreds}
-          activeOpacity={0.85}
-        >
+        <TouchableOpacity style={[s.saveBtn, savingCreds && s.btnDisabled]} onPress={handleSaveCreds} disabled={savingCreds} activeOpacity={0.85}>
           {savingCreds ? <ActivityIndicator color="#fff" size="small" /> : (
-            <>
-              <MaterialIcons name="save" size={18} color="#fff" />
-              <Text style={s.saveBtnText}>Salvar alterações</Text>
-            </>
+            <><MaterialIcons name="save" size={17} color="#fff" /><Text style={s.saveBtnText}>Salvar alterações</Text></>
           )}
         </TouchableOpacity>
       </View>
+
+      <TouchableOpacity style={s.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
+        <MaterialIcons name="logout" size={17} color="#ef4444" />
+        <Text style={s.logoutText}>Sair da conta</Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 
@@ -356,24 +378,21 @@ export default function AdminPanel() {
 
   return (
     <View style={s.screen}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
 
-      {/* Header */}
-      <View style={s.header}>
-        <View style={s.headerBg}><LoginSignupBackground /></View>
-        <View style={[s.headerRow, { paddingTop: TOP + 10 }]}>
-          <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <MaterialIcons name="arrow-back" size={24} color="#fff" />
-          </TouchableOpacity>
-          <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={s.headerTitle}>Painel Admin</Text>
-            <Text style={s.headerSub}>{TABS.find(t => t.key === tab)?.label}</Text>
-          </View>
-          {stats.suspended_posts + stats.banned_users > 0 && (
-            <View style={s.alertBadge}>
-              <Text style={s.alertBadgeText}>{stats.suspended_posts + stats.banned_users}</Text>
+      {/* Header sem back button — admin não tem para onde voltar */}
+      <View style={[s.header, { paddingTop: TOP }]}>
+        <View style={s.headerLeft}>
+          <MaterialIcons name="shield" size={22} color={AppTheme.colors.tertiary} />
+          <Text style={s.headerTitle}>Painel Admin</Text>
+        </View>
+        <View style={s.headerRight}>
+          {(posts.length + users.length) > 0 && (
+            <View style={s.headerBadge}>
+              <Text style={s.headerBadgeText}>{posts.length + users.length}</Text>
             </View>
           )}
+          <Text style={s.headerEmail}>CANDI</Text>
         </View>
       </View>
 
@@ -386,22 +405,22 @@ export default function AdminPanel() {
         {tab === 'settings' && renderSettings()}
       </View>
 
-      {/* Bottom tab bar */}
-      <View style={s.bottomTabs}>
+      {/* Bottom nav */}
+      <View style={s.bottomNav}>
         {TABS.map(t => (
-          <TouchableOpacity key={t.key} style={s.bottomTab} onPress={() => setTab(t.key)} activeOpacity={0.7}>
-            <View style={{ position: 'relative' }}>
-              <MaterialIcons name={t.icon} size={24} color={tab === t.key ? AppTheme.colors.tertiary : AppTheme.colors.placeholderText} />
+          <TouchableOpacity key={t.key} style={s.navItem} onPress={() => setTab(t.key)} activeOpacity={0.7}>
+            <View style={s.navIconWrap}>
+              <MaterialIcons name={t.icon} size={22} color={tab === t.key ? AppTheme.colors.tertiary : AppTheme.colors.placeholderText} />
               {t.badge && t.badge > 0 ? (
-                <View style={s.tabBadge}><Text style={s.tabBadgeText}>{t.badge > 99 ? '99+' : t.badge}</Text></View>
+                <View style={s.navBadge}><Text style={s.navBadgeText}>{t.badge > 99 ? '99+' : t.badge}</Text></View>
               ) : null}
             </View>
-            <Text style={[s.bottomTabText, tab === t.key && s.bottomTabTextActive]}>{t.label}</Text>
+            <Text style={[s.navLabel, tab === t.key && s.navLabelActive]}>{t.label}</Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      {/* Modal: criar admin */}
+      {/* Modal criar admin */}
       <Modal visible={showCreateAdmin} transparent animationType="slide" onRequestClose={() => setShowCreateAdmin(false)}>
         <View style={s.modalOverlay}>
           <View style={s.modalSheet}>
@@ -412,15 +431,15 @@ export default function AdminPanel() {
                 <MaterialIcons name="close" size={22} color={AppTheme.colors.placeholderText} />
               </TouchableOpacity>
             </View>
-            <Text style={s.settingsLabel}>Nome</Text>
+            <Text style={s.fieldLabel}>Nome</Text>
             <TextInput style={s.input} value={newAdminName} onChangeText={setNewAdminName} placeholder="Nome do admin" placeholderTextColor={AppTheme.colors.placeholderText} />
-            <Text style={s.settingsLabel}>E-mail</Text>
+            <Text style={s.fieldLabel}>E-mail</Text>
             <TextInput style={s.input} value={newAdminEmail} onChangeText={setNewAdminEmail} keyboardType="email-address" autoCapitalize="none" placeholder="admin@email.com" placeholderTextColor={AppTheme.colors.placeholderText} />
-            <Text style={s.settingsLabel}>Senha</Text>
+            <Text style={s.fieldLabel}>Senha</Text>
             <TextInput style={s.input} value={newAdminPwd} onChangeText={setNewAdminPwd} secureTextEntry placeholder="Mínimo 6 caracteres" placeholderTextColor={AppTheme.colors.placeholderText} />
-            <TouchableOpacity style={[s.saveBtn, creatingAdmin && { opacity: 0.6 }]} onPress={handleCreateAdmin} disabled={creatingAdmin} activeOpacity={0.85}>
+            <TouchableOpacity style={[s.saveBtn, creatingAdmin && s.btnDisabled]} onPress={handleCreateAdmin} disabled={creatingAdmin} activeOpacity={0.85}>
               {creatingAdmin ? <ActivityIndicator color="#fff" size="small" /> : (
-                <><MaterialIcons name="person-add" size={18} color="#fff" /><Text style={s.saveBtnText}>Criar admin</Text></>
+                <><MaterialIcons name="person-add" size={17} color="#fff" /><Text style={s.saveBtnText}>Criar admin</Text></>
               )}
             </TouchableOpacity>
             <View style={{ height: 16 }} />
@@ -434,114 +453,130 @@ export default function AdminPanel() {
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: AppTheme.colors.background },
   loadingScreen: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: AppTheme.colors.background },
-  header: { position: 'relative' },
-  headerBg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 14, zIndex: 1 },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: '#fff', fontFamily: AppTheme.fonts.titleMedium.fontFamily },
-  headerSub: { fontSize: 12, color: 'rgba(255,255,255,0.75)', fontFamily: AppTheme.fonts.bodySmall.fontFamily, marginTop: 1 },
-  alertBadge: { backgroundColor: '#ef4444', borderRadius: 12, minWidth: 24, height: 24, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
-  alertBadgeText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+
+  // Header limpo sem gradiente
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingBottom: 12,
+    backgroundColor: AppTheme.colors.cardBackground,
+    borderBottomWidth: 1, borderBottomColor: AppTheme.colors.dotsColor,
+  },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  headerTitle: {
+    fontSize: 18, fontWeight: '700', color: AppTheme.colors.nameText,
+    fontFamily: AppTheme.fonts.titleMedium.fontFamily,
+  },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  headerBadge: {
+    backgroundColor: '#ef4444', borderRadius: 10, minWidth: 22, height: 22,
+    alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6,
+  },
+  headerBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800' },
+  headerEmail: { fontSize: 12, color: AppTheme.colors.placeholderText, fontFamily: AppTheme.fonts.labelSmall.fontFamily },
+
   content: { flex: 1 },
-  scrollContent: { padding: 16, paddingBottom: 20, gap: 12 },
+  scrollContent: { padding: 16, paddingBottom: 16, gap: 10 },
 
-  // Dashboard
-  greeting: { fontSize: 22, fontWeight: '700', color: AppTheme.colors.nameText, fontFamily: AppTheme.fonts.titleLarge.fontFamily },
-  greetingSub: { fontSize: 13, color: AppTheme.colors.placeholderText, fontFamily: AppTheme.fonts.bodySmall.fontFamily, marginBottom: 4 },
-  statsRow: { flexDirection: 'row', gap: 10 },
+  // Stats
+  statsGrid: { flexDirection: 'row', gap: 8 },
   statCard: {
-    flex: 1, backgroundColor: AppTheme.colors.cardBackground,
-    borderRadius: 14, padding: 12, alignItems: 'center', gap: 4,
+    flex: 1, backgroundColor: AppTheme.colors.cardBackground, borderRadius: 14,
+    padding: 12, alignItems: 'center', gap: 4,
     borderWidth: 1, borderColor: AppTheme.colors.dotsColor,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 2, elevation: 1,
   },
-  statIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
-  statValue: { fontSize: 24, fontWeight: '800', color: AppTheme.colors.nameText, fontFamily: AppTheme.fonts.titleLarge.fontFamily },
-  statLabel: { fontSize: 10, color: AppTheme.colors.placeholderText, fontFamily: AppTheme.fonts.labelSmall.fontFamily, textAlign: 'center' },
-  section: { gap: 6 },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: AppTheme.colors.nameText, fontFamily: AppTheme.fonts.labelLarge.fontFamily },
-  sectionSub: { fontSize: 12, color: AppTheme.colors.placeholderText, fontFamily: AppTheme.fonts.bodySmall.fontFamily },
-  quickAction: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: AppTheme.colors.tertiary, borderRadius: 14, padding: 14,
-  },
-  quickActionText: { flex: 1, color: '#fff', fontSize: 14, fontWeight: '600', fontFamily: AppTheme.fonts.labelMedium.fontFamily },
-  allClear: { alignItems: 'center', paddingVertical: 60, gap: 10 },
-  allClearTitle: { fontSize: 18, fontWeight: '700', color: AppTheme.colors.nameText, fontFamily: AppTheme.fonts.titleMedium.fontFamily },
-  allClearSub: { fontSize: 13, color: AppTheme.colors.placeholderText, fontFamily: AppTheme.fonts.bodySmall.fontFamily },
+  statIcon: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
+  statValue: { fontSize: 22, fontWeight: '800', color: AppTheme.colors.nameText, fontFamily: AppTheme.fonts.titleLarge.fontFamily },
+  statLabel: { fontSize: 9.5, color: AppTheme.colors.placeholderText, fontFamily: AppTheme.fonts.labelSmall.fontFamily, textAlign: 'center' },
 
-  // Posts/Users/Admins cards
-  card: {
-    backgroundColor: AppTheme.colors.cardBackground, borderRadius: 16, padding: 14,
-    borderWidth: 1, borderColor: AppTheme.colors.dotsColor, gap: 8,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 2, elevation: 1,
+  alertCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: '#fffbeb', borderRadius: 12, padding: 12,
+    borderWidth: 1, borderColor: '#fde68a',
   },
+  alertText: { flex: 1, fontSize: 13, color: '#92400e', fontFamily: AppTheme.fonts.bodySmall.fontFamily },
+  alertLink: { fontSize: 13, fontWeight: '700', color: '#d97706', fontFamily: AppTheme.fonts.labelMedium.fontFamily },
+
+  quickList: { gap: 6 },
+  quickItem: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: AppTheme.colors.cardBackground, borderRadius: 12, padding: 12,
+    borderWidth: 1, borderColor: AppTheme.colors.dotsColor,
+  },
+  quickBadge: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  quickBadgeNum: { fontSize: 13, fontWeight: '800', fontFamily: AppTheme.fonts.titleSmall.fontFamily },
+  quickItemText: { flex: 1, fontSize: 13, color: AppTheme.colors.textColor, fontFamily: AppTheme.fonts.bodySmall.fontFamily },
+  viewMore: { alignItems: 'center', paddingVertical: 8 },
+  viewMoreText: { fontSize: 13, color: AppTheme.colors.tertiary, fontWeight: '600', fontFamily: AppTheme.fonts.labelMedium.fontFamily },
+
+  // Cards
+  card: {
+    backgroundColor: AppTheme.colors.cardBackground, borderRadius: 14, padding: 14,
+    borderWidth: 1, borderColor: AppTheme.colors.dotsColor, gap: 8,
+  },
+  cardSuspended: { borderColor: '#fecaca', backgroundColor: '#fff5f5' },
   cardTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   authorWrap: { flexDirection: 'row', alignItems: 'center', gap: 5, flex: 1 },
-  cardAuthor: { fontSize: 14, fontWeight: '700', color: AppTheme.colors.nameText, fontFamily: AppTheme.fonts.labelLarge.fontFamily },
+  cardAuthor: { fontSize: 13, fontWeight: '700', color: AppTheme.colors.nameText, fontFamily: AppTheme.fonts.labelLarge.fontFamily },
   cardContent: { fontSize: 13.5, color: AppTheme.colors.textColor, fontFamily: AppTheme.fonts.bodyMedium.fontFamily, lineHeight: 19 },
   cardMeta: { fontSize: 12, color: AppTheme.colors.placeholderText, fontFamily: AppTheme.fonts.labelSmall.fontFamily },
-  cardMedia: { fontSize: 12, color: AppTheme.colors.tertiary, fontFamily: AppTheme.fonts.labelSmall.fontFamily },
-  reportBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 3,
-    backgroundColor: '#fee2e2', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3,
-    borderWidth: 1, borderColor: '#fecaca',
+  cardSectionTitle: { fontSize: 15, fontWeight: '700', color: AppTheme.colors.nameText, fontFamily: AppTheme.fonts.labelLarge.fontFamily },
+
+  countBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1 },
+  countBadgeHigh: { backgroundColor: '#fee2e2', borderColor: '#fca5a5' },
+  countBadgeMed: { backgroundColor: '#fef9c3', borderColor: '#fde047' },
+  countBadgeLow: { backgroundColor: AppTheme.colors.background, borderColor: AppTheme.colors.dotsColor },
+  countBadgeText: { fontSize: 11, fontWeight: '700', fontFamily: AppTheme.fonts.labelSmall.fontFamily },
+
+  suspendedBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: '#fee2e2', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5,
   },
-  reportBadgeText: { fontSize: 11, fontWeight: '700', color: '#ef4444', fontFamily: AppTheme.fonts.labelSmall.fontFamily },
-  reportToggle: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 2 },
-  reportToggleText: { fontSize: 12, color: AppTheme.colors.placeholderText, fontFamily: AppTheme.fonts.bodySmall.fontFamily },
-  reportItem: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingLeft: 4 },
-  reportReason: { fontSize: 12, color: AppTheme.colors.textColor, fontFamily: AppTheme.fonts.bodySmall.fontFamily },
-  cardActions: { flexDirection: 'row', gap: 8 },
-  approveBtn: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5,
-    paddingVertical: 10, borderRadius: 10, backgroundColor: '#d1fae5', borderWidth: 1, borderColor: '#6ee7b7',
-  },
-  removeBtn: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5,
-    paddingVertical: 10, borderRadius: 10, backgroundColor: '#fee2e2', borderWidth: 1, borderColor: '#fca5a5',
-  },
-  actionBtnText: { fontSize: 13, fontWeight: '700', fontFamily: AppTheme.fonts.labelMedium.fontFamily },
+  suspendedText: { fontSize: 11.5, color: '#dc2626', fontFamily: AppTheme.fonts.labelSmall.fontFamily, fontWeight: '600' },
+
+  mediaRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  mediaText: { fontSize: 12, color: AppTheme.colors.tertiary, fontFamily: AppTheme.fonts.labelSmall.fontFamily },
+
+  reasonToggle: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  reasonToggleText: { fontSize: 12, color: AppTheme.colors.placeholderText, fontFamily: AppTheme.fonts.bodySmall.fontFamily },
+  reasonList: { gap: 4, paddingLeft: 4 },
+  reasonItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  reasonDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: AppTheme.colors.tertiary },
+  reasonText: { fontSize: 12.5, color: AppTheme.colors.textColor, fontFamily: AppTheme.fonts.bodySmall.fontFamily },
+
+  bannedBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#fee2e2', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: '#fca5a5' },
+  bannedBadgeText: { fontSize: 11, fontWeight: '700', color: '#ef4444', fontFamily: AppTheme.fonts.labelSmall.fontFamily },
+
   superBadge: { backgroundColor: AppTheme.colors.tertiary, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   superBadgeText: { color: '#fff', fontSize: 9, fontWeight: '800', fontFamily: AppTheme.fonts.labelSmall.fontFamily, letterSpacing: 0.5 },
-  addAdminBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    backgroundColor: AppTheme.colors.tertiary, borderRadius: 14, paddingVertical: 13,
-  },
-  addAdminBtnText: { color: '#fff', fontSize: 14, fontWeight: '700', fontFamily: AppTheme.fonts.labelLarge.fontFamily },
+
+  cardActions: { flexDirection: 'row', gap: 8 },
+  approveBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingVertical: 9, borderRadius: 10, backgroundColor: '#d1fae5', borderWidth: 1, borderColor: '#6ee7b7' },
+  removeBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingVertical: 9, borderRadius: 10, backgroundColor: '#fee2e2', borderWidth: 1, borderColor: '#fca5a5' },
+  approveTxt: { fontSize: 13, fontWeight: '700', color: '#10b981', fontFamily: AppTheme.fonts.labelMedium.fontFamily },
+  removeTxt: { fontSize: 13, fontWeight: '700', color: '#ef4444', fontFamily: AppTheme.fonts.labelMedium.fontFamily },
+
+  createBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: AppTheme.colors.tertiary, borderRadius: 14, paddingVertical: 13 },
+  createBtnText: { color: '#fff', fontSize: 14, fontWeight: '700', fontFamily: AppTheme.fonts.labelLarge.fontFamily },
 
   // Settings
-  settingsTitle: { fontSize: 15, fontWeight: '700', color: AppTheme.colors.nameText, fontFamily: AppTheme.fonts.labelLarge.fontFamily, marginBottom: 4 },
-  settingsLabel: { fontSize: 11.5, color: AppTheme.colors.placeholderText, textTransform: 'uppercase', letterSpacing: 0.5, fontFamily: AppTheme.fonts.labelSmall.fontFamily, marginTop: 8 },
-  input: {
-    backgroundColor: AppTheme.colors.background,
-    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11,
-    fontSize: 14, color: AppTheme.colors.textColor, fontFamily: AppTheme.fonts.bodyMedium.fontFamily,
-    borderWidth: 1, borderColor: AppTheme.colors.dotsColor,
-  },
-  saveBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    backgroundColor: AppTheme.colors.tertiary, borderRadius: 14, paddingVertical: 13, marginTop: 8,
-  },
+  fieldLabel: { fontSize: 11.5, color: AppTheme.colors.placeholderText, textTransform: 'uppercase', letterSpacing: 0.5, fontFamily: AppTheme.fonts.labelSmall.fontFamily, marginTop: 6 },
+  input: { backgroundColor: AppTheme.colors.background, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11, fontSize: 14, color: AppTheme.colors.textColor, fontFamily: AppTheme.fonts.bodyMedium.fontFamily, borderWidth: 1, borderColor: AppTheme.colors.dotsColor },
+  saveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: AppTheme.colors.tertiary, borderRadius: 14, paddingVertical: 13, marginTop: 8 },
+  btnDisabled: { opacity: 0.6 },
   saveBtnText: { color: '#fff', fontSize: 14, fontWeight: '700', fontFamily: AppTheme.fonts.labelLarge.fontFamily },
+  logoutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 14, paddingVertical: 13, backgroundColor: '#fff5f5', borderWidth: 1, borderColor: '#fecaca' },
+  logoutText: { fontSize: 14, fontWeight: '600', color: '#ef4444', fontFamily: AppTheme.fonts.labelMedium.fontFamily },
 
-  // Bottom tabs
-  bottomTabs: {
-    flexDirection: 'row', backgroundColor: AppTheme.colors.cardBackground,
-    borderTopWidth: 1, borderTopColor: AppTheme.colors.dotsColor,
-    paddingBottom: Platform.OS === 'ios' ? 20 : 8, paddingTop: 8,
-    shadowColor: '#000', shadowOffset: { width: 0, height: -2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 8,
-  },
-  bottomTab: { flex: 1, alignItems: 'center', gap: 3 },
-  bottomTabText: { fontSize: 10, color: AppTheme.colors.placeholderText, fontFamily: AppTheme.fonts.labelSmall.fontFamily },
-  bottomTabTextActive: { color: AppTheme.colors.tertiary, fontWeight: '700' },
-  tabBadge: {
-    position: 'absolute', top: -4, right: -6,
-    backgroundColor: '#ef4444', borderRadius: 8, minWidth: 16, height: 16,
-    alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3,
-  },
-  tabBadgeText: { color: '#fff', fontSize: 9, fontWeight: '800' },
+  // Bottom nav
+  bottomNav: { flexDirection: 'row', backgroundColor: AppTheme.colors.cardBackground, borderTopWidth: 1, borderTopColor: AppTheme.colors.dotsColor, paddingBottom: Platform.OS === 'ios' ? 20 : 6, paddingTop: 8 },
+  navItem: { flex: 1, alignItems: 'center', gap: 2 },
+  navIconWrap: { position: 'relative' },
+  navLabel: { fontSize: 9.5, color: AppTheme.colors.placeholderText, fontFamily: AppTheme.fonts.labelSmall.fontFamily },
+  navLabelActive: { color: AppTheme.colors.tertiary, fontWeight: '700' },
+  navBadge: { position: 'absolute', top: -4, right: -6, backgroundColor: '#ef4444', borderRadius: 8, minWidth: 15, height: 15, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },
+  navBadgeText: { color: '#fff', fontSize: 8.5, fontWeight: '800' },
 
-  // Empty states
+  // Empty
   empty: { alignItems: 'center', paddingVertical: 60, gap: 10 },
   emptyTitle: { fontSize: 17, fontWeight: '700', color: AppTheme.colors.nameText, fontFamily: AppTheme.fonts.titleMedium.fontFamily },
   emptySub: { fontSize: 13, color: AppTheme.colors.placeholderText, fontFamily: AppTheme.fonts.bodySmall.fontFamily },
@@ -550,6 +585,6 @@ const s = StyleSheet.create({
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
   modalSheet: { backgroundColor: AppTheme.colors.cardBackground, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20 },
   modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: AppTheme.colors.dotsColor, alignSelf: 'center', marginTop: 10, marginBottom: 4 },
-  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: AppTheme.colors.dotsColor },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: AppTheme.colors.dotsColor, marginBottom: 8 },
   modalTitle: { fontSize: 16, fontWeight: '700', color: AppTheme.colors.nameText, fontFamily: AppTheme.fonts.titleMedium.fontFamily },
 });

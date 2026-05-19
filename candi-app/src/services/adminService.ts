@@ -16,6 +16,7 @@ const fetchAdmin = async (endpoint: string, options: RequestInit = {}) => {
 
 export const getAdminStats = () => fetchAdmin('/admin/stats');
 export const getSuspendedPosts = () => fetchAdmin('/admin/posts/suspended');
+export const getAllReportedPosts = () => fetchAdmin('/admin/reports/all');
 export const getPostReports = (postId: string) => fetchAdmin(`/admin/posts/${postId}/reports`);
 export const approvePost = (postId: string) => fetchAdmin(`/admin/posts/${postId}/approve`, { method: 'PATCH' });
 export const removePost = (postId: string) => fetchAdmin(`/admin/posts/${postId}/remove`, { method: 'PATCH' });
