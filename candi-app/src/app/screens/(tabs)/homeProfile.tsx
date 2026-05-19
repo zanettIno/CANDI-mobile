@@ -86,10 +86,9 @@ export default function HomeProfile() {
   const menuItems = [
     { icon: 'person-outline', label: 'Editar perfil', onPress: () => router.push('/screens/profile/settings') },
     { icon: 'camera-alt', label: 'Alterar foto de perfil', onPress: () => setPhotoModal(true) },
-    { icon: 'contacts', label: 'Contatos de emergência', onPress: () => router.push('/screens/profile/contatosView') },
     { icon: 'flag', label: 'Meus marcos', onPress: () => router.push('/screens/profile/marcosView') },
-    // Disponível apenas para pacientes (não suporte)
-    ...(role !== 'support' ? [{ icon: 'group-add', label: 'Rede de apoio', onPress: () => router.push('/screens/profile/invite') }] : []),
+    // Rede de Apoio = contatos de emergência + pessoas vinculadas no app
+    ...(role !== 'support' ? [{ icon: 'group-add', label: 'Rede de Apoio', onPress: () => router.push('/screens/profile/invite') }] : []),
     // Apenas admin
     ...(role === 'admin' ? [{ icon: 'shield', label: 'Painel Admin', onPress: () => router.push('/screens/admin') }] : []),
   ];
@@ -364,4 +363,5 @@ const s = StyleSheet.create({
   menuLabelDestructive: { color: '#ef4444' },
   divider: { height: 1, backgroundColor: AppTheme.colors.dotsColor, marginLeft: 64 },
 });
+
 
