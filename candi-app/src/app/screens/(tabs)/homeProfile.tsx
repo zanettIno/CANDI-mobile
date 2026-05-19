@@ -10,6 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppTheme } from '../../../theme';
 import LoginSignupBackground from '../../../components/LoginSignupBackground';
 import ProfilePictureModal from '../../../components/Modals/ProfilePictureModal';
+import ActionSheet from '@/components/ActionSheet';
 import { cancerTypes } from '../../../components/Inputs/inputTypeCancer';
 import { useProfile } from '@/context/ProfileContext';
 import { API_BASE_URL } from '../../../constants/api';
@@ -34,6 +35,7 @@ export default function HomeProfile() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [photoModal, setPhotoModal] = useState(false);
+  const [logoutSheet, setLogoutSheet] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -71,16 +73,11 @@ export default function HomeProfile() {
     birthDate = `${d}/${m}/${y}`;
   }
 
-  const handleLogout = () => {
-    Alert.alert('Sair', 'Tem certeza que deseja sair da conta?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Sair', style: 'destructive', onPress: async () => {
-          await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'userRole']);
-          router.replace('/');
-        }
-      },
-    ]);
+  const handleLogout = () => setLogoutSheet(true);
+
+  const doLogout = async () => {
+    await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'userRole']);
+    router.replace('/');
   };
 
   const menuItems = [
@@ -228,6 +225,18 @@ export default function HomeProfile() {
           onPictureUpdate={handlePhotoUpdate}
         />
       )}
+
+      <ActionSheet
+        visible={logoutSheet}
+        title="Sair da conta"
+        options={[{
+          label: 'Confirmar saída',
+          icon: 'logout',
+          destructive: true,
+          onPress: doLogout,
+        }]}
+        onDismiss={() => setLogoutSheet(false)}
+      />
     </>
   );
 }

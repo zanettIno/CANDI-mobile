@@ -135,16 +135,16 @@ export default function HomeScreen() {
           <CarouselComponent data={carouselData} />
         </View>
 
-        {/* Contatos de emergência */}
+        {/* Rede de Apoio */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Contatos de emergência</Text>
+            <Text style={styles.sectionTitle}>Rede de Apoio</Text>
             <TouchableOpacity
-              onPress={() => router.push('/screens/profile/contatosView')}
+              onPress={() => router.push('/screens/profile/invite')}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               activeOpacity={0.7}
             >
-              <Text style={styles.seeAll}>Ver todos</Text>
+              <Text style={styles.seeAll}>Gerenciar</Text>
             </TouchableOpacity>
           </View>
 
@@ -157,11 +157,11 @@ export default function HomeScreen() {
               <MaterialIcons name="person-add" size={32} color={AppTheme.colors.dotsColor} />
               <Text style={styles.emptyText}>Nenhum contato cadastrado ainda.</Text>
               <TouchableOpacity
-                onPress={() => router.push('/screens/profile/contatosAdd')}
+                onPress={() => router.push('/screens/profile/invite')}
                 style={styles.addContactBtn}
                 activeOpacity={0.8}
               >
-                <Text style={styles.addContactBtnText}>Adicionar contato</Text>
+                <Text style={styles.addContactBtnText}>Convidar pessoa</Text>
               </TouchableOpacity>
             </View>
           )}
