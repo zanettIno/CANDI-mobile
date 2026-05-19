@@ -44,7 +44,16 @@ export default function Index() {
 
     try {
       await login(email, password);
-      router.push('/screens/(tabs)/home'); 
+      // Busca o perfil para checar a role e redirecionar corretamente
+      const token = await (await import('@react-native-async-storage/async-storage')).default.getItem('accessToken');
+      const { API_BASE_URL } = await import('constants/api');
+      const me = await fetch(`${API_BASE_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
+      const profile = me.ok ? await me.json() : {};
+      if (profile.role === 'admin') {
+        router.replace('/screens/admin/index');
+      } else {
+        router.replace('/screens/(tabs)/home');
+      }
     } catch (error) {
       console.error("Erro na requisição de login:", error);
       setErrorMessage('E-mail ou senha incorretos. Tente novamente.');

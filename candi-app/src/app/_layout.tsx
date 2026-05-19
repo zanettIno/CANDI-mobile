@@ -35,8 +35,34 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       try {
         const token = await AsyncStorage.getItem('accessToken');
         const inProtectedArea = segments[0] === 'screens';
+        const inAdminArea = segments.includes('admin');
+        const inTabsArea = segments.includes('(tabs)');
+
         if (!token && inProtectedArea) {
+          // Sem token — manda pro login
           router.replace('/');
+          return;
+        }
+
+        if (!token) return;
+
+        // Verifica a role do usuário logado
+        const { API_BASE_URL } = require('../constants/api');
+        const me = await fetch(`${API_BASE_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
+        if (!me.ok) return;
+        const profile = await me.json();
+        const role = profile.role || 'patient';
+
+        if (role === 'admin') {
+          // Admin NUNCA deve ver o app de paciente
+          if (inTabsArea) {
+            router.replace('/screens/admin/index');
+          }
+        } else {
+          // Paciente/suporte NUNCA deve ver o painel admin
+          if (inAdminArea) {
+            router.replace('/screens/(tabs)/home');
+          }
         }
       } finally {
         setChecked(true);
