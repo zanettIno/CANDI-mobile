@@ -50,7 +50,7 @@ export default function Index() {
       const me = await fetch(`${API_BASE_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
       const profile = me.ok ? await me.json() : {};
       if (profile.role === 'admin') {
-        router.replace('/screens/admin/index');
+        router.replace('/screens/admin');
       } else {
         router.replace('/screens/(tabs)/home');
       }
@@ -199,3 +199,4 @@ const styles = StyleSheet.create({
     fontSize: AppTheme.fonts.bodyLarge.fontSize,
   },
 });
+

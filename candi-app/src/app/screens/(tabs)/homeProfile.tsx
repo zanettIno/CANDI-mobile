@@ -91,7 +91,7 @@ export default function HomeProfile() {
     // Disponível apenas para pacientes (não suporte)
     ...(role !== 'support' ? [{ icon: 'group-add', label: 'Rede de apoio', onPress: () => router.push('/screens/profile/invite') }] : []),
     // Apenas admin
-    ...(role === 'admin' ? [{ icon: 'shield', label: 'Painel Admin', onPress: () => router.push('/screens/admin/index') }] : []),
+    ...(role === 'admin' ? [{ icon: 'shield', label: 'Painel Admin', onPress: () => router.push('/screens/admin') }] : []),
   ];
 
   const bottomItems = [
@@ -364,3 +364,4 @@ const s = StyleSheet.create({
   menuLabelDestructive: { color: '#ef4444' },
   divider: { height: 1, backgroundColor: AppTheme.colors.dotsColor, marginLeft: 64 },
 });
+

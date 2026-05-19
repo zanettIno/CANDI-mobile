@@ -56,7 +56,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
         if (role === 'admin') {
           // Admin NUNCA deve ver o app de paciente
           if (inTabsArea) {
-            router.replace('/screens/admin/index');
+            router.replace('/screens/admin');
           }
         } else {
           // Paciente/suporte NUNCA deve ver o painel admin
@@ -107,7 +107,7 @@ export default function RootLayout() {
                 <Stack.Screen name="screens/community/chatCommunity" />
                 <Stack.Screen name="screens/community/groupCommunity" />
                 <Stack.Screen name="screens/community/postDetail" />
-                <Stack.Screen name="screens/admin/index" />
+                <Stack.Screen name="screens/admin" />
                 <Stack.Screen name="screens/profile/invite" />
               </Stack>
               </AuthGate>
@@ -118,3 +118,4 @@ export default function RootLayout() {
     </QueryClientProvider>
   );
 }
+

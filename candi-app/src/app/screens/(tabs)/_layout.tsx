@@ -117,7 +117,7 @@ export default function RootLayout() {
             listeners={({ navigation }) => ({
               tabPress: (e) => {
                 e.preventDefault();
-                navigation.navigate('screens/admin/index');
+                navigation.navigate('screens/admin');
               },
             })}
             options={{
@@ -165,3 +165,4 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 });
+
