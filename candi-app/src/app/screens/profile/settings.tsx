@@ -80,7 +80,8 @@ export default function Settings() {
       if (!res.ok) throw new Error((await res.json()).message || 'Erro');
       await refreshProfile();
       toast.success('Perfil atualizado!');
-      router.back();
+      if (router.canGoBack()) router.back();
+      else router.replace('/screens/(tabs)/homeProfile');
     } catch (e: any) {
       toast.error(e.message || 'Não foi possível salvar.');
     } finally { setSaving(false); }
@@ -103,7 +104,7 @@ export default function Settings() {
         <View style={s.header}>
           <View style={s.headerBg}><LoginSignupBackground /></View>
           <View style={[s.headerRow, { paddingTop: STATUS_TOP + 8 }]}>
-            <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/screens/(tabs)/homeProfile')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <MaterialIcons name="arrow-back" size={24} color="#fff" />
             </TouchableOpacity>
             <Text style={s.headerTitle}>Editar Perfil</Text>

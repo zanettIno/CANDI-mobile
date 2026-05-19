@@ -7,6 +7,7 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
+import ActionSheet from '@/components/ActionSheet';
 import { AppTheme } from '@/theme';
 import {
   getAdminStats, getAllReportedPosts, getBannedUsers, getAdmins,
@@ -54,6 +55,7 @@ export default function AdminPanel() {
   const [creatingAdmin, setCreatingAdmin] = useState(false);
 
   const [expandedPost, setExpandedPost] = useState<string | null>(null);
+  const [showLogoutSheet, setShowLogoutSheet] = useState(false);
 
   const loadAll = useCallback(async () => {
     try {
@@ -137,14 +139,9 @@ export default function AdminPanel() {
     finally { setSavingCreds(false); }
   };
 
-  const handleLogout = () => {
-    Alert.alert('Sair', 'Tem certeza que deseja sair?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Sair', style: 'destructive', onPress: async () => {
-        await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'userRole']);
-        router.replace('/');
-      }},
-    ]);
+  const doLogout = async () => {
+    await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'userRole']);
+    router.replace('/');
   };
 
   const TABS: { key: Tab; icon: any; label: string; badge?: number }[] = [
@@ -390,7 +387,7 @@ export default function AdminPanel() {
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity style={s.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
+      <TouchableOpacity style={s.logoutBtn} onPress={() => setShowLogoutSheet(true)} activeOpacity={0.8}>
         <MaterialIcons name="logout" size={17} color="#ef4444" />
         <Text style={s.logoutText}>Sair da conta</Text>
       </TouchableOpacity>
@@ -442,6 +439,19 @@ export default function AdminPanel() {
           </TouchableOpacity>
         ))}
       </View>
+
+      {/* ActionSheet de logout — usa ActionSheet pois Alert.alert inverte OK/Cancel no web */}
+      <ActionSheet
+        visible={showLogoutSheet}
+        title="Sair da conta admin"
+        options={[{
+          label: 'Confirmar saída',
+          icon: 'logout',
+          destructive: true,
+          onPress: doLogout,
+        }]}
+        onDismiss={() => setShowLogoutSheet(false)}
+      />
 
       {/* Modal criar admin */}
       <Modal visible={showCreateAdmin} transparent animationType="slide" onRequestClose={() => setShowCreateAdmin(false)}>
