@@ -3,9 +3,12 @@ import { API_BASE_URL } from '../constants/api';
 
 const fetchAdmin = async (endpoint: string, options: RequestInit = {}) => {
   const token = await getValidAccessToken();
+  const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+  // Só define Content-Type quando há body — sem body o servidor rejeita com 400
+  if (options.body) headers['Content-Type'] = 'application/json';
   const res = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', ...options.headers as any },
+    headers: { ...headers, ...options.headers as any },
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
