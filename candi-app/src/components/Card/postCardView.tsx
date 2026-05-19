@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, Image,
   Alert, Platform, Modal, TextInput, ActivityIndicator,
-  Pressable,
+  Pressable, ScrollView,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { AppTheme } from '../../theme';
@@ -302,26 +302,34 @@ export const PostCardView: React.FC<PostCardViewProps> = ({
             ) : comments.length === 0 ? (
               <Text style={styles.noComments}>Seja o primeiro a comentar.</Text>
             ) : (
-              comments.map(c => (
-                <View key={c.comment_id} style={styles.commentItem}>
-                  <Avatar
-                    uri={c.profile_id ? `${S3_BASE}/${c.profile_id}.jpg` : undefined}
-                    name={c.author_name || ''}
-                    size={26}
-                  />
-                  <View style={{ flex: 1 }}>
-                    <View style={styles.commentHeader}>
-                      <Text style={styles.commentAuthor}>{c.author_name}</Text>
-                      {(c.profile_id === myProfileId || canDeleteAnyComment) && (
-                        <TouchableOpacity onPress={() => handleDeleteComment(c.comment_id)} hitSlop={HIT_SLOP} activeOpacity={0.7}>
-                          <MaterialIcons name="delete-outline" size={14} color={AppTheme.colors.placeholderText} />
-                        </TouchableOpacity>
-                      )}
+              // ScrollView com altura máxima — evita que posts com muitos comentários cresçam infinitamente
+              <ScrollView
+                style={styles.commentsList}
+                nestedScrollEnabled
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+              >
+                {comments.map(c => (
+                  <View key={c.comment_id} style={styles.commentItem}>
+                    <Avatar
+                      uri={c.profile_id ? `${S3_BASE}/${c.profile_id}.jpg` : undefined}
+                      name={c.author_name || ''}
+                      size={26}
+                    />
+                    <View style={{ flex: 1 }}>
+                      <View style={styles.commentHeader}>
+                        <Text style={styles.commentAuthor}>{c.author_name}</Text>
+                        {(c.profile_id === myProfileId || canDeleteAnyComment) && (
+                          <TouchableOpacity onPress={() => handleDeleteComment(c.comment_id)} hitSlop={HIT_SLOP} activeOpacity={0.7}>
+                            <MaterialIcons name="delete-outline" size={14} color={AppTheme.colors.placeholderText} />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                      <Text style={styles.commentText}>{c.text}</Text>
                     </View>
-                    <Text style={styles.commentText}>{c.text}</Text>
                   </View>
-                </View>
-              ))
+                ))}
+              </ScrollView>
             )}
             <View style={styles.commentInputRow}>
               <TextInput
@@ -460,6 +468,9 @@ const styles = StyleSheet.create({
   // Comments
   commentsSection: {
     marginTop: 12, paddingTop: 12,
+  },
+  commentsList: {
+    maxHeight: 260, // ~4 comentários visíveis; usuário rola para ver mais
     borderTopWidth: 1, borderTopColor: AppTheme.colors.dotsColor,
   },
   noComments: {
