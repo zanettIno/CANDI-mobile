@@ -11,6 +11,7 @@ import { formatRelativeDate } from '@/utils/dateFormat';
 import { toggleLike, toggleFavorite, getComments, addComment, deleteComment as deleteCommentService, deleteGroupPost } from '@/services/communityService';
 import { deletePost as deleteOwnPost } from '@/services/feedService';
 import SharePostModal from '@/components/Modals/SharePostModal';
+import ActionSheet from '@/components/ActionSheet';
 import { useProfile } from '@/context/ProfileContext';
 
 const S3_BASE = 'https://awscandi-image-uploads.s3.us-east-2.amazonaws.com/profile-images';
@@ -90,6 +91,7 @@ export const PostCardView: React.FC<PostCardViewProps> = ({
 
   const [shareVisible, setShareVisible] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
+  const [deleteSheetVisible, setDeleteSheetVisible] = useState(false);
   const [commentsVisible, setCommentsVisible] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentsLoaded, setCommentsLoaded] = useState(false);
@@ -154,25 +156,8 @@ export const PostCardView: React.FC<PostCardViewProps> = ({
     } else if (action === 'report') {
       Alert.alert('Denúncia enviada', 'Agradecemos por manter a comunidade segura.');
     } else if (action === 'delete') {
-      const doDelete = async () => {
-        try {
-          if (groupId) {
-            // Grupo: chama API diretamente (backend aceita dono OU mod)
-            await deleteGroupPost(groupId, postId);
-            onDelete?.(postId);
-          } else {
-            // Feed geral: dono exclui o próprio post
-            await deleteOwnPost(postId);
-            onDelete?.(postId);
-          }
-        } catch (err: any) {
-          Alert.alert('Erro', err.message || 'Não foi possível excluir a publicação.');
-        }
-      };
-      Alert.alert('Excluir postagem', 'Esta ação não pode ser desfeita.', [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Excluir', style: 'destructive', onPress: doDelete },
-      ]);
+      // Abre ActionSheet — Alert.alert no web tem bug com window.confirm (botões invertidos)
+      setDeleteSheetVisible(true);
     }
   };
 
@@ -223,6 +208,19 @@ export const PostCardView: React.FC<PostCardViewProps> = ({
       Alert.alert('Erro', 'Não foi possível excluir o comentário.');
     }
   }, [postId, groupId]);
+
+  const doDelete = useCallback(async () => {
+    try {
+      if (groupId) {
+        await deleteGroupPost(groupId, postId);
+      } else {
+        await deleteOwnPost(postId);
+      }
+      onDelete?.(postId);
+    } catch (err: any) {
+      Alert.alert('Erro', err.message || 'Não foi possível excluir a publicação.');
+    }
+  }, [postId, groupId, onDelete]);
 
   return (
     <>
@@ -388,6 +386,19 @@ export const PostCardView: React.FC<PostCardViewProps> = ({
           </View>
         </Pressable>
       </Modal>
+
+      {/* ActionSheet de confirmação de exclusão — substitui Alert.alert que tem bug no web */}
+      <ActionSheet
+        visible={deleteSheetVisible}
+        title="Excluir postagem?"
+        options={[{
+          label: 'Confirmar exclusão (não pode ser desfeito)',
+          icon: 'delete-forever',
+          destructive: true,
+          onPress: doDelete,
+        }]}
+        onDismiss={() => setDeleteSheetVisible(false)}
+      />
     </>
   );
 };
