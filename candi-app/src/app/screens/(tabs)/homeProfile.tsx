@@ -76,7 +76,7 @@ export default function HomeProfile() {
       { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Sair', style: 'destructive', onPress: async () => {
-          await AsyncStorage.multiRemove(['accessToken', 'refreshToken']);
+          await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'userRole']);
           router.replace('/');
         }
       },

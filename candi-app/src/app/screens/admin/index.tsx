@@ -136,7 +136,7 @@ export default function AdminPanel() {
   };
 
   const handleLogout = async () => {
-    await AsyncStorage.multiRemove(['accessToken', 'refreshToken']);
+    await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'userRole']);
     const { router } = await import('expo-router');
     router.replace('/');
   };

@@ -49,7 +49,9 @@ export default function Index() {
       const { API_BASE_URL } = await import('constants/api');
       const me = await fetch(`${API_BASE_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
       const profile = me.ok ? await me.json() : {};
-      if (profile.role === 'admin') {
+      const role = profile.role || 'patient';
+      await (await import('@react-native-async-storage/async-storage')).default.setItem('userRole', role);
+      if (role === 'admin') {
         router.replace('/screens/admin');
       } else {
         router.replace('/screens/(tabs)/home');

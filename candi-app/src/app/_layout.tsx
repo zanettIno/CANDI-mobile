@@ -25,6 +25,25 @@ const queryClient = new QueryClient({
   },
 });
 
+// Cache da role para evitar chamada à API em cada navegação
+const getCachedRole = async (): Promise<string> => {
+  // Tenta ler role cacheada (salva no login)
+  const cached = await AsyncStorage.getItem('userRole');
+  if (cached) return cached;
+  // Fallback: busca da API (só na primeira vez ou após limpar cache)
+  try {
+    const token = await AsyncStorage.getItem('accessToken');
+    if (!token) return 'patient';
+    const { default: API } = await import('../constants/api');
+    const res = await fetch(`${(API as any).API_BASE_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) return 'patient';
+    const profile = await res.json();
+    const role = profile.role || 'patient';
+    await AsyncStorage.setItem('userRole', role);
+    return role;
+  } catch { return 'patient'; }
+};
+
 function AuthGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const segments = useSegments();
@@ -38,31 +57,21 @@ function AuthGate({ children }: { children: React.ReactNode }) {
         const inAdminArea = segments.includes('admin');
         const inTabsArea = segments.includes('(tabs)');
 
+        // Sem token — manda pro login e limpa cache de role
         if (!token && inProtectedArea) {
-          // Sem token — manda pro login
+          await AsyncStorage.removeItem('userRole');
           router.replace('/');
           return;
         }
-
         if (!token) return;
 
-        // Verifica a role do usuário logado
-        const { API_BASE_URL } = require('../constants/api');
-        const me = await fetch(`${API_BASE_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
-        if (!me.ok) return;
-        const profile = await me.json();
-        const role = profile.role || 'patient';
+        // Role vem do cache (rápido) ou da API (só na primeira vez)
+        const role = await getCachedRole();
 
-        if (role === 'admin') {
-          // Admin NUNCA deve ver o app de paciente
-          if (inTabsArea) {
-            router.replace('/screens/admin');
-          }
-        } else {
-          // Paciente/suporte NUNCA deve ver o painel admin
-          if (inAdminArea) {
-            router.replace('/screens/(tabs)/home');
-          }
+        if (role === 'admin' && inTabsArea) {
+          router.replace('/screens/admin');
+        } else if (role !== 'admin' && inAdminArea) {
+          router.replace('/screens/(tabs)/home');
         }
       } finally {
         setChecked(true);
