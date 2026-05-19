@@ -56,8 +56,8 @@ function AuthGate({ children }: { children: React.ReactNode }) {
         const inProtectedArea = segments[0] === 'screens';
         const inAdminArea = segments.includes('admin');
         const inTabsArea = segments.includes('(tabs)');
+        const inSupportArea = segments.includes('support');
 
-        // Sem token — manda pro login e limpa cache de role
         if (!token && inProtectedArea) {
           await AsyncStorage.removeItem('userRole');
           router.replace('/');
@@ -65,13 +65,16 @@ function AuthGate({ children }: { children: React.ReactNode }) {
         }
         if (!token) return;
 
-        // Role vem do cache (rápido) ou da API (só na primeira vez)
         const role = await getCachedRole();
 
-        if (role === 'admin' && inTabsArea) {
-          router.replace('/screens/admin');
-        } else if (role !== 'admin' && inAdminArea) {
-          router.replace('/screens/(tabs)/home');
+        if (role === 'admin') {
+          if (inTabsArea || inSupportArea) router.replace('/screens/admin');
+        } else if (role === 'support') {
+          // Suporte NUNCA acessa app de paciente nem painel admin
+          if (inTabsArea || inAdminArea) router.replace('/screens/support');
+        } else {
+          // Paciente NUNCA acessa admin nem app de suporte
+          if (inAdminArea || inSupportArea) router.replace('/screens/(tabs)/home');
         }
       } finally {
         setChecked(true);
@@ -117,6 +120,7 @@ export default function RootLayout() {
                 <Stack.Screen name="screens/community/groupCommunity" />
                 <Stack.Screen name="screens/community/postDetail" />
                 <Stack.Screen name="screens/admin" />
+                <Stack.Screen name="screens/support" />
                 <Stack.Screen name="screens/profile/invite" />
               </Stack>
               </AuthGate>

@@ -53,6 +53,8 @@ export default function Index() {
       await (await import('@react-native-async-storage/async-storage')).default.setItem('userRole', role);
       if (role === 'admin') {
         router.replace('/screens/admin');
+      } else if (role === 'support') {
+        router.replace('/screens/support');
       } else {
         router.replace('/screens/(tabs)/home');
       }
