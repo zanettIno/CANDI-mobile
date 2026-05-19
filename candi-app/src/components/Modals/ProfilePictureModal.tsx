@@ -8,6 +8,7 @@ import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppTheme } from '../../theme';
 import { API_BASE_URL } from '../../constants/api';
+import { useToast } from '@/context/NotificationContext';
 
 const S3_BASE = 'https://awscandi-image-uploads.s3.us-east-2.amazonaws.com/profile-images';
 
@@ -20,6 +21,7 @@ interface Props {
 
 const ProfilePictureModal: React.FC<Props> = ({ visible, onDismiss, user, onPictureUpdate }) => {
   const [uploading, setUploading] = useState(false);
+  const toast = useToast();
 
   const avatarUri = user.profile_picture_last_updated
     ? `${S3_BASE}/${user.profile_id}.jpg?t=${user.profile_picture_last_updated}`
@@ -53,9 +55,10 @@ const ProfilePictureModal: React.FC<Props> = ({ visible, onDismiss, user, onPict
       });
       if (!r.ok) throw new Error((await r.json()).message || 'Erro ao enviar');
       onPictureUpdate(false);
+      toast.success('Foto de perfil atualizada!');
       onDismiss();
     } catch (e: any) {
-      Alert.alert('Erro', e.message || 'Não foi possível atualizar a foto.');
+      toast.error(e.message || 'Não foi possível atualizar a foto.');
     } finally { setUploading(false); }
   };
 
@@ -71,8 +74,9 @@ const ProfilePictureModal: React.FC<Props> = ({ visible, onDismiss, user, onPict
               method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
             });
             onPictureUpdate(true);
+            toast.success('Foto de perfil removida.');
             onDismiss();
-          } catch { Alert.alert('Erro', 'Não foi possível remover a foto.'); }
+          } catch { toast.error('Não foi possível remover a foto.'); }
           finally { setUploading(false); }
         }
       },

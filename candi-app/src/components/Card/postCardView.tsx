@@ -13,6 +13,7 @@ import { deletePost as deleteOwnPost } from '@/services/feedService';
 import SharePostModal from '@/components/Modals/SharePostModal';
 import ActionSheet from '@/components/ActionSheet';
 import { useProfile } from '@/context/ProfileContext';
+import { useToast } from '@/context/NotificationContext';
 
 const S3_BASE = 'https://awscandi-image-uploads.s3.us-east-2.amazonaws.com/profile-images';
 const HIT_SLOP = { top: 10, bottom: 10, left: 10, right: 10 };
@@ -80,6 +81,7 @@ export const PostCardView: React.FC<PostCardViewProps> = ({
   onLikeToggle, onFavoriteToggle, onAdminDelete, onDelete, canDeleteAnyComment = false, groupId,
 }) => {
   const { profileId: myProfileId } = useProfile();
+  const toast = useToast();
 
   // Estado inicializado diretamente dos props — o feedKey no FlatList garante remount a cada fetch
   const [liked, setLiked] = useState(initialLiked);
@@ -149,12 +151,12 @@ export const PostCardView: React.FC<PostCardViewProps> = ({
     if (action === 'copy') {
       if (Platform.OS === 'web' && navigator.clipboard) {
         navigator.clipboard.writeText(content);
-        Alert.alert('Copiado!', 'Texto copiado para a área de transferência.');
+        toast.success('Texto copiado para a área de transferência.');
       } else {
         Alert.alert('Texto', content);
       }
     } else if (action === 'report') {
-      Alert.alert('Denúncia enviada', 'Agradecemos por manter a comunidade segura.');
+      toast.success('Denúncia enviada. Obrigado por manter a comunidade segura!', 'Denúncia');
     } else if (action === 'delete') {
       // Abre ActionSheet — Alert.alert no web tem bug com window.confirm (botões invertidos)
       setDeleteSheetVisible(true);
@@ -191,9 +193,10 @@ export const PostCardView: React.FC<PostCardViewProps> = ({
       const newComment = await addComment(postId, text);
       setComments(prev => [...prev, newComment]);
       setCommentCount(prev => prev + 1);
+      toast.success('Comentário publicado!');
     } catch {
       setCommentText(text);
-      Alert.alert('Erro', 'Não foi possível enviar o comentário.');
+      toast.error('Não foi possível enviar o comentário.');
     } finally {
       setSendingComment(false);
     }
@@ -204,8 +207,9 @@ export const PostCardView: React.FC<PostCardViewProps> = ({
       await deleteCommentService(postId, commentId, groupId);
       setComments(prev => prev.filter(c => c.comment_id !== commentId));
       setCommentCount(prev => Math.max(0, prev - 1));
+      toast.success('Comentário excluído.');
     } catch {
-      Alert.alert('Erro', 'Não foi possível excluir o comentário.');
+      toast.error('Não foi possível excluir o comentário.');
     }
   }, [postId, groupId]);
 
@@ -217,8 +221,9 @@ export const PostCardView: React.FC<PostCardViewProps> = ({
         await deleteOwnPost(postId);
       }
       onDelete?.(postId);
+      toast.success('Publicação excluída.');
     } catch (err: any) {
-      Alert.alert('Erro', err.message || 'Não foi possível excluir a publicação.');
+      toast.error(err.message || 'Não foi possível excluir a publicação.');
     }
   }, [postId, groupId, onDelete]);
 

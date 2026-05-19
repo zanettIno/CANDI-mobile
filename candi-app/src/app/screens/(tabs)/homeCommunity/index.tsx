@@ -29,6 +29,7 @@ import { listGroups, getMyGroups, joinGroup, createGroup, getUserLikedPosts, get
 import { getInbox, startConversationByEmail } from '@/services/chatService';
 import { useProfile } from '@/context/ProfileContext';
 import { useChat } from '@/context/ChatContext';
+import { useToast } from '@/context/NotificationContext';
 import { formatTime } from '@/utils/dateFormat';
 
 type Section = 'feed' | 'grupos' | 'mensagens' | 'favoritos';
@@ -42,6 +43,7 @@ export default function CommunityScreen() {
   const router = useRouter();
   const { avatarUri, profileName } = useProfile();
   const { setTotalUnread, inboxRefreshKey, feedRefreshKey } = useChat();
+  const toast = useToast();
   const [section, setSection] = React.useState<Section>('feed');
 
   // Feed
@@ -181,10 +183,13 @@ export default function CommunityScreen() {
   const handleJoin = async (groupId: string) => {
     setJoiningId(groupId);
     try {
-      await joinGroup(groupId);
+      const res = await joinGroup(groupId);
       setMyGroupIds(prev => new Set([...prev, groupId]));
+      const isPending = (res as any)?.status === 'pending';
+      if (isPending) toast.info('Solicitação enviada! Aguarde aprovação.', 'Solicitação');
+      else toast.success('Você entrou no grupo!');
     } catch (err: any) {
-      Alert.alert('Erro', err.message || 'Não foi possível entrar no grupo.');
+      toast.error(err.message || 'Não foi possível entrar no grupo.');
     } finally { setJoiningId(null); }
   };
 
@@ -193,9 +198,10 @@ export default function CommunityScreen() {
       const g = await createGroup(data);
       setGroups(prev => [g, ...prev]);
       setMyGroupIds(prev => new Set([...prev, g.group_id]));
-      return g; // necessário para o GroupAddModal fazer upload da foto após criar
+      toast.success(`Grupo "${g.name}" criado!`, 'Grupo criado');
+      return g;
     } catch (err: any) {
-      Alert.alert('Erro', err.message || 'Não foi possível criar o grupo.');
+      toast.error(err.message || 'Não foi possível criar o grupo.');
       throw err;
     }
   };

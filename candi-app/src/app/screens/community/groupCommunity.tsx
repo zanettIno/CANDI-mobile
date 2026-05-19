@@ -31,7 +31,7 @@ import { initializeSocket } from '@/services/socketService';
 import { getValidAccessToken } from '@/services/authService';
 import { useProfile } from '@/context/ProfileContext';
 import { useChat } from '@/context/ChatContext';
-import { useNotification } from '@/context/NotificationContext';
+import { useNotification, useToast } from '@/context/NotificationContext';
 import { formatTime, formatRelativeDate } from '@/utils/dateFormat';
 import { API_BASE_URL } from '@/constants/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -67,6 +67,7 @@ export default function GroupCommunity() {
   const { profileId: myProfileId, profileName: myName } = useProfile();
   const { setActiveConversationId } = useChat();
   const { showNotification } = useNotification();
+  const toast = useToast();
 
   const [tab, setTab] = useState<Tab>('posts');
   const [group, setGroup] = useState<any>(null);
@@ -311,10 +312,13 @@ export default function GroupCommunity() {
       if (newRole === 'member') {
         setGroup((g: any) => g ? { ...g, member_count: (g.member_count || 0) + 1 } : g);
       }
-      Alert.alert(newRole === 'pending' ? 'Solicitação enviada!' : 'Bem-vindo!',
-        newRole === 'pending' ? 'Aguarde a aprovação do administrador.' : 'Você entrou no grupo.');
+      if (newRole === 'pending') {
+        toast.info('Solicitação enviada! Aguarde a aprovação do administrador.', 'Solicitação');
+      } else {
+        toast.success('Você entrou no grupo!', 'Bem-vindo!');
+      }
     } catch (err: any) {
-      Alert.alert('Erro', err.message);
+      toast.error(err.message || 'Não foi possível entrar no grupo.');
     } finally { setJoining(false); }
   };
 
@@ -325,7 +329,8 @@ export default function GroupCommunity() {
           await leaveGroup(groupId!);
           setMyRole('none');
           setGroup((g: any) => g ? { ...g, member_count: Math.max(0, (g.member_count || 1) - 1) } : g);
-        } catch (err: any) { Alert.alert('Erro', err.message); }
+          toast.info('Você saiu do grupo.');
+        } catch (err: any) { toast.error(err.message || 'Não foi possível sair.'); }
       }},
     ]);
   };
@@ -336,14 +341,16 @@ export default function GroupCommunity() {
       setPendingReqs(prev => prev.filter(r => r.profile_id !== m.profile_id));
       setGroup((g: any) => g ? { ...g, member_count: (g.member_count || 0) + 1 } : g);
       loadMembers();
-    } catch (err: any) { Alert.alert('Erro', err.message); }
+      toast.success(`${m.member_name} aprovado!`);
+    } catch (err: any) { toast.error(err.message || 'Não foi possível aprovar.'); }
   };
 
   const handleReject = async (m: Member) => {
     try {
       await handleJoinRequest(groupId!, m.profile_id, 'reject');
       setPendingReqs(prev => prev.filter(r => r.profile_id !== m.profile_id));
-    } catch (err: any) { Alert.alert('Erro', err.message); }
+      toast.info('Solicitação recusada.');
+    } catch (err: any) { toast.error(err.message || 'Não foi possível recusar.'); }
   };
 
   const handleRemoveMember = (m: Member) => {
@@ -353,7 +360,8 @@ export default function GroupCommunity() {
           await removeMember(groupId!, m.profile_id);
           setMembers(prev => prev.filter(x => x.profile_id !== m.profile_id));
           setGroup((g: any) => g ? { ...g, member_count: Math.max(0, (g.member_count || 1) - 1) } : g);
-        } catch (err: any) { Alert.alert('Erro', err.message); }
+          toast.success(`${m.member_name} removido do grupo.`);
+        } catch (err: any) { toast.error(err.message || 'Não foi possível remover.'); }
       }},
     ]);
   };
@@ -371,7 +379,8 @@ export default function GroupCommunity() {
             setMembers(prev => prev.map(x =>
               x.profile_id === m.profile_id ? { ...x, role: isCoLeader ? 'member' : 'co-leader' } : x
             ));
-          } catch (err: any) { Alert.alert('Erro', err.message); }
+            toast.success(isCoLeader ? 'Papel atualizado para membro.' : `${m.member_name} é co-líder!`);
+          } catch (err: any) { toast.error(err.message || 'Não foi possível atualizar.'); }
         },
       },
     ]);
@@ -390,6 +399,7 @@ export default function GroupCommunity() {
   const handleSaveGroupEdit = async (data: { name?: string; description?: string; topic?: string }) => {
     const updated = await updateGroup(groupId!, data);
     setGroup(updated);
+    toast.success('Grupo atualizado com sucesso!');
   };
 
   const handleUploadGroupImage = async (
@@ -398,6 +408,7 @@ export default function GroupCommunity() {
   ) => {
     const updated = await uploadGroupImage(groupId!, file, type);
     setGroup(updated);
+    toast.success(type === 'banner' ? 'Banner atualizado!' : 'Foto do grupo atualizada!');
   };
 
   const handleDeleteGroup = () => {

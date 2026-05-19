@@ -59,3 +59,18 @@ export const useNotification = () => {
   if (!ctx) throw new Error('useNotification deve ser usado dentro de NotificationProvider');
   return ctx;
 };
+
+// Hook de conveniência para feedback de CRUD
+export const useToast = () => {
+  const { showNotification } = useNotification();
+  return {
+    success: (message: string, title?: string) =>
+      showNotification({ title, message, type: 'success', duration: 3000 }),
+    error: (message: string) =>
+      showNotification({ title: 'Erro', message, type: 'error', duration: 4000 }),
+    info: (message: string, title?: string) =>
+      showNotification({ title, message, type: 'info', duration: 3000 }),
+    warning: (message: string, title?: string) =>
+      showNotification({ title, message, type: 'warning', duration: 3500 }),
+  };
+};
