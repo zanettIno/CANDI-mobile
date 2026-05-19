@@ -23,7 +23,14 @@ export const getInviteInfo = async (token: string) => {
   return res.json();
 };
 
-export const registerSupport = (data: { name: string; email: string; password: string; invite_token: string }) =>
+export const registerSupport = (data: {
+  name: string;
+  phone: string;
+  email: string;
+  password: string;
+  invite_token: string;
+  relationship: string;
+}) =>
   fetch(`${API_BASE_URL}/auth/register-support`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
