@@ -2,10 +2,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   RefreshControl, Platform, StatusBar, ActivityIndicator,
-  TextInput, Alert, Modal,
+  TextInput, Alert, Modal, Image,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
 import { AppTheme } from '@/theme';
 import {
   getAdminStats, getAllReportedPosts, getBannedUsers, getAdmins,
@@ -29,6 +30,7 @@ const REASON_LABELS: Record<string, string> = {
 };
 
 export default function AdminPanel() {
+  const router = useRouter();
   const toast = useToast();
   const { profileId, profileName } = useProfile();
   const [tab, setTab] = useState<Tab>('dashboard');
@@ -135,10 +137,14 @@ export default function AdminPanel() {
     finally { setSavingCreds(false); }
   };
 
-  const handleLogout = async () => {
-    await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'userRole']);
-    const { router } = await import('expo-router');
-    router.replace('/');
+  const handleLogout = () => {
+    Alert.alert('Sair', 'Tem certeza que deseja sair?', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Sair', style: 'destructive', onPress: async () => {
+        await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'userRole']);
+        router.replace('/');
+      }},
+    ]);
   };
 
   const TABS: { key: Tab; icon: any; label: string; badge?: number }[] = [
@@ -225,46 +231,62 @@ export default function AdminPanel() {
         const isExpanded = expandedPost === p.post_id;
 
         return (
-          <View key={p.post_id} style={[s.card, isSuspended && s.cardSuspended]}>
-            {/* Status badge */}
-            <View style={s.cardTopRow}>
-              <View style={s.authorWrap}>
-                <MaterialIcons name="person" size={14} color={AppTheme.colors.placeholderText} />
-                <Text style={s.cardAuthor} numberOfLines={1}>{p.profile_name || 'Usuário'}</Text>
+          <View key={p.post_id} style={[s.postCard, isSuspended && s.postCardSuspended]}>
+
+            {/* Banner suspenso */}
+            {isSuspended && (
+              <View style={s.suspendedBanner}>
+                <MaterialIcons name="pause-circle" size={13} color="#ef4444" />
+                <Text style={s.suspendedText}>Suspenso — oculto de todos os usuários</Text>
               </View>
+            )}
+
+            {/* Header do post — igual ao feed */}
+            <View style={s.postHeader}>
+              <View style={s.postAuthorWrap}>
+                <View style={s.postAvatar}>
+                  <Text style={s.postAvatarText}>
+                    {(p.profile_name || 'U').substring(0, 2).toUpperCase()}
+                  </Text>
+                </View>
+                <View>
+                  <Text style={s.postAuthorName}>{p.profile_name || 'Usuário'}</Text>
+                  <Text style={s.postTime}>
+                    {p.created_at ? new Date(p.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}
+                  </Text>
+                </View>
+              </View>
+              {/* Badge de denúncias */}
               <View style={[s.countBadge,
                 reportCount >= 3 ? s.countBadgeHigh : reportCount >= 2 ? s.countBadgeMed : s.countBadgeLow
               ]}>
-                <MaterialIcons name="flag" size={12}
+                <MaterialIcons name="flag" size={11}
                   color={reportCount >= 3 ? '#ef4444' : reportCount >= 2 ? '#f59e0b' : '#6b7280'} />
                 <Text style={[s.countBadgeText,
-                  reportCount >= 3 ? { color: '#ef4444' } : reportCount >= 2 ? { color: '#f59e0b' } : { color: '#6b7280' }
+                  { color: reportCount >= 3 ? '#ef4444' : reportCount >= 2 ? '#f59e0b' : '#6b7280' }
                 ]}>
                   {reportCount} {reportCount === 1 ? 'denúncia' : 'denúncias'}
                 </Text>
               </View>
             </View>
 
-            {isSuspended && (
-              <View style={s.suspendedBanner}>
-                <MaterialIcons name="pause-circle" size={14} color="#ef4444" />
-                <Text style={s.suspendedText}>Suspenso — oculto de todos os usuários</Text>
-              </View>
-            )}
+            {/* Conteúdo do post */}
+            {p.content ? <Text style={s.postContent}>{p.content}</Text> : null}
 
-            <Text style={s.cardContent}>{p.content}</Text>
-            {p.file_url && (
-              <View style={s.mediaRow}>
-                <MaterialIcons name="image" size={14} color={AppTheme.colors.tertiary} />
-                <Text style={s.mediaText}>Contém imagem</Text>
-              </View>
-            )}
+            {/* Imagem do post — igual ao feed */}
+            {p.file_url ? (
+              <Image
+                source={{ uri: p.file_url }}
+                style={s.postImage}
+                resizeMode="cover"
+              />
+            ) : null}
 
             {/* Motivos expandíveis */}
             <TouchableOpacity onPress={() => setExpandedPost(isExpanded ? null : p.post_id)} style={s.reasonToggle} activeOpacity={0.7}>
-              <MaterialIcons name={isExpanded ? 'expand-less' : 'expand-more'} size={16} color={AppTheme.colors.placeholderText} />
+              <MaterialIcons name={isExpanded ? 'expand-less' : 'expand-more'} size={15} color={AppTheme.colors.placeholderText} />
               <Text style={s.reasonToggleText}>
-                {isExpanded ? 'Ocultar motivos' : 'Ver motivos das denúncias'}
+                {isExpanded ? 'Ocultar motivos' : `Ver ${reportCount} motivo${reportCount !== 1 ? 's' : ''}`}
               </Text>
             </TouchableOpacity>
 
@@ -279,10 +301,11 @@ export default function AdminPanel() {
               </View>
             )}
 
+            {/* Ações admin */}
             <View style={s.cardActions}>
               <TouchableOpacity style={s.approveBtn} onPress={() => handleApprove(p.post_id)} activeOpacity={0.8}>
                 <MaterialIcons name="check" size={15} color="#10b981" />
-                <Text style={s.approveTxt}>Aprovar</Text>
+                <Text style={s.approveTxt}>Aprovar post</Text>
               </TouchableOpacity>
               <TouchableOpacity style={s.removeBtn} onPress={() => handleRemove(p.post_id)} activeOpacity={0.8}>
                 <MaterialIcons name="delete-outline" size={15} color="#ef4444" />
@@ -508,6 +531,46 @@ const s = StyleSheet.create({
   viewMore: { alignItems: 'center', paddingVertical: 8 },
   viewMoreText: { fontSize: 13, color: AppTheme.colors.tertiary, fontWeight: '600', fontFamily: AppTheme.fonts.labelMedium.fontFamily },
 
+  // Post card — visual igual ao feed
+  postCard: {
+    backgroundColor: AppTheme.colors.cardBackground,
+    borderRadius: 16, overflow: 'hidden',
+    borderWidth: 1, borderColor: AppTheme.colors.dotsColor,
+    marginBottom: 0,
+  },
+  postCardSuspended: { borderColor: '#fecaca' },
+  postHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    padding: 12, paddingBottom: 8,
+  },
+  postAuthorWrap: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  postAvatar: {
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: AppTheme.colors.secondary,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  postAvatarText: {
+    fontSize: 14, fontWeight: '700', color: AppTheme.colors.tertiary,
+    fontFamily: AppTheme.fonts.titleSmall.fontFamily,
+  },
+  postAuthorName: {
+    fontSize: 13.5, fontWeight: '700', color: AppTheme.colors.nameText,
+    fontFamily: AppTheme.fonts.labelLarge.fontFamily,
+  },
+  postTime: {
+    fontSize: 11, color: AppTheme.colors.placeholderText,
+    fontFamily: AppTheme.fonts.labelSmall.fontFamily,
+  },
+  postContent: {
+    fontSize: 14, color: AppTheme.colors.textColor,
+    fontFamily: AppTheme.fonts.bodyMedium.fontFamily,
+    lineHeight: 20, paddingHorizontal: 12, paddingBottom: 10,
+  },
+  postImage: {
+    width: '100%', height: 200,
+    backgroundColor: AppTheme.colors.background,
+  },
+
   // Cards
   card: {
     backgroundColor: AppTheme.colors.cardBackground, borderRadius: 14, padding: 14,
@@ -536,9 +599,13 @@ const s = StyleSheet.create({
   mediaRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   mediaText: { fontSize: 12, color: AppTheme.colors.tertiary, fontFamily: AppTheme.fonts.labelSmall.fontFamily },
 
-  reasonToggle: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  reasonToggle: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 12, paddingVertical: 8,
+    borderTopWidth: 1, borderTopColor: AppTheme.colors.dotsColor,
+  },
   reasonToggleText: { fontSize: 12, color: AppTheme.colors.placeholderText, fontFamily: AppTheme.fonts.bodySmall.fontFamily },
-  reasonList: { gap: 4, paddingLeft: 4 },
+  reasonList: { gap: 4, paddingLeft: 12, paddingBottom: 8 },
   reasonItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   reasonDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: AppTheme.colors.tertiary },
   reasonText: { fontSize: 12.5, color: AppTheme.colors.textColor, fontFamily: AppTheme.fonts.bodySmall.fontFamily },
@@ -549,7 +616,11 @@ const s = StyleSheet.create({
   superBadge: { backgroundColor: AppTheme.colors.tertiary, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   superBadgeText: { color: '#fff', fontSize: 9, fontWeight: '800', fontFamily: AppTheme.fonts.labelSmall.fontFamily, letterSpacing: 0.5 },
 
-  cardActions: { flexDirection: 'row', gap: 8 },
+  cardActions: {
+    flexDirection: 'row', gap: 8,
+    padding: 12,
+    borderTopWidth: 1, borderTopColor: AppTheme.colors.dotsColor,
+  },
   approveBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingVertical: 9, borderRadius: 10, backgroundColor: '#d1fae5', borderWidth: 1, borderColor: '#6ee7b7' },
   removeBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingVertical: 9, borderRadius: 10, backgroundColor: '#fee2e2', borderWidth: 1, borderColor: '#fca5a5' },
   approveTxt: { fontSize: 13, fontWeight: '700', color: '#10b981', fontFamily: AppTheme.fonts.labelMedium.fontFamily },
