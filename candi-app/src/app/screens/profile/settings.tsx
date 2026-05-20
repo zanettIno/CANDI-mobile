@@ -172,23 +172,6 @@ export default function Settings() {
           </View>
 
           <View style={s.section}>
-            <Text style={s.sectionLabel}>Acesso</Text>
-            <View style={s.card}>
-              <TouchableOpacity style={s.menuRow} onPress={() => router.push('/screens/profile/invite')} activeOpacity={0.7}>
-                <View style={s.menuIcon}><MaterialIcons name="group-add" size={20} color={AppTheme.colors.tertiary} /></View>
-                <Text style={s.menuLabel}>Rede de Apoio</Text>
-                <MaterialIcons name="chevron-right" size={20} color={AppTheme.colors.dotsColor} />
-              </TouchableOpacity>
-              <View style={s.divider} />
-              <TouchableOpacity style={s.menuRow} onPress={() => router.push('/screens/profile/marcosView')} activeOpacity={0.7}>
-                <View style={s.menuIcon}><MaterialIcons name="flag" size={20} color={AppTheme.colors.tertiary} /></View>
-                <Text style={s.menuLabel}>Meus marcos</Text>
-                <MaterialIcons name="chevron-right" size={20} color={AppTheme.colors.dotsColor} />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <View style={s.section}>
             <TouchableOpacity style={s.saveBtn} onPress={handleSave} disabled={saving} activeOpacity={0.85}>
               {saving
                 ? <ActivityIndicator color="#fff" size="small" />
