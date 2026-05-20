@@ -6,7 +6,6 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { AppTheme } from '../../../theme';
-import LoginSignupBackground from '../../../components/LoginSignupBackground';
 
 const STATUS_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 44;
 
@@ -51,14 +50,13 @@ export default function Help() {
 
   return (
     <View style={s.screen}>
-      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      <View style={s.header}>
-        <View style={s.headerBg}><LoginSignupBackground /></View>
-        <View style={[s.headerRow, { paddingTop: STATUS_TOP + 8 }]}>
+      <View style={[s.header, { paddingTop: STATUS_TOP }]}>
+        <View style={s.headerRow}>
           <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/screens/(tabs)/homeProfile')}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <MaterialIcons name="arrow-back" size={24} color={AppTheme.colors.nameText} />
+            <MaterialIcons name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
           <Text style={s.headerTitle}>Ajuda</Text>
           <View style={{ width: 24 }} />
@@ -121,15 +119,17 @@ export default function Help() {
 
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: AppTheme.colors.background },
-  header: { position: 'relative' },
-  headerBg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  header: {
+    backgroundColor: AppTheme.colors.tertiary,
+    paddingHorizontal: 20, paddingBottom: 16,
+  },
   headerRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, paddingBottom: 4, zIndex: 1,
+    paddingBottom: 4, paddingTop: 8,
   },
-  headerTitle: { fontSize: 17, fontWeight: '700', color: AppTheme.colors.nameText, fontFamily: AppTheme.fonts.titleMedium.fontFamily },
+  headerTitle: { fontSize: 17, fontWeight: '700', color: '#fff', fontFamily: AppTheme.fonts.titleMedium.fontFamily },
   headerSub: {
-    textAlign: 'center', fontSize: 13, color: AppTheme.colors.placeholderText,
+    textAlign: 'center', fontSize: 13, color: 'rgba(255,255,255,0.8)',
     fontFamily: AppTheme.fonts.bodySmall.fontFamily, paddingBottom: 14, zIndex: 1,
   },
 
