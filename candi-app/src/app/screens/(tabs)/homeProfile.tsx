@@ -37,7 +37,7 @@ export default function HomeProfile() {
   const [logoutSheet, setLogoutSheet] = useState(false);
 
   useEffect(() => {
-    const fetch_ = async () => {
+    const load = async () => {
       try {
         const token = await AsyncStorage.getItem('accessToken');
         if (!token) return;
@@ -46,7 +46,7 @@ export default function HomeProfile() {
       } catch { }
       finally { setLoading(false); }
     };
-    fetch_();
+    load();
   }, []);
 
   const handlePhotoUpdate = (deleted = false) => {
@@ -75,7 +75,6 @@ export default function HomeProfile() {
     birthDate = `${d}/${m}/${y}`;
   }
 
-  // ── Itens de menu — sem duplicatas ────────────────────────────────────────
   const menuItems = [
     ...(role !== 'support' ? [
       { icon: 'group-add', label: 'Rede de Apoio', sub: 'Gerencie quem acompanha você', onPress: () => router.push('/screens/profile/invite') },
@@ -90,71 +89,89 @@ export default function HomeProfile() {
 
   return (
     <>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      <ScrollView style={s.screen} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+      <ScrollView style={s.screen} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
 
-        {/* ── Hero ─────────────────────────────────────────────────────────── */}
+        {/* ── Hero com ondas ────────────────────────────────────────────────── */}
         <View style={s.hero}>
-          <View style={s.heroBg}><LoginSignupBackground /></View>
-          <View style={s.heroOverlay} />
+          {/* Ondas naturais — sem overlay escuro, cores CANDI visíveis */}
+          <View style={s.wavesBg}>
+            <LoginSignupBackground />
+          </View>
 
-          <View style={[s.heroContent, { paddingTop: STATUS_TOP + 12 }]}>
-            {/* Avatar com botão de editar — toque na foto abre modal */}
-            <TouchableOpacity onPress={() => setPhotoModal(true)} activeOpacity={0.85} style={s.avatarWrap}>
+          {/* Conteúdo do hero */}
+          <View style={[s.heroContent, { paddingTop: STATUS_TOP + 16 }]}>
+            {/* Avatar — toca pra trocar a foto */}
+            <TouchableOpacity onPress={() => setPhotoModal(true)} activeOpacity={0.88} style={s.avatarWrap}>
               {loading ? (
-                <View style={s.avatarPlaceholder}><ActivityIndicator color={AppTheme.colors.tertiary} /></View>
+                <View style={s.avatarRing}>
+                  <View style={s.avatarPlaceholder}><ActivityIndicator color={AppTheme.colors.tertiary} /></View>
+                </View>
               ) : avatarUri ? (
-                <Image source={{ uri: avatarUri }} style={s.avatar} />
+                <View style={s.avatarRing}>
+                  <Image source={{ uri: avatarUri }} style={s.avatar} />
+                </View>
               ) : (
-                <View style={s.avatarPlaceholder}>
-                  <Text style={s.avatarInitials}>{(profile?.profile_name || '?').substring(0, 2).toUpperCase()}</Text>
+                <View style={s.avatarRing}>
+                  <View style={s.avatarPlaceholder}>
+                    <Text style={s.avatarInitials}>{(profile?.profile_name || '?').substring(0, 2).toUpperCase()}</Text>
+                  </View>
                 </View>
               )}
+              {/* Tag da câmera */}
               <View style={s.cameraTag}>
-                <MaterialIcons name="camera-alt" size={12} color="#fff" />
+                <MaterialIcons name="camera-alt" size={11} color="#fff" />
               </View>
             </TouchableOpacity>
 
-            {/* Nome + editar */}
-            <View style={s.nameRow}>
-              <View style={{ alignItems: 'center', gap: 2 }}>
-                <Text style={s.heroName}>{profile?.profile_name || '...'}</Text>
-                {profile?.profile_nickname ? (
-                  <Text style={s.heroNickname}>@{profile.profile_nickname}</Text>
-                ) : null}
-              </View>
-              <TouchableOpacity
-                style={s.editBtn}
-                onPress={() => router.push('/screens/profile/settings')}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <MaterialIcons name="edit" size={16} color="rgba(255,255,255,0.9)" />
-                <Text style={s.editBtnText}>Editar</Text>
-              </TouchableOpacity>
+            {/* Nome + apelido */}
+            <Text style={s.heroName}>{profile?.profile_name || '...'}</Text>
+            {profile?.profile_nickname ? (
+              <Text style={s.heroNickname}>@{profile.profile_nickname}</Text>
+            ) : null}
+
+            {/* Badge papel */}
+            <View style={s.roleBadge}>
+              <MaterialIcons name="favorite" size={11} color={AppTheme.colors.primary} />
+              <Text style={s.roleBadgeText}>Paciente oncológico</Text>
             </View>
 
-            <View style={s.badgePill}>
-              <MaterialIcons name="favorite" size={11} color={AppTheme.colors.primary} />
-              <Text style={s.badgeText}>Paciente oncológico</Text>
-            </View>
+            {/* Botão de editar perfil */}
+            <TouchableOpacity style={s.editBtn} onPress={() => router.push('/screens/profile/settings')} activeOpacity={0.8}>
+              <MaterialIcons name="edit" size={14} color={AppTheme.colors.tertiary} />
+              <Text style={s.editBtnText}>Editar perfil</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
-        {/* ── Info resumida ─────────────────────────────────────────────────── */}
-        <View style={s.infoStrip}>
-          <View style={s.infoItem}>
-            <MaterialIcons name="medical-services" size={16} color={AppTheme.colors.tertiary} />
-            <Text style={s.infoText} numberOfLines={1}>{cancerName}</Text>
-          </View>
-          {birthDate ? (
-            <View style={s.infoItem}>
-              <MaterialIcons name="cake" size={16} color={AppTheme.colors.tertiary} />
-              <Text style={s.infoText}>{birthDate}</Text>
+        {/* ── Info cards — grid 2 colunas ──────────────────────────────────── */}
+        <View style={s.infoSection}>
+          <View style={s.infoGrid}>
+            <View style={s.infoCard}>
+              <View style={[s.infoIconWrap, { backgroundColor: '#fff0f3' }]}>
+                <MaterialIcons name="medical-services" size={20} color={AppTheme.colors.primary} />
+              </View>
+              <Text style={s.infoLabel}>Tipo de câncer</Text>
+              <Text style={s.infoValue} numberOfLines={2}>{cancerName}</Text>
             </View>
-          ) : null}
-          <View style={s.infoItem}>
-            <MaterialIcons name="email" size={16} color={AppTheme.colors.tertiary} />
-            <Text style={s.infoText} numberOfLines={1}>{profile?.profile_email || '...'}</Text>
+            <View style={s.infoCard}>
+              <View style={[s.infoIconWrap, { backgroundColor: '#f0fff8' }]}>
+                <MaterialIcons name="cake" size={20} color={AppTheme.colors.tertiary} />
+              </View>
+              <Text style={s.infoLabel}>Nascimento</Text>
+              <Text style={s.infoValue}>{birthDate || 'Não informado'}</Text>
+            </View>
+          </View>
+
+          {/* E-mail — linha completa */}
+          <View style={s.emailCard}>
+            <View style={[s.infoIconWrap, { backgroundColor: '#f5f0ff' }]}>
+              <MaterialIcons name="email" size={18} color="#8b5cf6" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.infoLabel}>E-mail</Text>
+              <Text style={s.infoValue} numberOfLines={1}>{profile?.profile_email || '...'}</Text>
+            </View>
           </View>
         </View>
 
@@ -179,7 +196,7 @@ export default function HomeProfile() {
 
         {/* ── Sair ─────────────────────────────────────────────────────────── */}
         <TouchableOpacity style={s.logoutBtn} onPress={() => setLogoutSheet(true)} activeOpacity={0.8}>
-          <MaterialIcons name="logout" size={18} color="#ef4444" />
+          <MaterialIcons name="logout" size={17} color="#ef4444" />
           <Text style={s.logoutText}>Sair da conta</Text>
         </TouchableOpacity>
 
@@ -207,79 +224,107 @@ export default function HomeProfile() {
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: AppTheme.colors.background },
 
-  hero: { position: 'relative', paddingBottom: 24 },
-  heroBg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
-  heroOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.12)' },
-  heroContent: { alignItems: 'center', gap: 10, zIndex: 1, paddingHorizontal: 20 },
+  // ── Hero ────────────────────────────────────────────────────────────────
+  hero: { height: 300, position: 'relative' },
+  wavesBg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  // SEM overlay escuro — as ondas pink/mint ficam visíveis e coloridas
+  heroContent: {
+    flex: 1, alignItems: 'center', justifyContent: 'flex-start',
+    gap: 6, paddingHorizontal: 20, zIndex: 2,
+  },
 
-  avatarWrap: { position: 'relative' },
-  avatar: { width: 88, height: 88, borderRadius: 18, borderWidth: 3, borderColor: 'rgba(255,255,255,0.8)' },
+  avatarWrap: { position: 'relative', marginBottom: 4 },
+  avatarRing: {
+    padding: 3, borderRadius: 24,
+    backgroundColor: '#fff',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 5,
+  },
+  avatar: { width: 96, height: 96, borderRadius: 20 },
   avatarPlaceholder: {
-    width: 88, height: 88, borderRadius: 18,
+    width: 96, height: 96, borderRadius: 20,
     backgroundColor: AppTheme.colors.secondary,
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 3, borderColor: 'rgba(255,255,255,0.8)',
   },
   avatarInitials: {
-    fontSize: 28, fontWeight: '700', color: AppTheme.colors.tertiary,
+    fontSize: 30, fontWeight: '800', color: AppTheme.colors.tertiary,
     fontFamily: AppTheme.fonts.titleLarge.fontFamily,
   },
   cameraTag: {
-    position: 'absolute', bottom: -3, right: -3,
+    position: 'absolute', bottom: -2, right: -2,
     backgroundColor: AppTheme.colors.tertiary,
     width: 22, height: 22, borderRadius: 11,
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 2, borderColor: '#fff',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.15, shadowRadius: 2, elevation: 2,
   },
 
-  nameRow: { alignItems: 'center', gap: 8 },
   heroName: {
-    fontSize: 20, fontWeight: '700', color: '#fff',
+    fontSize: 22, fontWeight: '800', color: AppTheme.colors.nameText,
     fontFamily: AppTheme.fonts.titleLarge.fontFamily,
-    textShadowColor: 'rgba(0,0,0,0.15)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3,
+    textAlign: 'center',
   },
-  heroNickname: { fontSize: 13, color: 'rgba(255,255,255,0.8)', fontFamily: AppTheme.fonts.bodySmall.fontFamily },
-  editBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 14, paddingHorizontal: 12, paddingVertical: 5,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)',
-  },
-  editBtnText: { fontSize: 12, fontWeight: '600', color: '#fff', fontFamily: AppTheme.fonts.labelSmall.fontFamily },
-
-  badgePill: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    borderRadius: 16, paddingHorizontal: 10, paddingVertical: 4,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)',
-  },
-  badgeText: { fontSize: 11.5, color: '#fff', fontFamily: AppTheme.fonts.labelSmall.fontFamily },
-
-  // Info strip
-  infoStrip: {
-    backgroundColor: AppTheme.colors.cardBackground,
-    marginHorizontal: 16, marginTop: -12,
-    borderRadius: 14, padding: 14, gap: 8, zIndex: 2,
-    borderWidth: 1, borderColor: AppTheme.colors.dotsColor,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
-  },
-  infoItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  infoText: {
-    flex: 1, fontSize: 13, color: AppTheme.colors.textColor,
+  heroNickname: {
+    fontSize: 13, color: AppTheme.colors.placeholderText,
     fontFamily: AppTheme.fonts.bodySmall.fontFamily,
   },
+  roleBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: 'rgba(255,196,196,0.35)',
+    borderRadius: 16, paddingHorizontal: 12, paddingVertical: 5,
+    borderWidth: 1, borderColor: AppTheme.colors.primary,
+  },
+  roleBadgeText: {
+    fontSize: 12, color: '#b53b3b', fontWeight: '600',
+    fontFamily: AppTheme.fonts.labelSmall.fontFamily,
+  },
+  editBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: AppTheme.colors.cardBackground,
+    borderRadius: 14, paddingHorizontal: 14, paddingVertical: 7,
+    borderWidth: 1, borderColor: AppTheme.colors.dotsColor,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 2, elevation: 1,
+  },
+  editBtnText: {
+    fontSize: 13, fontWeight: '600', color: AppTheme.colors.tertiary,
+    fontFamily: AppTheme.fonts.labelMedium.fontFamily,
+  },
 
-  // Menu
+  // ── Info cards ───────────────────────────────────────────────────────────
+  infoSection: { paddingHorizontal: 16, gap: 10, marginTop: 2 },
+  infoGrid: { flexDirection: 'row', gap: 10 },
+  infoCard: {
+    flex: 1, backgroundColor: AppTheme.colors.cardBackground,
+    borderRadius: 16, padding: 14, gap: 6,
+    borderWidth: 1, borderColor: AppTheme.colors.dotsColor,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 2, elevation: 1,
+  },
+  emailCard: {
+    backgroundColor: AppTheme.colors.cardBackground,
+    borderRadius: 16, padding: 14,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderWidth: 1, borderColor: AppTheme.colors.dotsColor,
+  },
+  infoIconWrap: {
+    width: 36, height: 36, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  infoLabel: {
+    fontSize: 11, color: AppTheme.colors.placeholderText,
+    fontFamily: AppTheme.fonts.labelSmall.fontFamily, textTransform: 'uppercase', letterSpacing: 0.4,
+  },
+  infoValue: {
+    fontSize: 13.5, fontWeight: '600', color: AppTheme.colors.nameText,
+    fontFamily: AppTheme.fonts.labelMedium.fontFamily,
+  },
+
+  // ── Menu ─────────────────────────────────────────────────────────────────
   menuCard: {
     backgroundColor: AppTheme.colors.cardBackground,
     borderRadius: 16, overflow: 'hidden',
     marginHorizontal: 16, marginTop: 16,
     borderWidth: 1, borderColor: AppTheme.colors.dotsColor,
   },
-  menuRow: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 14, gap: 12,
-  },
+  menuRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, gap: 12 },
   menuIcon: {
     width: 36, height: 36, borderRadius: 10,
     backgroundColor: AppTheme.colors.secondary,
@@ -295,7 +340,7 @@ const s = StyleSheet.create({
   },
   divider: { height: 1, backgroundColor: AppTheme.colors.dotsColor, marginLeft: 64 },
 
-  // Logout
+  // ── Logout ───────────────────────────────────────────────────────────────
   logoutBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     marginHorizontal: 16, marginTop: 12,
