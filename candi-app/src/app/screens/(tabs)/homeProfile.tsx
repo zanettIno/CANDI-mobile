@@ -84,7 +84,8 @@ export default function HomeProfile() {
     ...(role === 'admin' ? [
       { icon: 'shield', label: 'Painel Admin', sub: 'Moderação e administração', onPress: () => router.push('/screens/admin') },
     ] : []),
-    { icon: 'info-outline', label: 'Sobre o CANDI', sub: 'Versão 1.0.0', onPress: () => {} },
+    { icon: 'help-outline', label: 'Ajuda', sub: 'Perguntas frequentes e suporte', onPress: () => router.push('/screens/profile/help') },
+    { icon: 'info-outline', label: 'Sobre o CANDI', sub: 'Missão, versão e equipe', onPress: () => router.push('/screens/profile/about') },
   ];
 
   return (

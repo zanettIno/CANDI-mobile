@@ -122,6 +122,8 @@ export default function RootLayout() {
                 <Stack.Screen name="screens/admin" />
                 <Stack.Screen name="screens/support" />
                 <Stack.Screen name="screens/profile/invite" />
+                <Stack.Screen name="screens/profile/about" />
+                <Stack.Screen name="screens/profile/help" />
               </Stack>
               </AuthGate>
             </ProfileProvider>
