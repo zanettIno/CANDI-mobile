@@ -16,6 +16,7 @@ import {
 } from '@/services/adminService';
 import { useToast } from '@/context/NotificationContext';
 import { useProfile } from '@/context/ProfileContext';
+import CANDITopBar from '@/components/CANDITopBar';
 import { API_BASE_URL } from '@/constants/api';
 
 const TOP = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 44;
@@ -57,11 +58,13 @@ export default function AdminPanel() {
   const [expandedPost, setExpandedPost] = useState<string | null>(null);
   const [showLogoutSheet, setShowLogoutSheet] = useState(false);
 
+  const isSuperAdmin = admins.some(a => a.profile_id === profileId && a.is_superadmin);
+
   const loadAll = useCallback(async () => {
     try {
       const [s, p, u, a] = await Promise.all([
         getAdminStats(),
-        getAllReportedPosts(), // todos com pelo menos 1 denúncia
+        getAllReportedPosts(),
         getBannedUsers(),
         getAdmins(),
       ]);
@@ -148,7 +151,7 @@ export default function AdminPanel() {
     { key: 'dashboard', icon: 'dashboard', label: 'Visão Geral' },
     { key: 'reports', icon: 'flag', label: 'Denúncias', badge: posts.length },
     { key: 'users', icon: 'block', label: 'Banidos', badge: users.length },
-    { key: 'admins', icon: 'manage-accounts', label: 'Admins' },
+    ...(isSuperAdmin ? [{ key: 'admins' as Tab, icon: 'manage-accounts', label: 'Admins' }] : []),
     { key: 'settings', icon: 'settings', label: 'Conta' },
   ];
 
@@ -399,21 +402,19 @@ export default function AdminPanel() {
   return (
     <View style={s.screen}>
       <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+      <CANDITopBar />
 
-      {/* Header sem back button — admin não tem para onde voltar */}
-      <View style={[s.header, { paddingTop: TOP }]}>
+      {/* Sub-header com título e badge */}
+      <View style={s.subHeader}>
         <View style={s.headerLeft}>
-          <MaterialIcons name="shield" size={22} color={AppTheme.colors.tertiary} />
+          <MaterialIcons name="shield" size={18} color={AppTheme.colors.tertiary} />
           <Text style={s.headerTitle}>Painel Admin</Text>
         </View>
-        <View style={s.headerRight}>
-          {(posts.length + users.length) > 0 && (
-            <View style={s.headerBadge}>
-              <Text style={s.headerBadgeText}>{posts.length + users.length}</Text>
-            </View>
-          )}
-          <Text style={s.headerEmail}>CANDI</Text>
-        </View>
+        {(posts.length + users.length) > 0 && (
+          <View style={s.headerBadge}>
+            <Text style={s.headerBadgeText}>{posts.length + users.length}</Text>
+          </View>
+        )}
       </View>
 
       {/* Content */}
@@ -487,25 +488,22 @@ const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: AppTheme.colors.background },
   loadingScreen: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: AppTheme.colors.background },
 
-  // Header limpo sem gradiente
-  header: {
+  subHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, paddingBottom: 12,
+    paddingHorizontal: 20, paddingVertical: 10,
     backgroundColor: AppTheme.colors.cardBackground,
     borderBottomWidth: 1, borderBottomColor: AppTheme.colors.dotsColor,
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   headerTitle: {
-    fontSize: 18, fontWeight: '700', color: AppTheme.colors.nameText,
+    fontSize: 15, fontWeight: '700', color: AppTheme.colors.nameText,
     fontFamily: AppTheme.fonts.titleMedium.fontFamily,
   },
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   headerBadge: {
     backgroundColor: '#ef4444', borderRadius: 10, minWidth: 22, height: 22,
     alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6,
   },
   headerBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800' },
-  headerEmail: { fontSize: 12, color: AppTheme.colors.placeholderText, fontFamily: AppTheme.fonts.labelSmall.fontFamily },
 
   content: { flex: 1 },
   scrollContent: { padding: 16, paddingBottom: 16, gap: 10 },

@@ -119,11 +119,21 @@ export default function RootLayout() {
                 <Stack.Screen name="screens/community/chatCommunity" />
                 <Stack.Screen name="screens/community/groupCommunity" />
                 <Stack.Screen name="screens/community/postDetail" />
-                <Stack.Screen name="screens/admin" />
-                <Stack.Screen name="screens/support" />
+                <Stack.Screen name="screens/admin/index" />
+                <Stack.Screen name="screens/support/index" />
+                <Stack.Screen name="screens/support/diary" />
+                <Stack.Screen name="screens/support/diaryEntry" />
+                <Stack.Screen name="screens/support/agenda" />
+                <Stack.Screen name="screens/support/marcos" />
                 <Stack.Screen name="screens/profile/invite" />
                 <Stack.Screen name="screens/profile/about" />
                 <Stack.Screen name="screens/profile/help" />
+                <Stack.Screen name="screens/profile/marcosView" />
+                <Stack.Screen name="screens/profile/marcosAdd" />
+                <Stack.Screen name="screens/profile/marcosEdit" />
+                <Stack.Screen name="screens/diary/passagemAdd" />
+                <Stack.Screen name="screens/diary/passagemRead" />
+                <Stack.Screen name="screens/diary/sentimentosAdd" />
               </Stack>
               </AuthGate>
             </ProfileProvider>
