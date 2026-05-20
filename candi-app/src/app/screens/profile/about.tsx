@@ -10,10 +10,12 @@ import LoginSignupBackground from '../../../components/LoginSignupBackground';
 
 const STATUS_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 44;
 
-const TEAM = [
-  { role: 'Produto & Design', color: AppTheme.colors.primary },
-  { role: 'Engenharia', color: AppTheme.colors.secondary },
-  { role: 'Dados & Saúde', color: '#c4d4ff' },
+const FEATURES = [
+  { icon: 'people', text: 'Comunidade exclusiva para pacientes oncológicos' },
+  { icon: 'event', text: 'Gestão da agenda de consultas e medicamentos' },
+  { icon: 'book', text: 'Diário de saúde para registrar sua jornada' },
+  { icon: 'flag', text: 'Marcos do tratamento para celebrar cada vitória' },
+  { icon: 'group-add', text: 'Rede de apoio para familiares e cuidadores' },
 ];
 
 export default function About() {
@@ -21,41 +23,43 @@ export default function About() {
 
   return (
     <View style={s.screen}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
 
-      {/* Header */}
+      {/* Header com ondas naturais */}
       <View style={s.header}>
-        <View style={s.headerBg}><LoginSignupBackground /></View>
+        <View style={s.headerWaves}><LoginSignupBackground /></View>
         <View style={[s.headerRow, { paddingTop: STATUS_TOP + 8 }]}>
-          <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/screens/(tabs)/homeProfile')}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <MaterialIcons name="arrow-back" size={24} color="#fff" />
+          <TouchableOpacity
+            onPress={() => router.canGoBack() ? router.back() : router.replace('/screens/(tabs)/homeProfile')}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <MaterialIcons name="arrow-back" size={24} color={AppTheme.colors.nameText} />
           </TouchableOpacity>
           <Text style={s.headerTitle}>Sobre o CANDI</Text>
           <View style={{ width: 24 }} />
         </View>
-      </View>
 
-      <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
-
-        {/* Logo + nome */}
-        <View style={s.logoSection}>
+        {/* Logo na área de ondas */}
+        <View style={s.logoWrap}>
           <Image
             source={require('../../../../assets/images/original.png')}
             style={s.logo}
             resizeMode="contain"
           />
-          <Text style={s.appName}>CANDI</Text>
-          <Text style={s.appTagline}>Comunidade de Apoio ao Paciente Oncológico</Text>
           <View style={s.versionPill}>
             <Text style={s.versionText}>Versão 1.0.0</Text>
           </View>
         </View>
+      </View>
+
+      <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
 
         {/* Missão */}
         <View style={s.card}>
-          <View style={s.cardHeader}>
-            <MaterialIcons name="favorite" size={20} color={AppTheme.colors.primary} />
+          <View style={s.cardTitleRow}>
+            <View style={s.cardIconWrap}>
+              <MaterialIcons name="favorite" size={18} color={AppTheme.colors.tertiary} />
+            </View>
             <Text style={s.cardTitle}>Nossa missão</Text>
           </View>
           <Text style={s.cardText}>
@@ -65,32 +69,30 @@ export default function About() {
           </Text>
         </View>
 
-        {/* O que oferecemos */}
+        {/* Funcionalidades */}
         <View style={s.card}>
-          <View style={s.cardHeader}>
-            <MaterialIcons name="stars" size={20} color="#f59e0b" />
+          <View style={s.cardTitleRow}>
+            <View style={s.cardIconWrap}>
+              <MaterialIcons name="stars" size={18} color={AppTheme.colors.tertiary} />
+            </View>
             <Text style={s.cardTitle}>O que oferecemos</Text>
           </View>
-          {[
-            { icon: 'people', text: 'Comunidade exclusiva para pacientes oncológicos' },
-            { icon: 'event', text: 'Gestão da agenda de consultas e medicamentos' },
-            { icon: 'book', text: 'Diário de saúde para registrar sua jornada' },
-            { icon: 'flag', text: 'Marcos do tratamento para celebrar cada vitória' },
-            { icon: 'group-add', text: 'Rede de apoio para familiares e cuidadores' },
-          ].map((item, i) => (
+          {FEATURES.map((f, i) => (
             <View key={i} style={s.featureRow}>
               <View style={s.featureIcon}>
-                <MaterialIcons name={item.icon as any} size={16} color={AppTheme.colors.tertiary} />
+                <MaterialIcons name={f.icon as any} size={16} color={AppTheme.colors.tertiary} />
               </View>
-              <Text style={s.featureText}>{item.text}</Text>
+              <Text style={s.featureText}>{f.text}</Text>
             </View>
           ))}
         </View>
 
         {/* Privacidade */}
         <View style={s.card}>
-          <View style={s.cardHeader}>
-            <MaterialIcons name="lock" size={20} color={AppTheme.colors.tertiary} />
+          <View style={s.cardTitleRow}>
+            <View style={s.cardIconWrap}>
+              <MaterialIcons name="lock" size={18} color={AppTheme.colors.tertiary} />
+            </View>
             <Text style={s.cardTitle}>Privacidade & Segurança</Text>
           </View>
           <Text style={s.cardText}>
@@ -102,14 +104,15 @@ export default function About() {
 
         {/* Contato */}
         <View style={s.card}>
-          <View style={s.cardHeader}>
-            <MaterialIcons name="email" size={20} color="#8b5cf6" />
+          <View style={s.cardTitleRow}>
+            <View style={s.cardIconWrap}>
+              <MaterialIcons name="email" size={18} color={AppTheme.colors.tertiary} />
+            </View>
             <Text style={s.cardTitle}>Fale conosco</Text>
           </View>
           <Text style={s.contactEmail}>contato@candi.app</Text>
         </View>
 
-        {/* Rodapé */}
         <Text style={s.footer}>
           © 2026 CANDI. Feito com cuidado para quem enfrenta o câncer.
         </Text>
@@ -121,41 +124,51 @@ export default function About() {
 
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: AppTheme.colors.background },
-  header: { position: 'relative' },
-  headerBg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+
+  header: { position: 'relative', height: 220 },
+  headerWaves: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   headerRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, paddingBottom: 14, zIndex: 1,
+    paddingHorizontal: 20, paddingBottom: 4, zIndex: 2,
   },
-  headerTitle: { fontSize: 17, fontWeight: '700', color: '#fff', fontFamily: AppTheme.fonts.titleMedium.fontFamily },
+  headerTitle: {
+    fontSize: 17, fontWeight: '700', color: AppTheme.colors.nameText,
+    fontFamily: AppTheme.fonts.titleMedium.fontFamily,
+  },
+
+  logoWrap: {
+    flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, zIndex: 2,
+  },
+  logo: { width: 140, height: 44 },
+  versionPill: {
+    backgroundColor: AppTheme.colors.cardBackground,
+    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 5,
+    borderWidth: 1, borderColor: AppTheme.colors.dotsColor,
+  },
+  versionText: {
+    fontSize: 12, fontWeight: '600', color: AppTheme.colors.placeholderText,
+    fontFamily: AppTheme.fonts.labelMedium.fontFamily,
+  },
 
   content: { padding: 16, paddingBottom: 40, gap: 12 },
 
-  logoSection: { alignItems: 'center', paddingVertical: 24, gap: 6 },
-  logo: { width: 160, height: 50 },
-  appName: {
-    fontSize: 32, fontWeight: '800', color: AppTheme.colors.tertiary,
-    fontFamily: AppTheme.fonts.titleLarge.fontFamily, letterSpacing: 2,
-  },
-  appTagline: {
-    fontSize: 13, color: AppTheme.colors.placeholderText, textAlign: 'center',
-    fontFamily: AppTheme.fonts.bodySmall.fontFamily, maxWidth: 260, lineHeight: 18,
-  },
-  versionPill: {
-    backgroundColor: AppTheme.colors.secondary, borderRadius: 12,
-    paddingHorizontal: 14, paddingVertical: 5, marginTop: 4,
-  },
-  versionText: { fontSize: 12, fontWeight: '600', color: AppTheme.colors.tertiary, fontFamily: AppTheme.fonts.labelMedium.fontFamily },
-
   card: {
     backgroundColor: AppTheme.colors.cardBackground,
-    borderRadius: 16, padding: 16, gap: 10,
+    borderRadius: 16, padding: 16, gap: 12,
     borderWidth: 1, borderColor: AppTheme.colors.dotsColor,
   },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  cardTitle: { fontSize: 15, fontWeight: '700', color: AppTheme.colors.nameText, fontFamily: AppTheme.fonts.labelLarge.fontFamily },
+  cardTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  cardIconWrap: {
+    width: 34, height: 34, borderRadius: 9,
+    backgroundColor: AppTheme.colors.secondary,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  cardTitle: {
+    fontSize: 15, fontWeight: '700', color: AppTheme.colors.nameText,
+    fontFamily: AppTheme.fonts.labelLarge.fontFamily,
+  },
   cardText: {
-    fontSize: 13.5, color: AppTheme.colors.textColor, lineHeight: 20,
+    fontSize: 13.5, color: AppTheme.colors.textColor, lineHeight: 21,
     fontFamily: AppTheme.fonts.bodySmall.fontFamily,
   },
 
@@ -164,16 +177,20 @@ const s = StyleSheet.create({
     width: 30, height: 30, borderRadius: 8,
     backgroundColor: AppTheme.colors.secondary,
     alignItems: 'center', justifyContent: 'center',
+    flexShrink: 0,
   },
-  featureText: { flex: 1, fontSize: 13, color: AppTheme.colors.textColor, fontFamily: AppTheme.fonts.bodySmall.fontFamily },
+  featureText: {
+    flex: 1, fontSize: 13.5, color: AppTheme.colors.textColor,
+    fontFamily: AppTheme.fonts.bodySmall.fontFamily, lineHeight: 19,
+  },
 
   contactEmail: {
-    fontSize: 15, fontWeight: '600', color: '#8b5cf6',
+    fontSize: 15, fontWeight: '600', color: AppTheme.colors.tertiary,
     fontFamily: AppTheme.fonts.labelLarge.fontFamily,
   },
 
   footer: {
     textAlign: 'center', fontSize: 12, color: AppTheme.colors.placeholderText,
-    fontFamily: AppTheme.fonts.labelSmall.fontFamily, marginTop: 8,
+    fontFamily: AppTheme.fonts.labelSmall.fontFamily, marginTop: 4, lineHeight: 18,
   },
 });

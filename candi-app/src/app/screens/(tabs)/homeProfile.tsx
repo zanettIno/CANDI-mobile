@@ -148,14 +148,14 @@ export default function HomeProfile() {
         <View style={s.infoSection}>
           <View style={s.infoGrid}>
             <View style={s.infoCard}>
-              <View style={[s.infoIconWrap, { backgroundColor: '#fff0f3' }]}>
-                <MaterialIcons name="medical-services" size={20} color={AppTheme.colors.primary} />
+              <View style={s.infoIconWrap}>
+                <MaterialIcons name="medical-services" size={20} color={AppTheme.colors.tertiary} />
               </View>
               <Text style={s.infoLabel}>Tipo de câncer</Text>
               <Text style={s.infoValue} numberOfLines={2}>{cancerName}</Text>
             </View>
             <View style={s.infoCard}>
-              <View style={[s.infoIconWrap, { backgroundColor: '#f0fff8' }]}>
+              <View style={s.infoIconWrap}>
                 <MaterialIcons name="cake" size={20} color={AppTheme.colors.tertiary} />
               </View>
               <Text style={s.infoLabel}>Nascimento</Text>
@@ -165,8 +165,8 @@ export default function HomeProfile() {
 
           {/* E-mail — linha completa */}
           <View style={s.emailCard}>
-            <View style={[s.infoIconWrap, { backgroundColor: '#f5f0ff' }]}>
-              <MaterialIcons name="email" size={18} color="#8b5cf6" />
+            <View style={s.infoIconWrap}>
+              <MaterialIcons name="email" size={18} color={AppTheme.colors.tertiary} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={s.infoLabel}>E-mail</Text>
@@ -306,6 +306,7 @@ const s = StyleSheet.create({
   },
   infoIconWrap: {
     width: 36, height: 36, borderRadius: 10,
+    backgroundColor: AppTheme.colors.secondary,
     alignItems: 'center', justifyContent: 'center',
   },
   infoLabel: {

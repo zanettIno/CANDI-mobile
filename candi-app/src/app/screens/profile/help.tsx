@@ -51,14 +51,14 @@ export default function Help() {
 
   return (
     <View style={s.screen}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
 
       <View style={s.header}>
         <View style={s.headerBg}><LoginSignupBackground /></View>
         <View style={[s.headerRow, { paddingTop: STATUS_TOP + 8 }]}>
           <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/screens/(tabs)/homeProfile')}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <MaterialIcons name="arrow-back" size={24} color="#fff" />
+            <MaterialIcons name="arrow-back" size={24} color={AppTheme.colors.nameText} />
           </TouchableOpacity>
           <Text style={s.headerTitle}>Ajuda</Text>
           <View style={{ width: 24 }} />
@@ -127,9 +127,9 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingBottom: 4, zIndex: 1,
   },
-  headerTitle: { fontSize: 17, fontWeight: '700', color: '#fff', fontFamily: AppTheme.fonts.titleMedium.fontFamily },
+  headerTitle: { fontSize: 17, fontWeight: '700', color: AppTheme.colors.nameText, fontFamily: AppTheme.fonts.titleMedium.fontFamily },
   headerSub: {
-    textAlign: 'center', fontSize: 13, color: 'rgba(255,255,255,0.8)',
+    textAlign: 'center', fontSize: 13, color: AppTheme.colors.placeholderText,
     fontFamily: AppTheme.fonts.bodySmall.fontFamily, paddingBottom: 14, zIndex: 1,
   },
 
@@ -142,7 +142,7 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: AppTheme.colors.dotsColor,
   },
   contactIcon: {
-    width: 52, height: 52, borderRadius: 16,
+    width: 46, height: 46, borderRadius: 12,
     backgroundColor: AppTheme.colors.secondary,
     alignItems: 'center', justifyContent: 'center',
   },
