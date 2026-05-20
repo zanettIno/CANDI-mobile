@@ -7,7 +7,8 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppTheme } from '../../../theme';
-import LoginSignupBackground from '../../../components/LoginSignupBackground';
+import { useScrollToTopOnFocus } from '@/hooks/useScrollToTopOnFocus';
+
 import { cancerTypes } from '../../../components/Inputs/inputTypeCancer';
 import { useProfile } from '@/context/ProfileContext';
 import { useToast } from '@/context/NotificationContext';
@@ -15,10 +16,22 @@ import { API_BASE_URL } from '../../../constants/api';
 
 const STATUS_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 44;
 
+const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
+  <View style={fieldStyles.wrap}>
+    <Text style={fieldStyles.label}>{label}</Text>
+    {children}
+  </View>
+);
+const fieldStyles = StyleSheet.create({
+  wrap: { paddingHorizontal: 16, paddingVertical: 12 },
+  label: { fontSize: 11.5, color: AppTheme.colors.placeholderText, fontFamily: AppTheme.fonts.labelSmall.fontFamily, marginBottom: 4 },
+});
+
 export default function Settings() {
   const router = useRouter();
   const { refreshProfile } = useProfile();
   const toast = useToast();
+  const scrollRef = useScrollToTopOnFocus();
   const [saving, setSaving] = useState(false);
   const [showCancerPicker, setShowCancerPicker] = useState(false);
   const [form, setForm] = useState({
@@ -89,34 +102,22 @@ export default function Settings() {
 
   const selectedCancer = cancerTypes.find(c => c.id === form.cancer_type_id)?.name ?? 'Selecionar';
 
-  const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
-    <View style={s.fieldWrap}>
-      <Text style={s.fieldLabel}>{label}</Text>
-      {children}
-    </View>
-  );
-
   return (
     <>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <View style={s.screen}>
         {/* Header */}
-        <View style={s.header}>
-          <View style={s.headerBg}><LoginSignupBackground /></View>
-          <View style={[s.headerRow, { paddingTop: STATUS_TOP + 8 }]}>
+        <View style={[s.header, { paddingTop: STATUS_TOP }]}>
+          <View style={s.headerRow}>
             <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/screens/(tabs)/homeProfile')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <MaterialIcons name="arrow-back" size={24} color="#fff" />
             </TouchableOpacity>
             <Text style={s.headerTitle}>Editar Perfil</Text>
-            <TouchableOpacity onPress={handleSave} disabled={saving} activeOpacity={0.8} style={s.saveHeaderBtn}>
-              {saving
-                ? <ActivityIndicator color="#fff" size="small" />
-                : <Text style={s.saveHeaderText}>Salvar</Text>}
-            </TouchableOpacity>
+            <View style={{ width: 48 }} />
           </View>
         </View>
 
-        <ScrollView style={s.body} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+        <ScrollView ref={scrollRef} style={s.body} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
           <View style={s.section}>
             <Text style={s.sectionLabel}>Informações pessoais</Text>
             <View style={s.card}>
@@ -220,21 +221,18 @@ export default function Settings() {
 
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: AppTheme.colors.background },
-  header: { height: 100, position: 'relative' },
-  headerBg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  header: {
+    backgroundColor: AppTheme.colors.tertiary,
+    paddingHorizontal: 20, paddingBottom: 16,
+  },
   headerRow: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 20, paddingBottom: 12, zIndex: 1,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingTop: 8, paddingBottom: 4,
   },
   headerTitle: {
     flex: 1, textAlign: 'center',
     fontSize: 17, fontWeight: '700', color: '#fff',
     fontFamily: AppTheme.fonts.titleMedium.fontFamily,
-  },
-  saveHeaderBtn: { paddingHorizontal: 4, minWidth: 48, alignItems: 'flex-end' },
-  saveHeaderText: {
-    fontSize: 15, fontWeight: '700', color: '#fff',
-    fontFamily: AppTheme.fonts.labelLarge.fontFamily,
   },
   body: { flex: 1 },
   section: { paddingHorizontal: 16, marginTop: 18 },

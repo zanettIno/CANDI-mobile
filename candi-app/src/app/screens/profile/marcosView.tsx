@@ -1,13 +1,17 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
-import { PaperProvider } from 'react-native-paper';
-import { AppTheme } from '../../../theme'; 
-import CheckpointCard from '@/components/Card/CheckpointCard'; 
-import { useRouter, useFocusEffect } from 'expo-router'; 
+import React, { useState, useCallback, useMemo } from 'react';
+import {
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  ActivityIndicator, Platform, StatusBar,
+} from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
+import { useRouter, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_BASE_URL } from '../../../constants/api'; 
-import BackIconButton from '@/components/BackIconButton';
-import { AddMilestoneButton } from '@/components/Buttons/addCheckpointButton';
+import { AppTheme } from '../../../theme';
+import { API_BASE_URL } from '../../../constants/api';
+import CheckpointCard from '@/components/Card/CheckpointCard';
+import ActionSheet from '@/components/ActionSheet';
+
+const STATUS_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 44;
 
 interface Milestone {
   milestone_id: string;
@@ -20,315 +24,205 @@ interface Milestone {
   created_at: string;
 }
 
-interface MilestonesResponse {
-  milestones: Milestone[];
-  progress: number;
-}
-
 export default function MarcosView() {
   const router = useRouter();
-  
   const [milestones, setMilestones] = useState<Milestone[]>([]);
-  const [progress, setProgress] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Buscar milestones do backend
+  const progress = useMemo(() => {
+    if (!milestones.length) return 0;
+    const done = milestones.filter(m => m.type === 'fixed').length;
+    return Math.round((done / milestones.length) * 100);
+  }, [milestones]);
+  const [deleteSheet, setDeleteSheet] = useState<string | null>(null);
+
   const fetchMilestones = useCallback(async () => {
     setIsLoading(true);
     try {
       const token = await AsyncStorage.getItem('accessToken');
-      
-      if (!token) {
-        Alert.alert('Erro de Autenticação', 'Você não está autenticado.');
-        router.push('/screens/(auth)/login' as any);
-        return;
-      }
-
-      const endpoint = `${API_BASE_URL}/milestones`;
-      
-      console.log('Buscando milestones...'); // Debug
-
-      const response = await fetch(endpoint, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
+      if (!token) return;
+      const res = await fetch(`${API_BASE_URL}/milestones`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
-
-      if (response.ok) {
-        const data: MilestonesResponse = await response.json();
-        console.log('Milestones recebidas:', data); // Debug
-        
+      if (res.ok) {
+        const data = await res.json();
         setMilestones(data.milestones || []);
-        setProgress(data.progress || 0);
-      } else {
-        const errorData = await response.json();
-        console.error('Erro ao buscar milestones:', errorData);
-        Alert.alert('Erro', errorData.message || 'Não foi possível carregar os marcos.');
       }
-    } catch (error) {
-      console.error('Erro de conexão ao buscar milestones:', error);
-      Alert.alert('Erro', 'Ocorreu um erro de rede. Tente novamente.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [router]);
+    } catch { }
+    finally { setIsLoading(false); }
+  }, []);
 
-  // Atualizar lista quando a tela ganhar foco
-  useFocusEffect(
-    useCallback(() => {
-      fetchMilestones();
-    }, [fetchMilestones])
-  );
+  useFocusEffect(useCallback(() => { fetchMilestones(); }, [fetchMilestones]));
 
-  // Formatar data ISO para dd/MM/yyyy
   const formatDate = (isoDate: string) => {
     try {
-      const date = new Date(isoDate);
-      const day = String(date.getDate()).padStart(2, '0');
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const year = date.getFullYear();
-      return `${day}/${month}/${year}`;
+      const d = new Date(isoDate);
+      return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+    } catch { return isoDate; }
+  };
+
+  const doDelete = async (milestone_id: string) => {
+    try {
+      const token = await AsyncStorage.getItem('accessToken');
+      const res = await fetch(`${API_BASE_URL}/milestones/${milestone_id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) fetchMilestones();
+    } catch { }
+  };
+
+  const toggleCompleted = async (m: Milestone) => {
+    const newType = m.type === 'fixed' ? 'custom' : 'fixed';
+    setMilestones(prev => prev.map(x => x.milestone_id === m.milestone_id ? { ...x, type: newType } : x));
+    try {
+      const token = await AsyncStorage.getItem('accessToken');
+      await fetch(`${API_BASE_URL}/milestones/${m.milestone_id}`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: newType }),
+      });
     } catch {
-      return isoDate;
+      setMilestones(prev => prev.map(x => x.milestone_id === m.milestone_id ? { ...x, type: m.type } : x));
     }
-  };
-
-  // Deletar milestone
-  const handleDelete = async (milestone_id: string) => {
-    Alert.alert(
-      'Confirmar Exclusão',
-      'Tem certeza que deseja excluir este marco?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Excluir',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const token = await AsyncStorage.getItem('accessToken');
-              
-              if (!token) {
-                Alert.alert('Erro', 'Você não está autenticado.');
-                return;
-              }
-
-              const endpoint = `${API_BASE_URL}/milestones/${milestone_id}`;
-              
-              const response = await fetch(endpoint, {
-                method: 'DELETE',
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                },
-              });
-
-              if (response.ok) {
-                Alert.alert('Sucesso', 'Marco excluído com sucesso!');
-                fetchMilestones(); // Recarrega a lista
-              } else {
-                const errorData = await response.json();
-                Alert.alert('Erro', errorData.message || 'Não foi possível excluir o marco.');
-              }
-            } catch (error) {
-              console.error('Erro ao excluir milestone:', error);
-              Alert.alert('Erro', 'Ocorreu um erro de rede. Tente novamente.');
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  // Editar milestone (redireciona para tela de edição)
-  const handleEdit = (milestone_id: string) => {
-    router.push(`/screens/profile/marcosEdit?id=${milestone_id}` as any);
-  };
-
-  // Marcar como completo (se você adicionar esse campo no backend)
-  const handleMarkAsCompleted = async (milestone_id: string) => {
-    Alert.alert('Info', 'Funcionalidade de marcar como completo será implementada em breve.');
-    // TODO: Implementar endpoint PATCH /milestones/:id no backend
   };
 
   return (
-    <PaperProvider theme={AppTheme}>
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <View style={styles.headerBackgroundRed} />
-          <View style={styles.statusBar}>
-            <BackIconButton 
-              color={AppTheme.colors.cardBackground} 
-              bottom={-80} 
-              left={-10} 
-              onPress={() => router.push("/screens/(tabs)/home")}
-            />
-          </View>
+    <View style={s.screen}>
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+
+      <View style={[s.header, { paddingTop: STATUS_TOP }]}>
+        <View style={s.headerRow}>
+          <TouchableOpacity
+            onPress={() => router.canGoBack() ? router.back() : router.replace('/screens/(tabs)/homeProfile')}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <MaterialIcons name="arrow-back" size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={s.headerTitle}>Meus Marcos</Text>
+          <TouchableOpacity
+            onPress={() => router.push('screens/profile/marcosAdd' as any)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <MaterialIcons name="add" size={24} color="#fff" />
+          </TouchableOpacity>
         </View>
-
-        <View style={styles.contentCard}>
-          <View style={styles.tabsContainer}>
-            <TouchableOpacity style={styles.activeTab}>
-              <Text style={styles.activeTabText}>Marcos</Text>
-            </TouchableOpacity>
-          </View>
-
-          <Text style={styles.listTitle}>LISTA DE MARCOS</Text>
-
-          {/* Mostrar progresso */}
-          {progress > 0 && (
-            <View style={styles.progressContainer}>
-              <Text style={styles.progressText}>Progresso: {progress}%</Text>
-              <View style={styles.progressBar}>
-                <View style={[styles.progressFill, { width: `${progress}%` }]} />
-              </View>
-            </View>
-          )}
-
-          <AddMilestoneButton 
-            onPress={() => router.push('screens/profile/marcosAdd' as any)} 
-            style={styles.addButton} 
-          />
-
-          <ScrollView style={styles.cardsContainer}>
-            {isLoading ? (
-              <ActivityIndicator size="large" color={AppTheme.colors.primary} style={{ marginTop: 50 }} />
-            ) : milestones.length > 0 ? (
-              milestones.map((milestone) => (
-                <CheckpointCard
-                  key={milestone.milestone_id}
-                  name={milestone.title}
-                  date={formatDate(milestone.date)}
-                  isCompleted={milestone.type === 'fixed'} // Marcos fixos são considerados completos
-                  observation={milestone.description || 'Sem observações'}
-                  onEdit={() => handleEdit(milestone.milestone_id)}
-                  onMarkAsCompleted={() => handleMarkAsCompleted(milestone.milestone_id)}
-                  onDelete={() => handleDelete(milestone.milestone_id)}
-                />
-              ))
-            ) : (
-              <View style={styles.emptyContainer}>
-                <Text style={styles.noAppointmentsText}>Nenhum marco registrado.</Text>
-                <Text style={styles.emptySubtext}>
-                  Comece adicionando seu primeiro marco do tratamento!
-                </Text>
-              </View>
-            )}
-          </ScrollView>
-        </View>
+        <Text style={s.headerSub}>Conquistas do seu tratamento</Text>
       </View>
-    </PaperProvider>
+
+      <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+
+        {progress > 0 && (
+          <View style={s.progressCard}>
+            <View style={s.progressHeader}>
+              <MaterialIcons name="flag" size={16} color={AppTheme.colors.tertiary} />
+              <Text style={s.progressLabel}>Progresso geral</Text>
+              <Text style={s.progressValue}>{progress}%</Text>
+            </View>
+            <View style={s.progressBar}>
+              <View style={[s.progressFill, { width: `${progress}%` as any }]} />
+            </View>
+          </View>
+        )}
+
+        <Text style={s.sectionTitle}>Lista de marcos</Text>
+
+        {isLoading ? (
+          <ActivityIndicator size="large" color={AppTheme.colors.tertiary} style={{ marginTop: 40 }} />
+        ) : milestones.length > 0 ? (
+          milestones.map(m => (
+            <CheckpointCard
+              key={m.milestone_id}
+              name={m.title}
+              date={formatDate(m.date)}
+              isCompleted={m.type === 'fixed'}
+              observation={m.description || 'Sem observações'}
+              onEdit={() => {
+                const datePart = m.date?.split('T')[0] ?? '';
+                const [y, mo, d] = datePart.split('-');
+                const dateFormatted = datePart ? `${d}/${mo}/${y}` : '';
+                router.push(`/screens/profile/marcosEdit?id=${m.milestone_id}&title=${encodeURIComponent(m.title)}&date=${encodeURIComponent(dateFormatted)}&completed=${m.type === 'fixed' ? '1' : '0'}` as any);
+              }}
+              onMarkAsCompleted={() => toggleCompleted(m)}
+              onDelete={() => setDeleteSheet(m.milestone_id)}
+            />
+          ))
+        ) : (
+          <View style={s.empty}>
+            <MaterialIcons name="flag" size={40} color={AppTheme.colors.dotsColor} />
+            <Text style={s.emptyTitle}>Nenhum marco registrado</Text>
+            <Text style={s.emptySub}>Comece adicionando seu primeiro marco do tratamento!</Text>
+          </View>
+        )}
+
+      </ScrollView>
+
+      <ActionSheet
+        visible={!!deleteSheet}
+        title="Excluir marco"
+        options={[{
+          label: 'Confirmar exclusão',
+          icon: 'delete',
+          destructive: true,
+          onPress: () => deleteSheet && doDelete(deleteSheet),
+        }]}
+        onDismiss={() => setDeleteSheet(null)}
+      />
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: AppTheme.colors.background,
-  },
+const s = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: AppTheme.colors.background },
   header: {
-    height: 150, 
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    paddingBottom: 20,
+    backgroundColor: AppTheme.colors.tertiary,
+    paddingHorizontal: 20, paddingBottom: 16,
   },
-  headerBackgroundRed: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 150,
-    backgroundColor: AppTheme.colors.primary,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
+  headerRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingBottom: 4, paddingTop: 8,
   },
-  statusBar: {
-    position: 'absolute',
-    top: 40,
-    width: '90%',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  headerTitle: { fontSize: 17, fontWeight: '700', color: '#fff', fontFamily: AppTheme.fonts.titleMedium.fontFamily },
+  headerSub: {
+    textAlign: 'center', fontSize: 13, color: 'rgba(255,255,255,0.8)',
+    fontFamily: AppTheme.fonts.bodySmall.fontFamily, paddingBottom: 14,
   },
-  contentCard: {
-    flex: 1,
+
+  content: { padding: 16, paddingBottom: 40, gap: 10 },
+
+  progressCard: {
     backgroundColor: AppTheme.colors.cardBackground,
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    marginTop: -60,
-    paddingHorizontal: 20,
-    paddingTop: 20,
+    borderRadius: 16, padding: 16, gap: 10,
+    borderWidth: 1, borderColor: AppTheme.colors.dotsColor,
   },
-  tabsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: AppTheme.colors.placeholderBackground,
+  progressHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  progressLabel: {
+    flex: 1, fontSize: 13, fontWeight: '600', color: AppTheme.colors.nameText,
+    fontFamily: AppTheme.fonts.labelMedium.fontFamily,
   },
-  activeTab: {
-    paddingVertical: 10,
-    borderBottomWidth: 2,
-    borderBottomColor: AppTheme.colors.tertiary,
-  },
-  activeTabText: {
-    fontSize: AppTheme.fonts.bodyLarge.fontSize,
-    fontWeight: AppTheme.fonts.bodyLarge.fontWeight,
-    fontFamily: AppTheme.fonts.bodyLarge.fontFamily,
-    color: AppTheme.colors.tertiary,
-  },
-  listTitle: {
-    fontSize: AppTheme.fonts.titleLarge.fontSize,
-    fontWeight: AppTheme.fonts.titleLarge.fontWeight,
-    fontFamily: AppTheme.fonts.titleLarge.fontFamily,
-    color: AppTheme.colors.nameText,
-    marginBottom: 15,
-    textAlign: 'center',
-  },
-  progressContainer: {
-    marginBottom: 20,
-    paddingHorizontal: 10,
-  },
-  progressText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: AppTheme.colors.nameText,
-    marginBottom: 8,
-    textAlign: 'center',
+  progressValue: {
+    fontSize: 13, fontWeight: '700', color: AppTheme.colors.tertiary,
+    fontFamily: AppTheme.fonts.labelMedium.fontFamily,
   },
   progressBar: {
-    height: 8,
-    backgroundColor: AppTheme.colors.placeholderBackground,
-    borderRadius: 4,
-    overflow: 'hidden',
+    height: 8, backgroundColor: AppTheme.colors.dotsColor,
+    borderRadius: 4, overflow: 'hidden',
   },
   progressFill: {
-    height: '100%',
-    backgroundColor: AppTheme.colors.tertiary,
-    borderRadius: 4,
+    height: '100%', backgroundColor: AppTheme.colors.tertiary, borderRadius: 4,
   },
-  addButton: {
-    marginBottom: 20,
-    alignSelf: 'center',
+
+  sectionTitle: {
+    fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6,
+    color: AppTheme.colors.placeholderText, fontFamily: AppTheme.fonts.labelSmall.fontFamily,
+    marginTop: 4, paddingLeft: 2,
   },
-  cardsContainer: {
-    flex: 1,
+
+  empty: { alignItems: 'center', marginTop: 50, paddingHorizontal: 40, gap: 12 },
+  emptyTitle: {
+    fontSize: 16, fontWeight: '600', color: AppTheme.colors.nameText,
+    fontFamily: AppTheme.fonts.labelMedium.fontFamily, textAlign: 'center',
   },
-  emptyContainer: {
-    alignItems: 'center',
-    marginTop: 50,
-    paddingHorizontal: 40,
-  },
-  noAppointmentsText: {
-    textAlign: 'center',
-    fontSize: 16,
-    fontWeight: '600',
-    color: AppTheme.colors.nameText,
-    marginBottom: 8,
-  },
-  emptySubtext: {
-    textAlign: 'center',
-    fontSize: 14,
-    color: AppTheme.colors.placeholderText,
+  emptySub: {
+    fontSize: 13.5, color: AppTheme.colors.placeholderText,
+    fontFamily: AppTheme.fonts.bodySmall.fontFamily, textAlign: 'center', lineHeight: 20,
   },
 });

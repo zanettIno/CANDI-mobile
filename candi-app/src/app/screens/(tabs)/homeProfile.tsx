@@ -8,7 +8,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppTheme } from '../../../theme';
-import LoginSignupBackground from '../../../components/LoginSignupBackground';
+
 import ProfilePictureModal from '../../../components/Modals/ProfilePictureModal';
 import { cancerTypes } from '../../../components/Inputs/inputTypeCancer';
 import { useProfile } from '@/context/ProfileContext';
@@ -89,59 +89,38 @@ export default function HomeProfile() {
 
   return (
     <>
-      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <ScrollView style={s.screen} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
 
-        {/* ── Hero com ondas ────────────────────────────────────────────────── */}
-        <View style={s.hero}>
-          {/* Ondas naturais — sem overlay escuro, cores CANDI visíveis */}
-          <View style={s.wavesBg}>
-            <LoginSignupBackground />
-          </View>
+        {/* ── Hero ─────────────────────────────────────────────────────────── */}
+        <View style={s.heroContainer}>
+          <View style={[s.tealBand, { height: STATUS_TOP + 76 }]} />
 
-          {/* Conteúdo do hero */}
-          <View style={[s.heroContent, { paddingTop: STATUS_TOP + 16 }]}>
-            {/* Avatar — toca pra trocar a foto */}
-            <TouchableOpacity onPress={() => setPhotoModal(true)} activeOpacity={0.88} style={s.avatarWrap}>
-              {loading ? (
-                <View style={s.avatarRing}>
-                  <View style={s.avatarPlaceholder}><ActivityIndicator color={AppTheme.colors.tertiary} /></View>
-                </View>
-              ) : avatarUri ? (
-                <View style={s.avatarRing}>
-                  <Image source={{ uri: avatarUri }} style={s.avatar} />
-                </View>
-              ) : (
-                <View style={s.avatarRing}>
-                  <View style={s.avatarPlaceholder}>
-                    <Text style={s.avatarInitials}>{(profile?.profile_name || '?').substring(0, 2).toUpperCase()}</Text>
-                  </View>
-                </View>
-              )}
-              {/* Tag da câmera */}
-              <View style={s.cameraTag}>
-                <MaterialIcons name="camera-alt" size={11} color="#fff" />
-              </View>
-            </TouchableOpacity>
-
-            {/* Nome + apelido */}
+          <View style={[s.heroCard, { marginTop: STATUS_TOP + 76 }]}>
             <Text style={s.heroName}>{profile?.profile_name || '...'}</Text>
-            {profile?.profile_nickname ? (
-              <Text style={s.heroNickname}>@{profile.profile_nickname}</Text>
-            ) : null}
-
-            {/* Badge papel */}
-            <View style={s.roleBadge}>
-              <MaterialIcons name="favorite" size={11} color={AppTheme.colors.primary} />
-              <Text style={s.roleBadgeText}>Paciente oncológico</Text>
-            </View>
-
-            {/* Botão de editar perfil */}
+            {profile?.profile_nickname
+              ? <Text style={s.heroNickname}>@{profile.profile_nickname}</Text>
+              : null}
             <TouchableOpacity style={s.editBtn} onPress={() => router.push('/screens/profile/settings')} activeOpacity={0.8}>
-              <MaterialIcons name="edit" size={14} color={AppTheme.colors.tertiary} />
+              <MaterialIcons name="edit" size={13} color={AppTheme.colors.tertiary} />
               <Text style={s.editBtnText}>Editar perfil</Text>
             </TouchableOpacity>
           </View>
+
+          <TouchableOpacity
+            style={[s.avatarFloat, { top: STATUS_TOP + 28 }]}
+            onPress={() => setPhotoModal(true)}
+            activeOpacity={0.88}>
+            <View style={s.avatarWrap}>
+              {loading
+                ? <View style={s.avatarRing}><View style={s.avatarPlaceholder}><ActivityIndicator color={AppTheme.colors.tertiary} /></View></View>
+                : avatarUri
+                  ? <View style={s.avatarRing}><Image source={{ uri: avatarUri }} style={s.avatar} /></View>
+                  : <View style={s.avatarRing}><View style={s.avatarPlaceholder}><Text style={s.avatarInitials}>{(profile?.profile_name || '?').substring(0, 2).toUpperCase()}</Text></View></View>
+              }
+              <View style={s.cameraTag}><MaterialIcons name="camera-alt" size={11} color="#fff" /></View>
+            </View>
+          </TouchableOpacity>
         </View>
 
         {/* ── Info cards — grid 2 colunas ──────────────────────────────────── */}
@@ -225,64 +204,52 @@ const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: AppTheme.colors.background },
 
   // ── Hero ────────────────────────────────────────────────────────────────
-  hero: { height: 300, position: 'relative' },
-  wavesBg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
-  // SEM overlay escuro — as ondas pink/mint ficam visíveis e coloridas
-  heroContent: {
-    flex: 1, alignItems: 'center', justifyContent: 'flex-start',
-    gap: 6, paddingHorizontal: 20, zIndex: 2,
+  heroContainer: { backgroundColor: AppTheme.colors.tertiary },
+  tealBand: { position: 'absolute', top: 0, left: 0, right: 0, backgroundColor: AppTheme.colors.tertiary },
+  heroCard: {
+    backgroundColor: AppTheme.colors.background,
+    alignItems: 'center',
+    paddingTop: 54, paddingHorizontal: 20, paddingBottom: 14,
+    borderTopLeftRadius: 28, borderTopRightRadius: 28,
   },
-
-  avatarWrap: { position: 'relative', marginBottom: 4 },
+  avatarFloat: { position: 'absolute', left: 0, right: 0, alignItems: 'center', zIndex: 10 },
+  avatarWrap: { position: 'relative' },
   avatarRing: {
-    padding: 3, borderRadius: 24,
+    padding: 3, borderRadius: 54,
     backgroundColor: '#fff',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 5,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 10, elevation: 6,
   },
-  avatar: { width: 96, height: 96, borderRadius: 20 },
+  avatar: { width: 90, height: 90, borderRadius: 45 },
   avatarPlaceholder: {
-    width: 96, height: 96, borderRadius: 20,
+    width: 90, height: 90, borderRadius: 45,
     backgroundColor: AppTheme.colors.secondary,
     alignItems: 'center', justifyContent: 'center',
   },
   avatarInitials: {
-    fontSize: 30, fontWeight: '800', color: AppTheme.colors.tertiary,
+    fontSize: 28, fontWeight: '800', color: AppTheme.colors.tertiary,
     fontFamily: AppTheme.fonts.titleLarge.fontFamily,
   },
   cameraTag: {
-    position: 'absolute', bottom: -2, right: -2,
+    position: 'absolute', bottom: 3, right: 3,
     backgroundColor: AppTheme.colors.tertiary,
     width: 22, height: 22, borderRadius: 11,
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 2, borderColor: '#fff',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.15, shadowRadius: 2, elevation: 2,
   },
-
   heroName: {
-    fontSize: 22, fontWeight: '800', color: AppTheme.colors.nameText,
-    fontFamily: AppTheme.fonts.titleLarge.fontFamily,
-    textAlign: 'center',
+    fontSize: 20, fontWeight: '800', color: AppTheme.colors.nameText,
+    fontFamily: AppTheme.fonts.titleLarge.fontFamily, textAlign: 'center',
+    marginTop: 4,
   },
   heroNickname: {
     fontSize: 13, color: AppTheme.colors.placeholderText,
     fontFamily: AppTheme.fonts.bodySmall.fontFamily,
   },
-  roleBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    backgroundColor: 'rgba(255,196,196,0.35)',
-    borderRadius: 16, paddingHorizontal: 12, paddingVertical: 5,
-    borderWidth: 1, borderColor: AppTheme.colors.primary,
-  },
-  roleBadgeText: {
-    fontSize: 12, color: '#b53b3b', fontWeight: '600',
-    fontFamily: AppTheme.fonts.labelSmall.fontFamily,
-  },
   editBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    backgroundColor: AppTheme.colors.cardBackground,
-    borderRadius: 14, paddingHorizontal: 14, paddingVertical: 7,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4,
     borderWidth: 1, borderColor: AppTheme.colors.dotsColor,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 2, elevation: 1,
+    marginTop: 4,
   },
   editBtnText: {
     fontSize: 13, fontWeight: '600', color: AppTheme.colors.tertiary,
@@ -290,13 +257,12 @@ const s = StyleSheet.create({
   },
 
   // ── Info cards ───────────────────────────────────────────────────────────
-  infoSection: { paddingHorizontal: 16, gap: 10, marginTop: 2 },
+  infoSection: { paddingHorizontal: 16, gap: 10, marginTop: 16 },
   infoGrid: { flexDirection: 'row', gap: 10 },
   infoCard: {
     flex: 1, backgroundColor: AppTheme.colors.cardBackground,
     borderRadius: 16, padding: 14, gap: 6,
     borderWidth: 1, borderColor: AppTheme.colors.dotsColor,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 2, elevation: 1,
   },
   emailCard: {
     backgroundColor: AppTheme.colors.cardBackground,
@@ -305,7 +271,7 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: AppTheme.colors.dotsColor,
   },
   infoIconWrap: {
-    width: 36, height: 36, borderRadius: 10,
+    width: 32, height: 32, borderRadius: 9,
     backgroundColor: AppTheme.colors.secondary,
     alignItems: 'center', justifyContent: 'center',
   },
@@ -322,7 +288,7 @@ const s = StyleSheet.create({
   menuCard: {
     backgroundColor: AppTheme.colors.cardBackground,
     borderRadius: 16, overflow: 'hidden',
-    marginHorizontal: 16, marginTop: 16,
+    marginHorizontal: 16, marginTop: 10,
     borderWidth: 1, borderColor: AppTheme.colors.dotsColor,
   },
   menuRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, gap: 12 },

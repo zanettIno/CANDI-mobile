@@ -3,10 +3,9 @@ import { API_BASE_URL } from '../constants/api';
 
 const fetchAuth = async (endpoint: string, options: RequestInit = {}) => {
   const token = await getValidAccessToken();
-  const res = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', ...options.headers as any },
-  });
+  const headers: Record<string, string> = { Authorization: `Bearer ${token}`, ...options.headers as any };
+  if (options.body) headers['Content-Type'] = 'application/json';
+  const res = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.message || 'Erro');
@@ -43,6 +42,10 @@ export const registerSupport = (data: {
 export const getMyInvites = () => fetchAuth('/auth/my-invites');
 export const getSupportNetwork = () => fetchAuth('/auth/support-network');
 export const getMyPatient = () => fetchAuth('/auth/my-patient');
+export const removeSupportMember = (support_id: string) =>
+  fetchAuth(`/auth/support-network/${support_id}`, { method: 'DELETE' });
+export const revokeInvite = (invite_token: string) =>
+  fetchAuth(`/auth/invite/${invite_token}`, { method: 'DELETE' });
 export const getMyPatients = () => fetchAuth('/auth/my-patients');
 
 export const reportPost = (postId: string, reason: string) =>

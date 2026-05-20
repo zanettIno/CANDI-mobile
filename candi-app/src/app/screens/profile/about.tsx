@@ -6,6 +6,7 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { AppTheme } from '../../../theme';
+import { useScrollToTopOnFocus } from '@/hooks/useScrollToTopOnFocus';
 const STATUS_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 44;
 
 const FEATURES = [
@@ -18,6 +19,7 @@ const FEATURES = [
 
 export default function About() {
   const router = useRouter();
+  const scrollRef = useScrollToTopOnFocus();
 
   return (
     <View style={s.screen}>
@@ -46,7 +48,7 @@ export default function About() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+      <ScrollView ref={scrollRef} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
 
         {/* Missão */}
         <View style={s.card}>

@@ -1,214 +1,92 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { PaperProvider } from 'react-native-paper';
-import { AppTheme } from '../../../theme'; 
-import AppointmentCard from '../../../components/Card/AppointmentCard'; 
-import { useRouter, useFocusEffect } from 'expo-router'; 
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Platform, StatusBar } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
+import { useRouter, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_BASE_URL } from '../../../constants/api'; 
-import BackIconButton from '@/components/BackIconButton';
-import { AddAppointmentButton } from '@/components/Buttons/AppointmentButton';
+import { AppTheme } from '../../../theme';
+import { API_BASE_URL } from '../../../constants/api';
+import AppointmentCard from '../../../components/Card/AppointmentCard';
+import { useScrollToTop } from '@react-navigation/native';
 
-interface ApiAppointment {
-  appointment_id: string;
-  appointment_name: string;
-  appointment_date: string;
-  appointment_time: string;
-  local: string;
-  observation: string;
-  created_at: string;
-}
+const STATUS_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 44;
 
 export default function CompromissosView() {
   const router = useRouter();
-  
   const [appointments, setAppointments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const scrollRef = React.useRef(null);
+  useScrollToTop(scrollRef);
 
-  useFocusEffect(
-    useCallback(() => {
-      const fetchAppointmentsForUser = async () => {
-        setIsLoading(true);
-        try {
-          const token = await AsyncStorage.getItem('accessToken');
-          if (!token) throw new Error("Não autenticado");
-
-          // ALTERADO: A rota agora é mais simples e segura
-          const endpoint = `${API_BASE_URL}/calendar/events`;
-
-          const appointmentsResponse = await fetch(endpoint, {
-            headers: { 'Authorization': `Bearer ${token}` },
-          });
-
-          if (!appointmentsResponse.ok) throw new Error("Falha ao buscar compromissos");
-          
-          const appointmentsData: ApiAppointment[] = await appointmentsResponse.json();
-
-          const formattedAppointments = appointmentsData.map(appointment => {
-            const [year, month, day] = appointment.appointment_date.split('-');
-            const formattedDate = `${day}/${month}/${year}`;
-
-            return {
-              id: appointment.appointment_id,
-              name: appointment.appointment_name,
-              date: formattedDate,
-              time: appointment.appointment_time,
-              location: appointment.local,
-              observation: appointment.observation,
-            }
-          });
-
-          setAppointments(formattedAppointments);
-        
-        } catch (error) {
-          console.error("Erro no processo de busca de compromissos:", error);
-          setAppointments([]); 
-        } finally {
-          setIsLoading(false);
+  useFocusEffect(useCallback(() => {
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+    const load = async () => {
+      setIsLoading(true);
+      try {
+        const token = await AsyncStorage.getItem('accessToken');
+        if (!token) return;
+        const res = await fetch(`${API_BASE_URL}/calendar/events`, { headers: { Authorization: `Bearer ${token}` } });
+        if (res.ok) {
+          const data = await res.json();
+          setAppointments(data.map((a: any) => {
+            const [y, m, d] = a.appointment_date.split('-');
+            return { id: a.appointment_id, name: a.appointment_name, date: `${d}/${m}/${y}`, time: a.appointment_time, location: a.local, observation: a.observation };
+          }));
         }
-      };
-
-      fetchAppointmentsForUser();
-    }, [])
-  );
-
-  const handleOptionsPress = () => console.log('Options pressed');
+      } catch { } finally { setIsLoading(false); }
+    };
+    load();
+  }, []));
 
   return (
-    <PaperProvider theme={AppTheme}>
-      <View style={styles.container}>
-        <View style={styles.header}>
-            <View style={styles.headerBackgroundRed} />
-            <View style={styles.statusBar}>
-                <BackIconButton 
-                  color={AppTheme.colors.cardBackground} 
-                  bottom={-80} 
-                  left={-10} 
-                  onPress={() => router.push("/screens/(tabs)/homeAgenda")} 
-                />
-            </View>
-        </View>
-
-        <View style={styles.contentCard}>
-            <View style={styles.tabsContainer}>
-                <TouchableOpacity style={styles.activeTab}>
-                    <Text style={styles.activeTabText}>Compromissos</Text>
-                </TouchableOpacity>
-            </View>
-
-            <Text style={styles.listTitle}>LISTA DE COMPROMISSOS</Text>
-
-            <AddAppointmentButton onPress={() => router.push('screens/agenda/compromissosAdd' as any)} style={styles.addButton} />
-
-            <ScrollView style={styles.cardsContainer}>
-                {isLoading ? (
-                <ActivityIndicator size="large" color={AppTheme.colors.primary} style={{ marginTop: 50 }} />
-                ) : appointments.length > 0 ? (
-                appointments.map((appointment) => (
-                    <AppointmentCard
-                        key={appointment.id} 
-                        name={appointment.name}
-                        date={appointment.date}
-                        time={appointment.time}
-                        location={appointment.location}
-                        observation={appointment.observation}
-                        onOptionsPress={handleOptionsPress}
-                    />
-                ))
-                ) : (
-                <Text style={styles.noAppointmentsText}>Nenhum compromisso registado.</Text>
-                )}
-            </ScrollView>
+    <View style={s.screen}>
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <View style={[s.header, { paddingTop: STATUS_TOP }]}>
+        <View style={s.headerRow}>
+          <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/screens/(tabs)/homeAgenda' as any)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <MaterialIcons name="arrow-back" size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={s.headerTitle}>Compromissos</Text>
+          <View style={{ width: 24 }} />
         </View>
       </View>
-    </PaperProvider>
+
+      <ScrollView ref={scrollRef} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+        {isLoading ? (
+          <ActivityIndicator color={AppTheme.colors.tertiary} style={{ marginTop: 40 }} />
+        ) : appointments.length === 0 ? (
+          <View style={s.empty}>
+            <MaterialIcons name="event" size={40} color={AppTheme.colors.dotsColor} />
+            <Text style={s.emptyTitle}>Nenhum compromisso registrado</Text>
+            <Text style={s.emptySub}>Adicione consultas e exames pelo botão abaixo.</Text>
+          </View>
+        ) : (
+          appointments.map(a => (
+            <AppointmentCard key={a.id} name={a.name} date={a.date} time={a.time} location={a.location} observation={a.observation} onOptionsPress={() => {}} />
+          ))
+        )}
+      </ScrollView>
+
+      <TouchableOpacity style={s.fab} onPress={() => router.push('/screens/agenda/compromissosAdd')} activeOpacity={0.88}>
+        <MaterialIcons name="add" size={24} color="#fff" />
+      </TouchableOpacity>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: AppTheme.colors.background,
-    },
-    header: {
-      height: 150, 
-      justifyContent: 'flex-end',
-      alignItems: 'center',
-      paddingBottom: 20,
-    },
-    headerBackgroundRed: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      height: 150,
-      backgroundColor: AppTheme.colors.primary,
-      borderBottomLeftRadius: 30,
-      borderBottomRightRadius: 30,
-    },
-    statusBar: {
-      position: 'absolute',
-      top: 35,
-      width: '90%',
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-    },
-    contentCard: {
-      flex: 1,
-      backgroundColor: AppTheme.colors.cardBackground,
-      borderTopLeftRadius: 30,
-      borderTopRightRadius: 30,
-      marginTop: -60,
-      paddingHorizontal: 20,
-      paddingTop: 20,
-    },
-    tabsContainer: {
-      flexDirection: 'row',
-      justifyContent: 'space-around',
-      marginBottom: 20,
-      borderBottomWidth: 1,
-      borderBottomColor: AppTheme.colors.placeholderBackground,
-    },
-    activeTab: {
-      paddingVertical: 10,
-      borderBottomWidth: 2,
-      borderBottomColor: AppTheme.colors.tertiary,
-    },
-    activeTabText: {
-      fontSize: AppTheme.fonts.bodyLarge.fontSize,
-      fontWeight: AppTheme.fonts.bodyLarge.fontWeight,
-      fontFamily: AppTheme.fonts.bodyLarge.fontFamily,
-      color: AppTheme.colors.tertiary,
-    },
-    inactiveTab: {
-      paddingVertical: 10,
-    },
-    inactiveTabText: {
-      fontSize: AppTheme.fonts.bodyLarge.fontSize,
-      fontWeight: AppTheme.fonts.bodyLarge.fontWeight,
-      fontFamily: AppTheme.fonts.bodyLarge.fontFamily,
-      color: AppTheme.colors.placeholderText,
-    },
-    listTitle: {
-      fontSize: AppTheme.fonts.titleLarge.fontSize,
-      fontWeight: AppTheme.fonts.titleLarge.fontWeight,
-      fontFamily: AppTheme.fonts.titleLarge.fontFamily,
-      color: AppTheme.colors.nameText,
-      marginBottom: 15,
-      textAlign: 'center',
-    },
-    addButton: {
-      marginBottom: 20,
-      alignSelf: 'center',
-    },
-    cardsContainer: {
-      flex: 1,
-    },
-    noAppointmentsText: {
-      textAlign: 'center',
-      marginTop: 50,
-      fontSize: 16,
-      color: AppTheme.colors.placeholderText,
-    }
+const s = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: AppTheme.colors.background },
+  header: { backgroundColor: AppTheme.colors.primary, paddingHorizontal: 20, paddingBottom: 16 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 8, paddingBottom: 4 },
+  headerTitle: { fontSize: 17, fontWeight: '700', color: '#fff', fontFamily: AppTheme.fonts.titleMedium.fontFamily },
+  content: { padding: 16, paddingBottom: 80 },
+  empty: { alignItems: 'center', marginTop: 60, gap: 10, paddingHorizontal: 40 },
+  emptyTitle: { fontSize: 15, fontWeight: '600', color: AppTheme.colors.nameText, fontFamily: AppTheme.fonts.labelMedium.fontFamily },
+  emptySub: { fontSize: 13, color: AppTheme.colors.placeholderText, textAlign: 'center', fontFamily: AppTheme.fonts.bodySmall.fontFamily },
+  fab: {
+    position: 'absolute', bottom: 26, right: 20,
+    width: 52, height: 52, borderRadius: 26,
+    backgroundColor: AppTheme.colors.primary,
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: AppTheme.colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 8, elevation: 6,
+  },
 });

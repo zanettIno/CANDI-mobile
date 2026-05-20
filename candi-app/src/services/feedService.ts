@@ -11,6 +11,7 @@ export interface Post {
   post_id: string;
   profile_id: string;
   profile_name: string;
+  profile_nickname?: string;
   content: string;
   file_url?: string;
   created_at: string;

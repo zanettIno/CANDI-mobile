@@ -8,6 +8,7 @@ interface MedicineCardProps {
   frequency: string;
   startDate: string;
   endDate: string;
+  reminderTime?: string;
   onOptionsPress: () => void;
   style?: ViewStyle;
 }
@@ -18,6 +19,7 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
   frequency,
   startDate,
   endDate,
+  reminderTime,
   onOptionsPress,
   style,
 }) => {
@@ -44,6 +46,14 @@ const MedicineCard: React.FC<MedicineCardProps> = ({
           <Text style={styles.date}>{startDate}</Text>
           <Text style={styles.date}>{endDate}</Text>
         </View>
+
+        {reminderTime ? (
+          <View style={styles.reminderRow}>
+            <View style={styles.reminderBadge}>
+              <Text style={styles.reminderText}>🔔 Lembrete às {reminderTime}</Text>
+            </View>
+          </View>
+        ) : null}
       </View>
     </View>
   );
@@ -119,6 +129,22 @@ const styles = StyleSheet.create({
     fontWeight: AppTheme.fonts.bodyMedium.fontWeight,
     fontFamily: AppTheme.fonts.bodyMedium.fontFamily,
     color: AppTheme.colors.placeholderText,
+  },
+  reminderRow: { marginTop: 8 },
+  reminderBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: AppTheme.colors.secondary,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.dotsColor,
+  },
+  reminderText: {
+    fontSize: 12,
+    color: '#1a4a30',
+    fontFamily: AppTheme.fonts.labelSmall.fontFamily,
+    fontWeight: '600',
   },
 });
 

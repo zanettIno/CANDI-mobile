@@ -12,6 +12,7 @@ import {
 import { PaperProvider } from 'react-native-paper';
 import { AppTheme } from '../../../theme';
 import { StatusBar } from 'expo-status-bar';
+import CANDITopBar from '../../../components/CANDITopBar';
 import EmergencyContactCard, { EmergencyContact } from '../../../components/EmergencyContactCard';
 import Timeline from '../../../components/Timeline';
 import CommunityShortcut from '../../../components/Community-Shortcut';
@@ -110,6 +111,7 @@ export default function HomeScreen() {
   return (
     <PaperProvider theme={AppTheme}>
       <StatusBar style="dark" />
+      <CANDITopBar />
       <ScrollView
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
@@ -185,10 +187,11 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     paddingBottom: 40,
+    backgroundColor: '#fff',
   },
   header: {
     paddingHorizontal: 20,
-    paddingTop: 60,
+    paddingTop: 16,
     marginBottom: 8,
   },
   greetingRow: {

@@ -282,7 +282,7 @@ export default function CommunityScreen() {
           subtitle="Salve posts tocando no ícone de marcador." />
       ) : favoritedPosts.map(p => (
         <PostCardView key={p.post_id} postId={p.post_id} userName={p.profile_name}
-          userHandle={p.profile_id.substring(0, 8)} timeAgo={p.created_at}
+          userHandle={p.profile_nickname || p.profile_name} timeAgo={p.created_at}
           content={p.content} fileUrl={p.file_url} profileId={p.profile_id}
           initialLikeCount={p.like_count || 0}
           initialCommentCount={p.comment_count || 0}
@@ -363,7 +363,7 @@ export default function CommunityScreen() {
         renderItem={({ item: p }) => (
           <PostCardView
             postId={p.post_id} userName={p.profile_name}
-            userHandle={p.profile_id.substring(0, 8)} timeAgo={p.created_at}
+            userHandle={p.profile_nickname || p.profile_name} timeAgo={p.created_at}
             content={p.content} fileUrl={p.file_url} profileId={p.profile_id}
             initialLikeCount={p.like_count || 0}
             initialCommentCount={p.comment_count || 0}

@@ -1,16 +1,16 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View, Text, FlatList, StatusBar, ActivityIndicator,
-  Alert, Platform, StyleSheet, KeyboardAvoidingView,
+  Alert, Platform, StyleSheet, KeyboardAvoidingView, TouchableOpacity,
 } from 'react-native';
 import { Socket } from 'socket.io-client';
 import { AppTheme } from '../../../theme/index';
 import { MessageBubble } from '@/components/Bubble/messageBubble';
 import { MessageInput } from '@/components/Inputs/inputMessage';
-import LoginSignupBackground from '@/components/LoginSignupBackground';
-import BackIconButton from '@/components/BackIconButton';
+import { MaterialIcons } from '@expo/vector-icons';
 import Avatar from '@/components/Avatar';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getMessages, getReadStatus } from '@/services/chatService';
 import { initializeSocket } from '@/services/socketService';
 import { useChat } from '@/context/ChatContext';
@@ -42,6 +42,7 @@ const decodeJwtId = async (): Promise<string | null> => {
 
 export const ChatCommunity: React.FC = () => {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { conversationId, userName, quickReply } = useLocalSearchParams<{
     conversationId: string;
     userName: string;
@@ -317,13 +318,13 @@ export const ChatCommunity: React.FC = () => {
       style={styles.screen}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
 
-      <View style={styles.headerBg}><LoginSignupBackground /></View>
-
-      <View style={[styles.header, { paddingTop: STATUS_BAR_HEIGHT }]}>
-        <BackIconButton color={AppTheme.colors.cardBackground} onPress={() => router.back()} top={0} />
-        <Avatar uri={profilePicUri(otherUserIdRef.current)} name={userName || ''} size={42} />
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+        <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <MaterialIcons name="arrow-back" size={22} color={AppTheme.colors.nameText} />
+        </TouchableOpacity>
+        <Avatar uri={profilePicUri(otherUserIdRef.current)} name={userName || ''} size={40} />
         <View style={styles.userMeta}>
           <Text style={styles.userName} numberOfLines={1}>{userName || 'Chat'}</Text>
         </View>
@@ -376,14 +377,15 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#efeae2' }, // fundo estilo WhatsApp (bege claro)
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#efeae2' },
 
-  headerBg: { position: 'absolute', top: 0, left: 0, right: 0, height: 120, zIndex: 0 },
   header: {
-    height: 120, flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, zIndex: 1, gap: 10,
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 10, paddingBottom: 8, gap: 8,
+    backgroundColor: AppTheme.colors.cardBackground,
+    borderBottomWidth: 1, borderBottomColor: AppTheme.colors.dotsColor,
   },
   userMeta: { flex: 1 },
   userName: {
-    fontSize: 17, fontWeight: '700', color: '#fff',
+    fontSize: 15, fontWeight: '600', color: AppTheme.colors.nameText,
     fontFamily: AppTheme.fonts.titleMedium.fontFamily,
   },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },

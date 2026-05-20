@@ -4,7 +4,7 @@ import {
   TextInput, Platform, StatusBar, ActivityIndicator, Switch,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppTheme } from '../../../theme';
 import { API_BASE_URL } from '../../../constants/api';
@@ -13,11 +13,18 @@ import LoginSignupBackground from '../../../components/LoginSignupBackground';
 
 const STATUS_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 44;
 
-export default function MarcosAdd() {
+export default function MarcosEdit() {
   const router = useRouter();
   const toast = useToast();
+  const params = useLocalSearchParams<{ id: string; title: string; date: string; completed: string }>();
+  const id = params.id;
+
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ title: '', date: '', completed: false });
+  const [form, setForm] = useState({
+    title: decodeURIComponent((params.title as string) || ''),
+    date: decodeURIComponent((params.date as string) || ''),
+    completed: params.completed === '1',
+  });
 
   const handleSave = async () => {
     if (!form.title.trim()) {
@@ -38,19 +45,17 @@ export default function MarcosAdd() {
     setSaving(true);
     try {
       const token = await AsyncStorage.getItem('accessToken');
-      const res = await fetch(`${API_BASE_URL}/milestones`, {
-        method: 'POST',
+      const res = await fetch(`${API_BASE_URL}/milestones/${id}`, {
+        method: 'PATCH',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: form.title.trim(),
-          description: '',
           date: isoDate,
           type: form.completed ? 'fixed' : 'custom',
-          position: null,
         }),
       });
       if (!res.ok) throw new Error((await res.json()).message || 'Erro');
-      toast.success('Marco registrado!');
+      toast.success('Marco atualizado!');
       if (router.canGoBack()) router.back();
       else router.replace('/screens/profile/marcosView' as any);
     } catch (e: any) {
@@ -70,27 +75,13 @@ export default function MarcosAdd() {
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <MaterialIcons name="arrow-back" size={24} color="#fff" />
             </TouchableOpacity>
-            <Text style={s.headerTitle}>Novo Marco</Text>
+            <Text style={s.headerTitle}>Editar Marco</Text>
             <View style={{ width: 48 }} />
           </View>
         </View>
 
         <ScrollView style={s.body} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
 
-          {/* Intro */}
-          <View style={s.introCard}>
-            <View style={s.introIconWrap}>
-              <MaterialIcons name="flag" size={20} color={AppTheme.colors.tertiary} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={s.introTitle}>Registre sua conquista</Text>
-              <Text style={s.introText}>
-                Cada etapa da sua jornada merece ser celebrada. Registrar marcos é uma forma de reconhecer o quanto você já avançou.
-              </Text>
-            </View>
-          </View>
-
-          {/* Campos */}
           <View style={s.section}>
             <Text style={s.sectionLabel}>Informações do marco</Text>
             <View style={s.card}>
@@ -141,7 +132,7 @@ export default function MarcosAdd() {
             <TouchableOpacity style={s.saveBtn} onPress={handleSave} disabled={saving} activeOpacity={0.85}>
               {saving
                 ? <ActivityIndicator color="#fff" size="small" />
-                : <><MaterialIcons name="check" size={18} color="#fff" /><Text style={s.saveBtnText}>Salvar marco</Text></>}
+                : <><MaterialIcons name="check" size={18} color="#fff" /><Text style={s.saveBtnText}>Salvar alterações</Text></>}
             </TouchableOpacity>
           </View>
 
@@ -164,30 +155,7 @@ const s = StyleSheet.create({
     fontSize: 17, fontWeight: '700', color: '#fff',
     fontFamily: AppTheme.fonts.titleMedium.fontFamily,
   },
-
   body: { flex: 1 },
-
-  introCard: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 12,
-    backgroundColor: AppTheme.colors.cardBackground,
-    borderRadius: 16, padding: 16, margin: 16, marginBottom: 0,
-    borderWidth: 1, borderColor: AppTheme.colors.dotsColor,
-  },
-  introIconWrap: {
-    width: 36, height: 36, borderRadius: 10,
-    backgroundColor: AppTheme.colors.secondary,
-    alignItems: 'center', justifyContent: 'center',
-    flexShrink: 0, marginTop: 2,
-  },
-  introTitle: {
-    fontSize: 14, fontWeight: '700', color: AppTheme.colors.nameText,
-    fontFamily: AppTheme.fonts.labelLarge.fontFamily, marginBottom: 4,
-  },
-  introText: {
-    fontSize: 13, color: AppTheme.colors.placeholderText, lineHeight: 19,
-    fontFamily: AppTheme.fonts.bodySmall.fontFamily,
-  },
-
   section: { paddingHorizontal: 16, marginTop: 18 },
   sectionLabel: {
     fontSize: 11, fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase',
@@ -223,7 +191,6 @@ const s = StyleSheet.create({
     fontSize: 11.5, color: AppTheme.colors.placeholderText,
     fontFamily: AppTheme.fonts.labelSmall.fontFamily, marginTop: 1,
   },
-
   saveBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     backgroundColor: AppTheme.colors.tertiary,

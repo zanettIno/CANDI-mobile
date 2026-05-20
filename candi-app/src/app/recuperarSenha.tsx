@@ -144,9 +144,9 @@ const RecuperarSenha: React.FC = () => {
         <Header>
           <BackButton onPress={() => router.back()}>
             <MaterialIcons
-              name="arrow-back-ios"
+              name="arrow-back"
               size={24}
-              color={AppTheme.colors.tertinaryTextColor}
+              color="#fff"
             />
           </BackButton>
         </Header>
@@ -185,3 +185,4 @@ const RecuperarSenha: React.FC = () => {
 };
 
 export default RecuperarSenha;
+
