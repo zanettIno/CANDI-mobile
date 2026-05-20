@@ -6,8 +6,6 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { AppTheme } from '../../../theme';
-import LoginSignupBackground from '../../../components/LoginSignupBackground';
-
 const STATUS_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 44;
 
 const FEATURES = [
@@ -23,26 +21,22 @@ export default function About() {
 
   return (
     <View style={s.screen}>
-      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      {/* Header com ondas naturais */}
-      <View style={s.header}>
-        <View style={s.headerWaves}><LoginSignupBackground /></View>
-        <View style={[s.headerRow, { paddingTop: STATUS_TOP + 8 }]}>
-          <TouchableOpacity
-            onPress={() => router.canGoBack() ? router.back() : router.replace('/screens/(tabs)/homeProfile')}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <MaterialIcons name="arrow-back" size={24} color={AppTheme.colors.nameText} />
-          </TouchableOpacity>
-          <Text style={s.headerTitle}>Sobre o CANDI</Text>
-          <View style={{ width: 24 }} />
-        </View>
+      {/* Header sólido — sem ondas, logo legível */}
+      <View style={[s.header, { paddingTop: STATUS_TOP }]}>
+        <TouchableOpacity
+          style={s.backBtn}
+          onPress={() => router.canGoBack() ? router.back() : router.replace('/screens/(tabs)/homeProfile')}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <MaterialIcons name="arrow-back" size={24} color="#fff" />
+        </TouchableOpacity>
 
-        {/* Logo na área de ondas */}
+        {/* Logo centralizada no header colorido */}
         <View style={s.logoWrap}>
           <Image
-            source={require('../../../../assets/images/original.png')}
+            source={require('../../../../assets/images/rosa_clarinho.png')}
             style={s.logo}
             resizeMode="contain"
           />
@@ -125,28 +119,21 @@ export default function About() {
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: AppTheme.colors.background },
 
-  header: { position: 'relative', height: 220 },
-  headerWaves: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
-  headerRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, paddingBottom: 4, zIndex: 2,
+  header: {
+    backgroundColor: AppTheme.colors.tertiary,
+    paddingBottom: 28,
+    paddingHorizontal: 20,
   },
-  headerTitle: {
-    fontSize: 17, fontWeight: '700', color: AppTheme.colors.nameText,
-    fontFamily: AppTheme.fonts.titleMedium.fontFamily,
-  },
-
-  logoWrap: {
-    flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, zIndex: 2,
-  },
-  logo: { width: 140, height: 44 },
+  backBtn: { marginBottom: 8 },
+  logoWrap: { alignItems: 'center', gap: 12 },
+  logo: { width: 160, height: 52, tintColor: '#fff' },
   versionPill: {
-    backgroundColor: AppTheme.colors.cardBackground,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     borderRadius: 12, paddingHorizontal: 14, paddingVertical: 5,
-    borderWidth: 1, borderColor: AppTheme.colors.dotsColor,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)',
   },
   versionText: {
-    fontSize: 12, fontWeight: '600', color: AppTheme.colors.placeholderText,
+    fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.9)',
     fontFamily: AppTheme.fonts.labelMedium.fontFamily,
   },
 
