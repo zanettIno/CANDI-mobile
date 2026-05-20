@@ -172,8 +172,10 @@ export const PostCardView: React.FC<PostCardViewProps> = ({
       const data = await getComments(postId);
       setComments(data);
       setCommentsLoaded(true);
+      // Sincroniza o contador com a quantidade real — corrige contadores desatualizados no banco
+      if (data.length !== commentCount) setCommentCount(data.length);
     } catch {
-      // silently fail — comments just won't show
+      // silently fail
     } finally {
       setCommentsLoading(false);
     }
@@ -308,8 +310,10 @@ export const PostCardView: React.FC<PostCardViewProps> = ({
               <ScrollView
                 style={styles.commentsList}
                 nestedScrollEnabled
-                showsVerticalScrollIndicator={false}
+                scrollEnabled
+                showsVerticalScrollIndicator
                 keyboardShouldPersistTaps="handled"
+                contentContainerStyle={{ paddingBottom: 4 }}
               >
                 {comments.map(c => (
                   <View key={c.comment_id} style={styles.commentItem}>
@@ -479,7 +483,7 @@ const styles = StyleSheet.create({
     marginTop: 12, paddingTop: 12,
   },
   commentsList: {
-    maxHeight: 260, // ~4 comentários visíveis; usuário rola para ver mais
+    maxHeight: 220,
     borderTopWidth: 1, borderTopColor: AppTheme.colors.dotsColor,
   },
   noComments: {
