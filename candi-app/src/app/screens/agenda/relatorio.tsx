@@ -13,13 +13,24 @@ import { useScrollToTopOnFocus } from '@/hooks/useScrollToTopOnFocus';
 
 const STATUS_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 44;
 
+// Tipagem para organizar o que vem do seu prompt do Gemini
+interface AnalysisState {
+  resumoEmpatico: string;
+  tendenciaGeral: string;
+  observacoesRelevantes: string;
+  recomendacoes: string[];
+  mensagemAlerta: string;
+}
+
 export default function Relatorio() {
   const router = useRouter();
   const toast = useToast();
   const scrollRef = useScrollToTopOnFocus();
   const [userUid, setUserUid] = useState('');
-  const [analysis, setAnalysis] = useState('');
   const [loading, setLoading] = useState(false);
+  
+  // Agora o estado guarda o objeto completo estruturado
+  const [analysis, setAnalysis] = useState<AnalysisState | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -27,7 +38,10 @@ export default function Relatorio() {
         const token = await AsyncStorage.getItem('accessToken');
         if (!token) return;
         const res = await fetch(`${API_BASE_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
-        if (res.ok) { const d = await res.json(); setUserUid(d.profile_id); }
+        if (res.ok) { 
+          const d = await res.json(); 
+          setUserUid(d.profile_id); 
+        }
       } catch { }
     };
     load();
@@ -36,21 +50,46 @@ export default function Relatorio() {
   const handleGenerate = async () => {
     if (!userUid) return;
     setLoading(true);
+    setAnalysis(null); // Limpa o relatório anterior
+    
     try {
-      const res = await fetch('https://aruaf5hme7.execute-api.us-east-1.amazonaws.com/prod/ia/', {
+      const res = await fetch('https://o4qybt43vyqsb6p3uvebkczjqq0rsufl.lambda-url.us-east-1.on.aws/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ uid: userUid }),
       });
+      
       if (res.ok) {
         const data = await res.json();
-        const body = typeof data.body === 'string' ? JSON.parse(data.body) : data;
-        setAnalysis(body.ai_analysis || '');
+        
+        let parsedBody = data;
+        if (data && data.body) {
+          parsedBody = typeof data.body === 'string' ? JSON.parse(data.body) : data.body;
+        }
+
+        const ai = parsedBody.ai_analysis;
+
+        if (ai) {
+          // Mapeia cirurgicamente cada chave conforme o seu System Prompt do Lambda
+          setAnalysis({
+            resumoEmpatico: ai.resumo_empatico || '',
+            tendenciaGeral: ai.analise_sentimentos?.tendencia_geral || 'Não identificada',
+            observacoesRelevantes: ai.analise_sentimentos?.observacoes_relevantes || '',
+            recomendacoes: Array.isArray(ai.recomendacoes) ? ai.recomendacoes : [],
+            mensagemAlerta: ai.alerta_saude_mental?.mensagem || ''
+          });
+        } else {
+          toast.error('Estrutura de relatório inválida.');
+        }
       } else {
         toast.error('Não foi possível gerar o relatório.');
       }
-    } catch { toast.error('Erro de conexão.'); }
-    finally { setLoading(false); }
+    } catch (error) { 
+      console.error(error);
+      toast.error('Erro de conexão.'); 
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   return (
@@ -59,7 +98,10 @@ export default function Relatorio() {
 
       <View style={[s.header, { paddingTop: STATUS_TOP }]}>
         <View style={s.headerRow}>
-          <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/screens/(tabs)/homeAgenda' as any)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <TouchableOpacity 
+            onPress={() => router.canGoBack() ? router.back() : router.replace('/screens/(tabs)/homeAgenda' as any)} 
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
             <MaterialIcons name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
           <Text style={s.headerTitle}>Relatório de Saúde</Text>
@@ -78,7 +120,7 @@ export default function Relatorio() {
             <View style={{ flex: 1 }}>
               <Text style={s.introTitle}>Relatório personalizado</Text>
               <Text style={s.introText}>
-                Nossa IA analisa seus compromissos, sintomas e medicamentos para gerar um resumo do seu tratamento.
+                Nossa IA analisa seus compromissos, sintomas e sentimentos para gerar um resumo do seu tratamento.
               </Text>
             </View>
           </View>
@@ -91,10 +133,53 @@ export default function Relatorio() {
           </View>
         )}
 
-        {analysis ? (
-          <View style={s.reportCard}>
-            <Text style={s.reportTitle}>Análise</Text>
-            <Text style={s.reportText}>{analysis}</Text>
+        {/* --- EXIBIÇÃO DO RELATÓRIO ESTRUTURADO --- */}
+        {analysis && !loading ? (
+          <View style={{ gap: 14 }}>
+            
+            {/* Alerta de Saúde Mental (Só renderiza se a IA preencher a mensagem) */}
+            {analysis.mensagemAlerta ? (
+              <View style={[s.reportCard, { borderColor: '#ffccd5', backgroundColor: '#fff5f5' }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <MaterialIcons name="warning" size={18} color="#d9383a" />
+                  <Text style={[s.reportTitle, { color: '#d9383a' }]}>Aviso Importante</Text>
+                </View>
+                <Text style={[s.reportText, { color: '#b32426' }]}>{analysis.mensagemAlerta}</Text>
+              </View>
+            ) : null}
+
+            {/* Card Principal: Resumo e Tendência */}
+            <View style={s.reportCard}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={s.reportTitle}>Resumo Geral</Text>
+                <View style={s.badge}>
+                  <Text style={s.badgeText}>{analysis.tendenciaGeral}</Text>
+                </View>
+              </View>
+              <Text style={s.reportText}>{analysis.resumoEmpatico}</Text>
+            </View>
+
+            {/* Card de Observações Relevantes */}
+            {analysis.observacoesRelevantes ? (
+              <View style={s.reportCard}>
+                <Text style={s.reportTitle}>Padrões & Observações</Text>
+                <Text style={s.reportText}>{analysis.observacoesRelevantes}</Text>
+              </View>
+            ) : null}
+
+            {/* Card de Recomendações (Mapeia o Array para linhas de texto) */}
+            {analysis.recomendacoes.length > 0 ? (
+              <View style={s.reportCard}>
+                <Text style={s.reportTitle}>Recomendações para Hoje</Text>
+                {analysis.recomendacoes.map((item, index) => (
+                  <View key={index} style={s.todoLine}>
+                    <MaterialIcons name="check-circle-outline" size={16} color={AppTheme.colors.tertiary} style={{ marginTop: 2 }} />
+                    <Text style={s.todoText}>{item}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+
           </View>
         ) : null}
 
@@ -102,10 +187,16 @@ export default function Relatorio() {
           style={[s.btn, (!userUid || loading) && { opacity: 0.5 }]}
           onPress={handleGenerate}
           disabled={!userUid || loading}
-          activeOpacity={0.85}>
-          {loading
-            ? <ActivityIndicator color="#fff" size="small" />
-            : <><MaterialIcons name="auto-awesome" size={18} color="#fff" /><Text style={s.btnText}>{analysis ? 'Gerar novo relatório' : 'Gerar relatório'}</Text></>}
+          activeOpacity={0.85}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <>
+              <MaterialIcons name="auto-awesome" size={18} color="#fff" />
+              <Text style={s.btnText}>{analysis ? 'Gerar novo relatório' : 'Gerar relatório'}</Text>
+            </>
+          )}
         </TouchableOpacity>
 
       </ScrollView>
@@ -142,6 +233,19 @@ const s = StyleSheet.create({
   },
   reportTitle: { fontSize: 14, fontWeight: '700', color: AppTheme.colors.nameText, fontFamily: AppTheme.fonts.labelLarge.fontFamily },
   reportText: { fontSize: 14, color: AppTheme.colors.textColor, lineHeight: 22, fontFamily: AppTheme.fonts.bodyMedium.fontFamily },
+  badge: {
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20
+  },
+  badgeText: {
+    fontSize: 11, fontWeight: '600', color: AppTheme.colors.placeholderText, textTransform: 'uppercase'
+  },
+  todoLine: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingVertical: 2
+  },
+  todoText: {
+    flex: 1, fontSize: 14, color: AppTheme.colors.textColor, lineHeight: 20, fontFamily: AppTheme.fonts.bodyMedium.fontFamily
+  },
   btn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     backgroundColor: AppTheme.colors.tertiary, borderRadius: 14, paddingVertical: 15,
