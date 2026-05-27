@@ -44,7 +44,20 @@ export default function Index() {
 
     try {
       await login(email, password);
-      router.push('/screens/(tabs)/home'); 
+      // Busca o perfil para checar a role e redirecionar corretamente
+      const token = await (await import('@react-native-async-storage/async-storage')).default.getItem('accessToken');
+      const { API_BASE_URL } = await import('constants/api');
+      const me = await fetch(`${API_BASE_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
+      const profile = me.ok ? await me.json() : {};
+      const role = profile.role || 'patient';
+      await (await import('@react-native-async-storage/async-storage')).default.setItem('userRole', role);
+      if (role === 'admin') {
+        router.replace('/screens/admin');
+      } else if (role === 'support') {
+        router.replace('/screens/support');
+      } else {
+        router.replace('/screens/(tabs)/home');
+      }
     } catch (error) {
       console.error("Erro na requisição de login:", error);
       setErrorMessage('E-mail ou senha incorretos. Tente novamente.');
@@ -190,3 +203,4 @@ const styles = StyleSheet.create({
     fontSize: AppTheme.fonts.bodyLarge.fontSize,
   },
 });
+

@@ -1,133 +1,543 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, Image } from 'react-native';
-import styled from 'styled-components/native';
+import React, { useState, useCallback } from 'react';
+import {
+  View, Text, TouchableOpacity, StyleSheet, Image,
+  Alert, Platform, Modal, TextInput, ActivityIndicator,
+  Pressable, ScrollView,
+} from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { AppTheme } from '../../theme'; 
+import { AppTheme } from '../../theme';
+import Avatar from '@/components/Avatar';
+import { formatRelativeDate } from '@/utils/dateFormat';
+import { toggleLike, toggleFavorite, getComments, addComment, deleteComment as deleteCommentService, deleteGroupPost } from '@/services/communityService';
+import { deletePost as deleteOwnPost } from '@/services/feedService';
+import SharePostModal from '@/components/Modals/SharePostModal';
+import ReportModal from '@/components/Modals/ReportModal';
+import ActionSheet from '@/components/ActionSheet';
+import { useProfile } from '@/context/ProfileContext';
+import { useToast } from '@/context/NotificationContext';
 
+const S3_BASE = 'https://awscandi-image-uploads.s3.us-east-2.amazonaws.com/profile-images';
+const HIT_SLOP = { top: 10, bottom: 10, left: 10, right: 10 };
 
-const PostCardViewContainer = styled(View)`
-  background-color: ${AppTheme.colors.cardBackground};
-  border-radius: 16px;
-  padding: 16px;
-  margin: 8px 16px;
-  border-width: 1px;
-  border-color: ${AppTheme.colors.dotsColor};
-  shadow-color: ${AppTheme.colors.shadow};
-  shadow-offset: 0px 1px;
-  shadow-opacity: 0.05;
-  shadow-radius: 2px;
-  elevation: 1;
-`;
+// ── Imagem do post com fallback ──────────────────────────────────────────────
+const PostImage: React.FC<{ uri: string }> = ({ uri }) => {
+  const [error, setError] = useState(false);
+  if (error) return null;
+  // Encode spaces and special chars in filename part of URL
+  const safeUri = uri.replace(/([^:/?#]+)$/, (match) => encodeURIComponent(decodeURIComponent(match)));
+  if (Platform.OS === 'web') {
+    return (
+      <img
+        src={safeUri}
+        style={{ width: '100%', height: 200, objectFit: 'cover', borderRadius: 10, marginBottom: 12 }}
+        onError={() => setError(true)}
+        crossOrigin="anonymous"
+      />
+    );
+  }
+  return (
+    <Image
+      source={{ uri: safeUri }}
+      style={styles.postImage}
+      resizeMode="cover"
+      onError={() => setError(true)}
+    />
+  );
+};
 
-const ReadPostHeader = styled(View)`
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-`;
-
-const UserInfo = styled(View)`
-  flex-direction: row;
-  align-items: center;
-`;
-
-const UserDetails = styled(View)`
-  margin-left: 8px;
-`;
-
-const UserName = styled(Text)`
-  font-size: ${AppTheme.fonts.bodyMedium.fontSize}px;
-  font-weight: ${AppTheme.fonts.bodyMedium.fontWeight};
-  color: ${AppTheme.colors.nameText};
-`;
-
-const UserHandleAndTime = styled(Text)`
-  font-size: ${AppTheme.fonts.bodySmall.fontSize}px;
-  color: ${AppTheme.colors.placeholderText};
-`;
-
-const PostContent = styled(Text)`
-  font-size: ${AppTheme.fonts.bodyMedium.fontSize}px;
-  line-height: 20px;
-  color: ${AppTheme.colors.textColor};
-  margin-bottom: 16px;
-`;
-
-const PostActions = styled(View)`
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-`;
-
-const ActionIcons = styled(View)`
-  flex-direction: row;
-  align-items: center;
-  gap: 24px;
-`;
-
-const ProfileImage = styled(Image)`
-  width: 40px;
-  height: 40px;
-  border-radius: 20px;
-  background-color: ${AppTheme.colors.placeholderBackground};
-`;
+// ── Tipos ────────────────────────────────────────────────────────────────────
+interface Comment {
+  comment_id: string;
+  profile_id: string;
+  author_name: string;
+  text: string;
+  created_at: string;
+}
 
 interface PostCardViewProps {
+  postId: string;
   userName: string;
   userHandle: string;
   timeAgo: string;
   content: string;
-  profileImageKey?: string; 
+  fileUrl?: string;
+  profileId?: string;
+  initialLikeCount?: number;
+  initialCommentCount?: number;
+  initialLiked?: boolean;
+  initialFavorited?: boolean;
+  onLikeToggle?: (postId: string, liked: boolean) => void;
+  onFavoriteToggle?: (postId: string, favorited: boolean) => void;
+  onAdminDelete?: () => void;
+  onDelete?: (postId: string) => void;
+  canDeleteAnyComment?: boolean;
+  groupId?: string;
 }
 
-export const PostCardView: React.FC<PostCardViewProps> = ({ 
-  userName, 
-  userHandle, 
-  timeAgo, 
-  content,
-  profileImageKey
+// ── Componente ───────────────────────────────────────────────────────────────
+export const PostCardView: React.FC<PostCardViewProps> = ({
+  postId, userName, userHandle, timeAgo, content, fileUrl, profileId,
+  initialLikeCount = 0, initialCommentCount = 0,
+  initialLiked = false, initialFavorited = false,
+  onLikeToggle, onFavoriteToggle, onAdminDelete, onDelete, canDeleteAnyComment = false, groupId,
 }) => {
+  const { profileId: myProfileId } = useProfile();
+  const toast = useToast();
 
-  const getAvatarSource = () => {
-    if (profileImageKey) {
-      return { uri: `https://candi-image-uploads.s3.us-east-1.amazonaws.com/profile-images/${profileImageKey}.jpg` };
+  // Estado inicializado diretamente dos props — o feedKey no FlatList garante remount a cada fetch
+  const [liked, setLiked] = useState(initialLiked);
+  const [likeCount, setLikeCount] = useState(initialLikeCount);
+  const [favorited, setFavorited] = useState(initialFavorited);
+  const [commentCount, setCommentCount] = useState(initialCommentCount);
+  const [likePending, setLikePending] = useState(false);
+  const [favPending, setFavPending] = useState(false);
+
+  const [shareVisible, setShareVisible] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [deleteSheetVisible, setDeleteSheetVisible] = useState(false);
+  const [reportVisible, setReportVisible] = useState(false);
+  const [commentsVisible, setCommentsVisible] = useState(false);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [commentsLoaded, setCommentsLoaded] = useState(false);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentText, setCommentText] = useState('');
+  const [sendingComment, setSendingComment] = useState(false);
+
+  const isOwner = myProfileId && profileId && myProfileId === profileId;
+  const avatarUri = profileId ? `${S3_BASE}/${profileId}.jpg` : undefined;
+
+  // ── Like ────────────────────────────────────────────────────────────────────
+  const handleLike = useCallback(async () => {
+    if (likePending) return;
+    setLikePending(true);
+    const wasLiked = liked;
+    const newLiked = !wasLiked;
+    setLiked(newLiked);
+    // Otimista imediato
+    setLikeCount(wasLiked ? Math.max(0, likeCount - 1) : likeCount + 1);
+    try {
+      const res = await toggleLike(postId);
+      // Usa count real do servidor (ReturnValues: 'UPDATED_NEW' — sempre preciso)
+      if (typeof res?.like_count === 'number') setLikeCount(res.like_count);
+      onLikeToggle?.(postId, newLiked);
+    } catch {
+      setLiked(wasLiked);
+      setLikeCount(likeCount); // rollback
+      Alert.alert('Erro', 'Não foi possível registrar o like.');
+    } finally {
+      setLikePending(false);
     }
-    return require('../../../assets/default-avatar.jpg'); 
+  }, [postId, liked, likeCount, likePending, onLikeToggle]);
+
+  // ── Favoritar ───────────────────────────────────────────────────────────────
+  const handleFavorite = useCallback(async () => {
+    if (favPending) return;
+    setFavPending(true);
+    const wasFav = favorited;
+    const newFav = !wasFav;
+    setFavorited(newFav);
+    try {
+      await toggleFavorite(postId);
+      onFavoriteToggle?.(postId, newFav);
+    } catch {
+      setFavorited(wasFav);
+      Alert.alert('Erro', 'Não foi possível salvar o post.');
+    } finally {
+      setFavPending(false);
+    }
+  }, [postId, favorited, favPending, onFavoriteToggle]);
+
+  // ── Menu 3 pontinhos ────────────────────────────────────────────────────────
+  const handleMenuAction = (action: 'report' | 'delete' | 'copy') => {
+    setMenuVisible(false);
+    if (action === 'copy') {
+      if (Platform.OS === 'web' && navigator.clipboard) {
+        navigator.clipboard.writeText(content);
+        toast.success('Texto copiado para a área de transferência.');
+      } else {
+        Alert.alert('Texto', content);
+      }
+    } else if (action === 'report') {
+      setReportVisible(true); return; // ReportModal abre em separado
+    } else if (action === 'delete') {
+      // Abre ActionSheet — Alert.alert no web tem bug com window.confirm (botões invertidos)
+      setDeleteSheetVisible(true);
+    }
   };
 
+  // ── Comentários ─────────────────────────────────────────────────────────────
+  const loadComments = useCallback(async () => {
+    setCommentsLoading(true);
+    try {
+      const data = await getComments(postId);
+      setComments(data);
+      setCommentsLoaded(true);
+      // Sincroniza o contador com a quantidade real — corrige contadores desatualizados no banco
+      if (data.length !== commentCount) setCommentCount(data.length);
+    } catch {
+      // silently fail
+    } finally {
+      setCommentsLoading(false);
+    }
+  }, [postId]);
+
+  const handleToggleComments = useCallback(() => {
+    setCommentsVisible(v => {
+      if (!v && !commentsLoaded) loadComments();
+      return !v;
+    });
+  }, [commentsLoaded, loadComments]);
+
+  const handleSendComment = useCallback(async () => {
+    const text = commentText.trim();
+    if (!text || sendingComment) return;
+    setSendingComment(true);
+    setCommentText('');
+    try {
+      const newComment = await addComment(postId, text);
+      setComments(prev => [...prev, newComment]);
+      setCommentCount(prev => prev + 1);
+      toast.success('Comentário publicado!');
+    } catch {
+      setCommentText(text);
+      toast.error('Não foi possível enviar o comentário.');
+    } finally {
+      setSendingComment(false);
+    }
+  }, [postId, commentText, sendingComment]);
+
+  const handleDeleteComment = useCallback(async (commentId: string) => {
+    try {
+      await deleteCommentService(postId, commentId, groupId);
+      setComments(prev => prev.filter(c => c.comment_id !== commentId));
+      setCommentCount(prev => Math.max(0, prev - 1));
+      toast.success('Comentário excluído.');
+    } catch {
+      toast.error('Não foi possível excluir o comentário.');
+    }
+  }, [postId, groupId]);
+
+  const doDelete = useCallback(async () => {
+    try {
+      if (groupId) {
+        await deleteGroupPost(groupId, postId);
+      } else {
+        await deleteOwnPost(postId);
+      }
+      onDelete?.(postId);
+      toast.success('Publicação excluída.');
+    } catch (err: any) {
+      toast.error(err.message || 'Não foi possível excluir a publicação.');
+    }
+  }, [postId, groupId, onDelete]);
+
   return (
-    <PostCardViewContainer>
-      <ReadPostHeader>
-        <UserInfo>
-          <ProfileImage source={getAvatarSource()} />
-          <UserDetails>
-            <UserName>{userName}</UserName>
-            <UserHandleAndTime>@{userHandle} • {timeAgo}</UserHandleAndTime>
-          </UserDetails>
-        </UserInfo>
-        <MaterialIcons name="more-vert" size={24} color={AppTheme.colors.placeholderText} />
-      </ReadPostHeader>
+    <>
+      <View style={styles.card}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Avatar uri={avatarUri} name={userName} size={42} />
+          <View style={styles.userDetails}>
+            <Text style={styles.userName} numberOfLines={1}>{userName}</Text>
+            <Text style={styles.userMeta}>@{userHandle} · {formatRelativeDate(timeAgo)}</Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => setMenuVisible(true)}
+            hitSlop={HIT_SLOP}
+            activeOpacity={0.6}
+          >
+            <MaterialIcons name="more-vert" size={22} color={AppTheme.colors.placeholderText} />
+          </TouchableOpacity>
+        </View>
 
-      <PostContent>{content}</PostContent>
+        {/* Conteúdo */}
+        <Text style={styles.content}>{content}</Text>
 
-      <PostActions>
-        <ActionIcons>
-          <TouchableOpacity>
-            <MaterialIcons name="favorite-border" size={24} color={AppTheme.colors.placeholderText} />
+        {/* Imagem */}
+        {fileUrl && <PostImage uri={fileUrl} />}
+
+        {/* Ações */}
+        <View style={styles.actions}>
+          <View style={styles.actionsLeft}>
+            <TouchableOpacity onPress={handleLike} hitSlop={HIT_SLOP} activeOpacity={0.7}
+              style={styles.actionBtn} disabled={likePending}>
+              <MaterialIcons
+                name={liked ? 'favorite' : 'favorite-border'} size={22}
+                color={liked ? '#e05c72' : AppTheme.colors.placeholderText}
+              />
+              {likeCount > 0 && (
+                <Text style={[styles.actionCount, liked && styles.likeCountActive]}>{likeCount}</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={handleToggleComments}
+              hitSlop={HIT_SLOP} activeOpacity={0.7} style={styles.actionBtn}
+            >
+              <MaterialIcons
+                name={commentsVisible ? 'chat-bubble' : 'chat-bubble-outline'} size={22}
+                color={commentsVisible ? AppTheme.colors.tertiary : AppTheme.colors.placeholderText}
+              />
+              {commentCount > 0 && (
+                <Text style={styles.actionCount}>{commentCount}</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => setShareVisible(true)} hitSlop={HIT_SLOP}
+              activeOpacity={0.7} style={styles.actionBtn}>
+              <MaterialIcons name="share" size={22} color={AppTheme.colors.placeholderText} />
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity onPress={handleFavorite} hitSlop={HIT_SLOP} activeOpacity={0.7}
+            disabled={favPending}>
+            <MaterialIcons
+              name={favorited ? 'bookmark' : 'bookmark-border'} size={22}
+              color={favorited ? AppTheme.colors.tertiary : AppTheme.colors.placeholderText}
+            />
           </TouchableOpacity>
-          <TouchableOpacity>
-            <MaterialIcons name="chat-bubble-outline" size={24} color={AppTheme.colors.placeholderText} />
-          </TouchableOpacity>
-          <TouchableOpacity>
-            <MaterialIcons name="share" size={24} color={AppTheme.colors.placeholderText} />
-          </TouchableOpacity>
-        </ActionIcons>
-        <TouchableOpacity>
-          <MaterialIcons name="bookmark" size={24} color={AppTheme.colors.placeholderText} />
-        </TouchableOpacity>
-      </PostActions>
-    </PostCardViewContainer>
+        </View>
+
+        {/* Seção de comentários inline */}
+        {commentsVisible && (
+          <View style={styles.commentsSection}>
+            {commentsLoading ? (
+              <ActivityIndicator size="small" color={AppTheme.colors.tertiary} style={{ marginVertical: 8 }} />
+            ) : comments.length === 0 ? (
+              <Text style={styles.noComments}>Seja o primeiro a comentar.</Text>
+            ) : (
+              // ScrollView com altura máxima — evita que posts com muitos comentários cresçam infinitamente
+              <ScrollView
+                style={styles.commentsList}
+                nestedScrollEnabled
+                scrollEnabled
+                showsVerticalScrollIndicator
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={{ paddingBottom: 4 }}
+              >
+                {comments.map(c => (
+                  <View key={c.comment_id} style={styles.commentItem}>
+                    <Avatar
+                      uri={c.profile_id ? `${S3_BASE}/${c.profile_id}.jpg` : undefined}
+                      name={c.author_name || ''}
+                      size={26}
+                    />
+                    <View style={{ flex: 1 }}>
+                      <View style={styles.commentHeader}>
+                        <Text style={styles.commentAuthor}>{c.author_name}</Text>
+                        {(c.profile_id === myProfileId || canDeleteAnyComment) && (
+                          <TouchableOpacity onPress={() => handleDeleteComment(c.comment_id)} hitSlop={HIT_SLOP} activeOpacity={0.7}>
+                            <MaterialIcons name="delete-outline" size={14} color={AppTheme.colors.placeholderText} />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                      <Text style={styles.commentText}>{c.text}</Text>
+                    </View>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+            <View style={styles.commentInputRow}>
+              <TextInput
+                style={styles.commentInput}
+                placeholder="Escreva um comentário..."
+                placeholderTextColor={AppTheme.colors.placeholderText}
+                value={commentText}
+                onChangeText={setCommentText}
+                onSubmitEditing={handleSendComment}
+                returnKeyType="send"
+                multiline={false}
+                editable={!sendingComment}
+              />
+              <TouchableOpacity
+                onPress={handleSendComment}
+                disabled={!commentText.trim() || sendingComment}
+                hitSlop={HIT_SLOP}
+                activeOpacity={0.7}
+                style={styles.commentSendBtn}
+              >
+                <MaterialIcons
+                  name="send"
+                  size={20}
+                  color={commentText.trim() && !sendingComment ? AppTheme.colors.tertiary : AppTheme.colors.placeholderText}
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+      </View>
+
+      {/* Modal de denúncia */}
+      <ReportModal
+        visible={reportVisible}
+        postId={postId}
+        onDismiss={() => setReportVisible(false)}
+      />
+
+      {/* Share modal */}
+      <SharePostModal
+        visible={shareVisible}
+        postId={postId}
+        postContent={content}
+        onDismiss={() => setShareVisible(false)}
+      />
+
+      {/* Menu 3 pontinhos */}
+      <Modal transparent visible={menuVisible} animationType="fade" onRequestClose={() => setMenuVisible(false)}>
+        <Pressable style={styles.menuOverlay} onPress={() => setMenuVisible(false)}>
+          <View style={styles.menuSheet}>
+            <View style={styles.menuHandle} />
+            <TouchableOpacity style={styles.menuItem} onPress={() => handleMenuAction('copy')} activeOpacity={0.7}>
+              <MaterialIcons name="content-copy" size={20} color={AppTheme.colors.textColor} />
+              <Text style={styles.menuItemText}>Copiar texto</Text>
+            </TouchableOpacity>
+            {isOwner && (
+              <TouchableOpacity style={styles.menuItem} onPress={() => handleMenuAction('delete')} activeOpacity={0.7}>
+                <MaterialIcons name="delete-outline" size={20} color="#e05c72" />
+                <Text style={[styles.menuItemText, { color: '#e05c72' }]}>Excluir postagem</Text>
+              </TouchableOpacity>
+            )}
+            {onAdminDelete && (
+              <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); onAdminDelete(); }} activeOpacity={0.7}>
+                <MaterialIcons name="remove-circle-outline" size={20} color="#e05c72" />
+                <Text style={[styles.menuItemText, { color: '#e05c72' }]}>Remover do grupo</Text>
+              </TouchableOpacity>
+            )}
+            {!isOwner && !onAdminDelete && (
+              <TouchableOpacity style={styles.menuItem} onPress={() => handleMenuAction('report')} activeOpacity={0.7}>
+                <MaterialIcons name="flag" size={20} color={AppTheme.colors.placeholderText} />
+                <Text style={styles.menuItemText}>Denunciar</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </Pressable>
+      </Modal>
+
+      {/* ActionSheet de confirmação de exclusão — substitui Alert.alert que tem bug no web */}
+      <ActionSheet
+        visible={deleteSheetVisible}
+        title="Excluir postagem?"
+        options={[{
+          label: 'Confirmar exclusão (não pode ser desfeito)',
+          icon: 'delete-forever',
+          destructive: true,
+          onPress: doDelete,
+        }]}
+        onDismiss={() => setDeleteSheetVisible(false)}
+      />
+    </>
   );
 };
+
+const styles = StyleSheet.create({
+  card: {
+    backgroundColor: AppTheme.colors.cardBackground,
+    borderRadius: 16,
+    padding: 16,
+    marginVertical: 6,
+    marginHorizontal: 16,
+    borderWidth: 1,
+    borderColor: AppTheme.colors.dotsColor,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+  },
+  header: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+  userDetails: { flex: 1, marginLeft: 10 },
+  userName: {
+    fontFamily: AppTheme.fonts.bodyMedium.fontFamily,
+    fontSize: AppTheme.fonts.bodyMedium.fontSize,
+    fontWeight: '600', color: AppTheme.colors.nameText,
+  },
+  userMeta: {
+    fontFamily: AppTheme.fonts.bodySmall.fontFamily,
+    fontSize: AppTheme.fonts.bodySmall.fontSize,
+    color: AppTheme.colors.placeholderText, marginTop: 1,
+  },
+  content: {
+    fontFamily: AppTheme.fonts.bodyMedium.fontFamily,
+    fontSize: AppTheme.fonts.bodyMedium.fontSize,
+    color: AppTheme.colors.textColor, lineHeight: 22, marginBottom: 12,
+  },
+  postImage: { width: '100%', height: 200, borderRadius: 10, marginBottom: 12 },
+  actions: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    borderTopWidth: 1, borderTopColor: AppTheme.colors.dotsColor, paddingTop: 10,
+  },
+  actionsLeft: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  actionBtn: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 8, paddingVertical: 4,
+    gap: 4, minWidth: 44, minHeight: 44, justifyContent: 'center',
+  },
+  actionCount: {
+    fontSize: 13, color: AppTheme.colors.placeholderText,
+    fontFamily: AppTheme.fonts.bodySmall.fontFamily,
+  },
+  likeCountActive: { color: '#e05c72', fontWeight: '600' },
+
+  // Comments
+  commentsSection: {
+    marginTop: 12, paddingTop: 12,
+  },
+  commentsList: {
+    maxHeight: 220,
+    borderTopWidth: 1, borderTopColor: AppTheme.colors.dotsColor,
+  },
+  noComments: {
+    fontSize: 13, color: AppTheme.colors.placeholderText,
+    fontFamily: AppTheme.fonts.bodySmall.fontFamily,
+    textAlign: 'center', paddingVertical: 8,
+  },
+  commentItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 10 },
+  commentHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
+  commentAuthor: {
+    fontSize: 13, fontWeight: '600', color: AppTheme.colors.nameText,
+    fontFamily: AppTheme.fonts.bodySmall.fontFamily,
+  },
+  commentText: {
+    fontSize: 13, color: AppTheme.colors.textColor,
+    fontFamily: AppTheme.fonts.bodySmall.fontFamily, lineHeight: 18,
+  },
+  commentInputRow: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: AppTheme.colors.background,
+    borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6,
+    marginTop: 8, gap: 8,
+  },
+  commentInput: {
+    flex: 1, fontSize: 13,
+    fontFamily: AppTheme.fonts.bodySmall.fontFamily,
+    color: AppTheme.colors.textColor, minHeight: 32,
+  },
+  commentSendBtn: { padding: 4 },
+
+  // Menu
+  menuOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'flex-end',
+  },
+  menuSheet: {
+    backgroundColor: AppTheme.colors.cardBackground,
+    borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    paddingHorizontal: 20, paddingBottom: 32, paddingTop: 12,
+  },
+  menuHandle: {
+    width: 40, height: 4, borderRadius: 2,
+    backgroundColor: AppTheme.colors.dotsColor,
+    alignSelf: 'center', marginBottom: 16,
+  },
+  menuItem: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    paddingVertical: 14,
+    borderBottomWidth: 1, borderBottomColor: AppTheme.colors.dotsColor,
+  },
+  menuItemText: {
+    fontSize: 15, fontFamily: AppTheme.fonts.bodyMedium.fontFamily,
+    color: AppTheme.colors.textColor, fontWeight: '500',
+  },
+});
 
 export default PostCardView;

@@ -1,236 +1,236 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
-import { AppTheme } from '../../../theme';
-import { Button, Dialog, Portal, Text } from 'react-native-paper';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { DatePickerModal } from 'react-native-paper-dates';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
-
-import NewPassageHeader from '../../../components/NewPassage/NewPassageHeader';
-import DiaryTextInput from '../../../components/NewPassage/DiaryTextInput';
-import MoodSelector from '../../../components/NewPassage/MoodSelector';
-import SaveButton from '../../../components/NewPassage/SaveButton';
-
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput,
+  Platform, StatusBar, ActivityIndicator, KeyboardAvoidingView, Animated,
+} from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
+import { router, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AppTheme } from '../../../theme';
 import { API_BASE_URL } from '../../../constants/api';
+import { useToast } from '@/context/NotificationContext';
 
-const NewPassageScreen = () => {
-  const [date, setDate] = useState<Date | undefined>(new Date());
-  const [isDatePickerVisible, setDatePickerVisible] = useState(false);
-  const [title, setTitle] = useState('');
-  const [bodyText, setBodyText] = useState('');
-  const [mood, setMood] = useState('🙂');
-  const [isSaving, setIsSaving] = useState(false);
-  const [isClearDialogVisible, setClearDialogVisible] = useState(false);
-  const showClearDialog = () => setClearDialogVisible(true);
-  const hideClearDialog = () => setClearDialogVisible(false);
+const STATUS_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 44;
+const LINE_H = 32;
+const NUM_LINES = 60;
+
+function formatFull(dateStr: string) {
+  try {
+    const d = new Date(dateStr + 'T12:00:00');
+    return d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+  } catch { return dateStr; }
+}
+
+export default function PassagemAdd() {
+  const toast = useToast();
+  const params = useLocalSearchParams<{ date?: string }>();
+  const [selectedDate] = useState(params.date ?? new Date().toISOString().split('T')[0]);
+  const [content, setContent] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [checking, setChecking] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (date) {
-      setTitle(`Passagem do dia ${format(date, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}`);
-    }
-  }, [date]);
-
-  const onDismissDatePicker = useCallback(() => setDatePickerVisible(false), []);
-  const onConfirmDatePicker = useCallback((params: { date: Date | undefined }) => {
-    setDatePickerVisible(false);
-    setDate(params.date);
-  }, []);
-  
-  const handleClearAll = () => showClearDialog();
-  const onConfirmClear = () => {
-    setTitle('');
-    setBodyText('');
-    hideClearDialog();
-  };
-
-  const handleSaveAsDraft = async () => {
-    // Save draft locally using AsyncStorage
-    try {
-      const draftData = {
-        date: date?.toISOString(),
-        title,
-        content: bodyText,
-        mood,
-      };
-      await AsyncStorage.setItem('diaryDraft', JSON.stringify(draftData));
-      Alert.alert('Sucesso', 'Rascunho salvo localmente');
-    } catch (error) {
-      console.error('Error saving draft:', error);
-      Alert.alert('Erro', 'Não foi possível salvar o rascunho');
-    }
-  };
-
-  const handleSavePassage = async () => {
-    // Validate inputs
-    if (!date) {
-      Alert.alert('Atenção', 'Por favor, selecione uma data');
-      return;
-    }
-
-    if (!bodyText.trim()) {
-      Alert.alert('Atenção', 'Por favor, escreva o conteúdo da passagem');
-      return;
-    }
-
-    setIsSaving(true);
-
-    try {
-      const token = await AsyncStorage.getItem('accessToken');
-      if (!token) throw new Error("Não autenticado");
-
-      // Format date as YYYY-MM-DD for the API
-      const formattedDate = format(date, 'yyyy-MM-dd');
-
-      const endpoint = `${API_BASE_URL}/diary`;
-
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          date: formattedDate,
-          content: bodyText,
-        }),
-      });
-
-      if (response.ok) {
-        Alert.alert(
-          'Sucesso!', 
-          'Sua passagem foi salva no diário.',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                // Clear the form
-                setBodyText('');
-                setDate(new Date());
-                // Remove draft if exists
-                AsyncStorage.removeItem('diaryDraft');
-                // Navigate back to diary screen
-                router.back();
-              }
-            }
-          ]
-        );
-      } else {
-        const errorData = await response.json();
-        Alert.alert('Erro', errorData.message || 'Não foi possível salvar a passagem');
-      }
-    } catch (error) {
-      console.error('Error saving diary entry:', error);
-      Alert.alert('Erro de Rede', 'Não foi possível conectar ao servidor');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleOpenMoodModal = () => console.log('Abrir seletor de humor');
-
-  // Load draft on component mount
-  useEffect(() => {
-    const loadDraft = async () => {
+    const check = async () => {
+      setChecking(true);
       try {
-        const draftJson = await AsyncStorage.getItem('diaryDraft');
-        if (draftJson) {
-          const draft = JSON.parse(draftJson);
-          if (draft.date) setDate(new Date(draft.date));
-          if (draft.title) setTitle(draft.title);
-          if (draft.content) setBodyText(draft.content);
-          if (draft.mood) setMood(draft.mood);
-        }
-      } catch (error) {
-        console.error('Error loading draft:', error);
+        const token = await AsyncStorage.getItem('accessToken');
+        if (!token) return;
+        const res = await fetch(`${API_BASE_URL}/diary?date=${selectedDate}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) { const d = await res.json(); setContent(d.content || ''); setIsEditing(true); }
+        else { setContent(''); setIsEditing(false); }
+      } catch { setIsEditing(false); }
+      finally {
+        setChecking(false);
+        Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
       }
     };
-    loadDraft();
-  }, []);
-  
+    check();
+  }, [selectedDate]);
+
+  const handleSave = async () => {
+    if (!content.trim()) { toast.error('Escreva algo antes de salvar.'); return; }
+    setSaving(true);
+    try {
+      const token = await AsyncStorage.getItem('accessToken');
+      const res = await fetch(`${API_BASE_URL}/diary`, {
+        method: isEditing ? 'PATCH' : 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date: selectedDate, content: content.trim() }),
+      });
+      if (!res.ok) throw new Error((await res.json()).message || 'Erro');
+      toast.success(isEditing ? 'Passagem atualizada.' : 'Passagem salva.');
+      if (router.canGoBack()) router.back();
+      else router.replace('/screens/(tabs)/homeDiary' as any);
+    } catch (e: any) { toast.error(e.message || 'Não foi possível salvar.'); }
+    finally { setSaving(false); }
+  };
+
   return (
-    <SafeAreaProvider style={styles.provider}>
-      <View style={styles.safeArea}>
-        <View style={{
-          height: '4%'
-        }}/>
-          <NewPassageHeader 
-              onCalendarPress={() => setDatePickerVisible(true)}
-              onClearAll={handleClearAll}
-              onSaveAsDraft={handleSaveAsDraft}
-          />
-          
-          <DatePickerModal
-            locale="pt" mode="single" visible={isDatePickerVisible}
-            onDismiss={onDismissDatePicker} date={date} onConfirm={onConfirmDatePicker}
-          />
+    <>
+      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+      <View style={s.screen}>
 
-          <KeyboardAvoidingView
-              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-              style={styles.container}
-          >
-              <ScrollView 
-                contentContainerStyle={styles.scrollContent} 
+        <View style={[s.header, { paddingTop: STATUS_TOP + 8 }]}>
+          <TouchableOpacity
+            onPress={() => router.canGoBack() ? router.back() : router.replace('/screens/(tabs)/homeDiary' as any)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <MaterialIcons name="close" size={22} color={AppTheme.colors.placeholderText} />
+          </TouchableOpacity>
+          <View style={{ flex: 1 }} />
+          <TouchableOpacity
+            style={[s.saveBtn, saving && { opacity: 0.5 }]}
+            onPress={handleSave} disabled={saving} activeOpacity={0.8}>
+            {saving ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.saveBtnText}>Salvar</Text>}
+          </TouchableOpacity>
+        </View>
+
+        {checking ? (
+          <View style={s.loader}><ActivityIndicator color={AppTheme.colors.tertiary} /></View>
+        ) : (
+          <Animated.View style={[{ flex: 1 }, { opacity: fadeAnim }]}>
+            <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+              <ScrollView
+                contentContainerStyle={s.page}
                 keyboardShouldPersistTaps="handled"
-              >
-                  <View style={styles.inputsContainer}>
-                      <DiaryTextInput variant="title" value={title} onChangeText={setTitle} />
-                      <DiaryTextInput variant="body" value={bodyText} onChangeText={setBodyText} placeholder="Digite seu texto..." multiline />
+                showsVerticalScrollIndicator={false}>
+
+                {/* Folha com linhas */}
+                <View style={s.sheet}>
+
+                  {/* Linhas horizontais */}
+                  {Array.from({ length: NUM_LINES }).map((_, i) => (
+                    <View key={i} style={[s.ruleLine, { top: 82 + i * LINE_H }]} />
+                  ))}
+
+                  {/* Linha de margem vertical */}
+                  <View style={s.marginLine} />
+
+                  {/* Data no topo da folha */}
+                  <View style={s.dateRow}>
+                    <View style={s.dateAccent} />
+                    <Text style={s.dateText}>{formatFull(selectedDate)}</Text>
                   </View>
-                  <View style={styles.bottomContainer}>
-                      <MoodSelector currentMoodEmoji={mood} onPress={handleOpenMoodModal} />
-                      <SaveButton onPress={handleSavePassage} loading={isSaving} />
-                  </View>
+                  <View style={s.dateDivider} />
+
+                  {/* Área de escrita */}
+                  <TextInput
+                    style={s.input}
+                    value={content}
+                    onChangeText={setContent}
+                    placeholder="Escreva aqui o que está sentindo..."
+                    placeholderTextColor="#C8B89A"
+                    multiline
+                    textAlignVertical="top"
+                    autoFocus={!isEditing}
+                    selectionColor={AppTheme.colors.primary}
+                  />
+                </View>
+
               </ScrollView>
-          </KeyboardAvoidingView>
 
-
-          <Portal>
-            <Dialog 
-              visible={isClearDialogVisible} 
-              onDismiss={hideClearDialog}
-              style={styles.dialog} 
-            >
-              <Dialog.Title style={styles.dialogTitle}>Limpar Tudo</Dialog.Title>
-              <Dialog.Content>
-                <Text variant="bodyMedium" style={styles.dialogContentText}>
-                  Tem certeza que deseja apagar o conteúdo?
+              <View style={s.footer}>
+                <Text style={s.charCount}>
+                  {content.length > 0 ? `${content.length} caracteres` : ''}
                 </Text>
-              </Dialog.Content>
-              <Dialog.Actions>
-                <Button onPress={hideClearDialog} textColor={AppTheme.colors.primary}>
-                  Cancelar
-                </Button>
-                <Button onPress={onConfirmClear} textColor={AppTheme.colors.error}>
-                  Apagar
-                </Button>
-              </Dialog.Actions>
-            </Dialog>
-          </Portal>
-
+              </View>
+            </KeyboardAvoidingView>
+          </Animated.View>
+        )}
       </View>
-    </SafeAreaProvider>
+    </>
   );
-};
+}
 
-const styles = StyleSheet.create({
-  provider: { flex: 1 },
-  safeArea: { flex: 1, backgroundColor: AppTheme.colors.background },
-  container: { flex: 1 },
-  scrollContent: { flexGrow: 1, justifyContent: 'space-between' },
-  inputsContainer: { flex: 1, paddingHorizontal: 16, paddingTop: 16 },
-  bottomContainer: { padding: 16 },
-  
-  dialog: {
-    borderRadius: 28, 
-    backgroundColor: '#F8F0F0', 
+const s = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: '#F5F0E8' },
+
+  header: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 20, paddingBottom: 12,
+    borderBottomWidth: 1, borderBottomColor: '#E0D8C8',
+    backgroundColor: '#F5F0E8',
   },
-  dialogTitle: {
+  saveBtn: {
+    backgroundColor: AppTheme.colors.tertiary,
+    borderRadius: 9, paddingHorizontal: 14, paddingVertical: 6,
   },
-  dialogContentText: {
-  }
+  saveBtnText: { fontSize: 13, fontWeight: '700', color: '#fff', fontFamily: AppTheme.fonts.labelMedium.fontFamily },
+
+  loader: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+
+  page: { flexGrow: 1, padding: 16, paddingBottom: 24 },
+
+  sheet: {
+    flex: 1,
+    backgroundColor: '#FEF9EE',
+    borderRadius: 4,
+    minHeight: 600,
+    position: 'relative',
+    overflow: 'hidden',
+    shadowColor: '#8A7A60',
+    shadowOffset: { width: 1, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+    elevation: 3,
+    paddingBottom: 32,
+  },
+
+  ruleLine: {
+    position: 'absolute',
+    left: 0, right: 0,
+    height: 1,
+    backgroundColor: '#DDD0B0',
+  },
+
+  marginLine: {
+    position: 'absolute',
+    top: 0, bottom: 0,
+    left: 52,
+    width: 1,
+    backgroundColor: AppTheme.colors.primary + '90',
+  },
+
+  dateRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: 16, paddingTop: 16, paddingBottom: 10,
+  },
+  dateAccent: {
+    width: 3, height: 16, borderRadius: 2,
+    backgroundColor: AppTheme.colors.primary,
+  },
+  dateText: {
+    fontSize: 12.5, color: '#8A7A60',
+    fontFamily: AppTheme.fonts.bodySmall.fontFamily,
+    textTransform: 'capitalize', letterSpacing: 0.2,
+  },
+  dateDivider: {
+    height: 1, backgroundColor: '#DDD0B0',
+    marginHorizontal: 16, marginBottom: 0,
+  },
+
+  input: {
+    flex: 1, minHeight: 480,
+    fontSize: 16, color: '#2D2010',
+    fontFamily: AppTheme.fonts.bodyMedium.fontFamily,
+    lineHeight: LINE_H,
+    paddingHorizontal: 16,
+    paddingLeft: 64,
+    paddingTop: 8,
+    backgroundColor: 'transparent',
+  },
+
+  footer: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingVertical: 12,
+    borderTopWidth: 1, borderTopColor: '#E0D8C8',
+    backgroundColor: '#F5F0E8',
+  },
+  charCount: {
+    fontSize: 12, color: '#A89878',
+    fontFamily: AppTheme.fonts.labelSmall.fontFamily,
+  },
 });
-
-export default NewPassageScreen;

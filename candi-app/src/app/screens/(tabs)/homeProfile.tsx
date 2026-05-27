@@ -1,128 +1,318 @@
 import * as React from 'react';
 import { useState, useEffect } from 'react';
-import { HomeBackground } from '../../../components/HomeProfile/HomeBackground';
-import { ContentContainer } from '../../../components/HomeProfile/ContentContainer';
-import { ProfileCard } from '../../../components/HomeProfile/ProfileCard';
-import { LabelsRow } from '../../../components/HomeProfile/LabelsRow';
-import { Separator } from '../../../components/HomeProfile/Separator';
-import { AdvancedSettings } from '../../../components/HomeProfile/AdvancedSettings';
-import { AdvancedLinks } from '@/components/HomeProfile/AdvancedLinks';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_BASE_URL } from '../../../constants/api';
-import { cancerTypes } from '@/components/Inputs/inputTypeCancer';
-import ProfilePictureModal from '../../../components/Modals/ProfilePictureModal';
+import {
+  View, Text, StyleSheet, TouchableOpacity, ScrollView,
+  Platform, StatusBar, Image, ActivityIndicator,
+} from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AppTheme } from '../../../theme';
+
+import ProfilePictureModal from '../../../components/Modals/ProfilePictureModal';
+import { cancerTypes } from '../../../components/Inputs/inputTypeCancer';
+import { useProfile } from '@/context/ProfileContext';
+import { API_BASE_URL } from '../../../constants/api';
+import ActionSheet from '@/components/ActionSheet';
+
+const STATUS_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 44;
+const S3_BASE = 'https://awscandi-image-uploads.s3.us-east-2.amazonaws.com/profile-images';
 
 interface UserProfile {
-    profile_id: string;
-    profile_name: string;
-    profile_email: string;
-    profile_birth_date: string;
-    cancer_type_id: number;
-    profile_picture_last_updated?: number;
+  profile_id: string;
+  profile_name: string;
+  profile_email: string;
+  profile_nickname?: string;
+  profile_birth_date?: string;
+  cancer_type_id?: number;
+  profile_picture_last_updated?: number;
 }
 
-export default function HomeScreen() {
-    const [profile, setProfile] = useState<UserProfile | null>(null);
-    const [modalVisible, setModalVisible] = useState(false);
+export default function HomeProfile() {
+  const router = useRouter();
+  const { refreshProfile, role } = useProfile();
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [photoModal, setPhotoModal] = useState(false);
+  const [logoutSheet, setLogoutSheet] = useState(false);
 
-    const router = useRouter();
-
-    const gotoaddCheckpoint = () => {
-        router.push('/screens/profile/marcosView');
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const token = await AsyncStorage.getItem('accessToken');
+        if (!token) return;
+        const res = await fetch(`${API_BASE_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
+        if (res.ok) setProfile(await res.json());
+      } catch { }
+      finally { setLoading(false); }
     };
-    useEffect(() => {
-        const fetchProfileData = async () => {
-            try {
-                const token = await AsyncStorage.getItem('accessToken');
-                if (!token) return;
-                const response = await fetch(`${API_BASE_URL}/auth/me`, {
-                    method: 'GET',
-                    headers: { 'Authorization': `Bearer ${token}` },
-                });
+    load();
+  }, []);
 
-                if (response.ok) {
-                    const data = await response.json();
-                    setProfile(data);
-                }
-            } catch (error) {
-                console.error("Erro ao buscar dados do perfil:", error);
-            }
-        };
+  const handlePhotoUpdate = (deleted = false) => {
+    if (!profile) return;
+    setProfile({ ...profile, profile_picture_last_updated: deleted ? undefined : Date.now() });
+    refreshProfile();
+  };
 
-        fetchProfileData();
-    }, []);
+  const doLogout = async () => {
+    await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'userRole']);
+    router.replace('/');
+  };
 
-    const handlePictureUpdate = (isDeletion: boolean = false) => {
-        if (profile) {
-            setProfile({
-                ...profile,
-                profile_picture_last_updated: isDeletion ? undefined : new Date().getTime(),
-            });
-        }
-    };
+  const avatarUri = profile?.profile_id
+    ? `${S3_BASE}/${profile.profile_id}.jpg${profile.profile_picture_last_updated ? `?t=${profile.profile_picture_last_updated}` : ''}`
+    : undefined;
 
-    const cancerTypeName = profile
-        ? cancerTypes.find(c => c.id === profile.cancer_type_id)?.name || 'Não especificado'
-        : '...';
+  const cancerName = profile?.cancer_type_id
+    ? cancerTypes.find(c => c.id === profile.cancer_type_id)?.name ?? 'Não informado'
+    : 'Não informado';
 
-    let formattedBirthDate = '...';
-    if (profile?.profile_birth_date) {
-        const datePart = profile.profile_birth_date.split('T')[0];
-        const [year, month, day] = datePart.split('-');
-        formattedBirthDate = `${day}/${month}/${year}`;
-    }
+  let birthDate = '';
+  if (profile?.profile_birth_date) {
+    const part = profile.profile_birth_date.split('T')[0];
+    const [y, m, d] = part.split('-');
+    birthDate = `${d}/${m}/${y}`;
+  }
 
-    const getAvatarUri = () => {
-        if (!profile || !profile.profile_picture_last_updated) {
-            return undefined;
-        }
-        const baseUrl = `https://candi-image-uploads.s3.us-east-1.amazonaws.com/profile-images/${profile.profile_id}.jpg`;
-        return `${baseUrl}?timestamp=${profile.profile_picture_last_updated || new Date().getTime()}`;
-    };
+  const menuItems = [
+    ...(role !== 'support' ? [
+      { icon: 'group-add', label: 'Rede de Apoio', sub: 'Gerencie quem acompanha você', onPress: () => router.push('/screens/profile/invite') },
+      { icon: 'flag', label: 'Meus Marcos', sub: 'Conquistas do tratamento', onPress: () => router.push('/screens/profile/marcosView') },
+    ] : []),
+    ...(role === 'admin' ? [
+      { icon: 'shield', label: 'Painel Admin', sub: 'Moderação e administração', onPress: () => router.push('/screens/admin') },
+    ] : []),
+    { icon: 'help-outline', label: 'Ajuda', sub: 'Perguntas frequentes e suporte', onPress: () => router.push('/screens/profile/help') },
+    { icon: 'info-outline', label: 'Sobre o CANDI', sub: 'Missão, versão e equipe', onPress: () => router.push('/screens/profile/about') },
+  ];
 
-    return (
-        <>
-            <HomeBackground onSettingsPress={() => console.log('⚙️ Configurações clicadas')}>
-                <ContentContainer>
-                    <ProfileCard
-                        name={profile?.profile_name || '...'}
-                        username={profile?.profile_email || '...'}
-                        userType="Paciente oncológico"
-                        avatarUri={getAvatarUri()}
-                        onFirePress={() => console.log('🔥 Fire')}
-                        onBrushPress={() => setModalVisible(true)}
-                    />
+  return (
+    <>
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ScrollView style={s.screen} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
 
-                    <LabelsRow
-                        labels={[cancerTypeName, formattedBirthDate, profile?.profile_email]}
-                    />
+        {/* ── Hero ─────────────────────────────────────────────────────────── */}
+        <View style={s.heroContainer}>
+          <View style={[s.tealBand, { height: STATUS_TOP + 76 }]} />
 
-                    <Separator />
+          <View style={[s.heroCard, { marginTop: STATUS_TOP + 76 }]}>
+            <Text style={s.heroName}>{profile?.profile_name || '...'}</Text>
+            {profile?.profile_nickname
+              ? <Text style={s.heroNickname}>@{profile.profile_nickname}</Text>
+              : null}
+            <TouchableOpacity style={s.editBtn} onPress={() => router.push('/screens/profile/settings')} activeOpacity={0.8}>
+              <MaterialIcons name="edit" size={13} color={AppTheme.colors.tertiary} />
+              <Text style={s.editBtnText}>Editar perfil</Text>
+            </TouchableOpacity>
+          </View>
 
-                    <AdvancedSettings />
-                    <AdvancedLinks
-                        links={[
-                            { title: 'Contatos de Emergência  >' },
-                            { title: 'Ajuda', onPress: () => console.log('Ajuda clicado') },
-                            { title: 'Sobre', onPress: () => console.log('Sobre clicado') },
-                            {
-                                title: 'Adicionar Marco  >',
-                                onPress: gotoaddCheckpoint,
-                            },
-                        ]}
-                    />
-                </ContentContainer>
-            </HomeBackground>
+          <TouchableOpacity
+            style={[s.avatarFloat, { top: STATUS_TOP + 28 }]}
+            onPress={() => setPhotoModal(true)}
+            activeOpacity={0.88}>
+            <View style={s.avatarWrap}>
+              {loading
+                ? <View style={s.avatarRing}><View style={s.avatarPlaceholder}><ActivityIndicator color={AppTheme.colors.tertiary} /></View></View>
+                : avatarUri
+                  ? <View style={s.avatarRing}><Image source={{ uri: avatarUri }} style={s.avatar} /></View>
+                  : <View style={s.avatarRing}><View style={s.avatarPlaceholder}><Text style={s.avatarInitials}>{(profile?.profile_name || '?').substring(0, 2).toUpperCase()}</Text></View></View>
+              }
+              <View style={s.cameraTag}><MaterialIcons name="camera-alt" size={11} color="#fff" /></View>
+            </View>
+          </TouchableOpacity>
+        </View>
 
-            {profile && (
-                <ProfilePictureModal
-                    visible={modalVisible}
-                    onDismiss={() => setModalVisible(false)}
-                    user={profile}
-                    onPictureUpdate={handlePictureUpdate}
-                />
-            )}
-        </>
-    );
+        {/* ── Info cards — grid 2 colunas ──────────────────────────────────── */}
+        <View style={s.infoSection}>
+          <View style={s.infoGrid}>
+            <View style={s.infoCard}>
+              <View style={s.infoIconWrap}>
+                <MaterialIcons name="medical-services" size={20} color={AppTheme.colors.tertiary} />
+              </View>
+              <Text style={s.infoLabel}>Tipo de câncer</Text>
+              <Text style={s.infoValue} numberOfLines={2}>{cancerName}</Text>
+            </View>
+            <View style={s.infoCard}>
+              <View style={s.infoIconWrap}>
+                <MaterialIcons name="cake" size={20} color={AppTheme.colors.tertiary} />
+              </View>
+              <Text style={s.infoLabel}>Nascimento</Text>
+              <Text style={s.infoValue}>{birthDate || 'Não informado'}</Text>
+            </View>
+          </View>
+
+          {/* E-mail — linha completa */}
+          <View style={s.emailCard}>
+            <View style={s.infoIconWrap}>
+              <MaterialIcons name="email" size={18} color={AppTheme.colors.tertiary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.infoLabel}>E-mail</Text>
+              <Text style={s.infoValue} numberOfLines={1}>{profile?.profile_email || '...'}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* ── Menu ─────────────────────────────────────────────────────────── */}
+        <View style={s.menuCard}>
+          {menuItems.map((item, i) => (
+            <React.Fragment key={item.label}>
+              <TouchableOpacity style={s.menuRow} onPress={item.onPress} activeOpacity={0.7}>
+                <View style={s.menuIcon}>
+                  <MaterialIcons name={item.icon as any} size={20} color={AppTheme.colors.tertiary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.menuLabel}>{item.label}</Text>
+                  {item.sub ? <Text style={s.menuSub}>{item.sub}</Text> : null}
+                </View>
+                <MaterialIcons name="chevron-right" size={20} color={AppTheme.colors.dotsColor} />
+              </TouchableOpacity>
+              {i < menuItems.length - 1 && <View style={s.divider} />}
+            </React.Fragment>
+          ))}
+        </View>
+
+        {/* ── Sair ─────────────────────────────────────────────────────────── */}
+        <TouchableOpacity style={s.logoutBtn} onPress={() => setLogoutSheet(true)} activeOpacity={0.8}>
+          <MaterialIcons name="logout" size={17} color="#ef4444" />
+          <Text style={s.logoutText}>Sair da conta</Text>
+        </TouchableOpacity>
+
+      </ScrollView>
+
+      {profile && (
+        <ProfilePictureModal
+          visible={photoModal}
+          onDismiss={() => setPhotoModal(false)}
+          user={profile}
+          onPictureUpdate={handlePhotoUpdate}
+        />
+      )}
+
+      <ActionSheet
+        visible={logoutSheet}
+        title="Sair da conta"
+        options={[{ label: 'Confirmar saída', icon: 'logout', destructive: true, onPress: doLogout }]}
+        onDismiss={() => setLogoutSheet(false)}
+      />
+    </>
+  );
 }
+
+const s = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: AppTheme.colors.background },
+
+  // ── Hero ────────────────────────────────────────────────────────────────
+  heroContainer: { backgroundColor: AppTheme.colors.tertiary },
+  tealBand: { position: 'absolute', top: 0, left: 0, right: 0, backgroundColor: AppTheme.colors.tertiary },
+  heroCard: {
+    backgroundColor: AppTheme.colors.background,
+    alignItems: 'center',
+    paddingTop: 54, paddingHorizontal: 20, paddingBottom: 14,
+    borderTopLeftRadius: 28, borderTopRightRadius: 28,
+  },
+  avatarFloat: { position: 'absolute', left: 0, right: 0, alignItems: 'center', zIndex: 10 },
+  avatarWrap: { position: 'relative' },
+  avatarRing: {
+    padding: 3, borderRadius: 54,
+    backgroundColor: '#fff',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 10, elevation: 6,
+  },
+  avatar: { width: 90, height: 90, borderRadius: 45 },
+  avatarPlaceholder: {
+    width: 90, height: 90, borderRadius: 45,
+    backgroundColor: AppTheme.colors.secondary,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  avatarInitials: {
+    fontSize: 28, fontWeight: '800', color: AppTheme.colors.tertiary,
+    fontFamily: AppTheme.fonts.titleLarge.fontFamily,
+  },
+  cameraTag: {
+    position: 'absolute', bottom: 3, right: 3,
+    backgroundColor: AppTheme.colors.tertiary,
+    width: 22, height: 22, borderRadius: 11,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: '#fff',
+  },
+  heroName: {
+    fontSize: 20, fontWeight: '800', color: AppTheme.colors.nameText,
+    fontFamily: AppTheme.fonts.titleLarge.fontFamily, textAlign: 'center',
+    marginTop: 4,
+  },
+  heroNickname: {
+    fontSize: 13, color: AppTheme.colors.placeholderText,
+    fontFamily: AppTheme.fonts.bodySmall.fontFamily,
+  },
+  editBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4,
+    borderWidth: 1, borderColor: AppTheme.colors.dotsColor,
+    marginTop: 4,
+  },
+  editBtnText: {
+    fontSize: 13, fontWeight: '600', color: AppTheme.colors.tertiary,
+    fontFamily: AppTheme.fonts.labelMedium.fontFamily,
+  },
+
+  // ── Info cards ───────────────────────────────────────────────────────────
+  infoSection: { paddingHorizontal: 16, gap: 10, marginTop: 16 },
+  infoGrid: { flexDirection: 'row', gap: 10 },
+  infoCard: {
+    flex: 1, backgroundColor: AppTheme.colors.cardBackground,
+    borderRadius: 16, padding: 14, gap: 6,
+    borderWidth: 1, borderColor: AppTheme.colors.dotsColor,
+  },
+  emailCard: {
+    backgroundColor: AppTheme.colors.cardBackground,
+    borderRadius: 16, padding: 14,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderWidth: 1, borderColor: AppTheme.colors.dotsColor,
+  },
+  infoIconWrap: {
+    width: 32, height: 32, borderRadius: 9,
+    backgroundColor: AppTheme.colors.secondary,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  infoLabel: {
+    fontSize: 11, color: AppTheme.colors.placeholderText,
+    fontFamily: AppTheme.fonts.labelSmall.fontFamily, textTransform: 'uppercase', letterSpacing: 0.4,
+  },
+  infoValue: {
+    fontSize: 13.5, fontWeight: '600', color: AppTheme.colors.nameText,
+    fontFamily: AppTheme.fonts.labelMedium.fontFamily,
+  },
+
+  // ── Menu ─────────────────────────────────────────────────────────────────
+  menuCard: {
+    backgroundColor: AppTheme.colors.cardBackground,
+    borderRadius: 16, overflow: 'hidden',
+    marginHorizontal: 16, marginTop: 10,
+    borderWidth: 1, borderColor: AppTheme.colors.dotsColor,
+  },
+  menuRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, gap: 12 },
+  menuIcon: {
+    width: 36, height: 36, borderRadius: 10,
+    backgroundColor: AppTheme.colors.secondary,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  menuLabel: {
+    fontSize: 14.5, fontWeight: '500', color: AppTheme.colors.textColor,
+    fontFamily: AppTheme.fonts.bodyMedium.fontFamily,
+  },
+  menuSub: {
+    fontSize: 11.5, color: AppTheme.colors.placeholderText,
+    fontFamily: AppTheme.fonts.labelSmall.fontFamily, marginTop: 1,
+  },
+  divider: { height: 1, backgroundColor: AppTheme.colors.dotsColor, marginLeft: 64 },
+
+  // ── Logout ───────────────────────────────────────────────────────────────
+  logoutBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    marginHorizontal: 16, marginTop: 12,
+    backgroundColor: '#fff5f5', borderRadius: 14, paddingVertical: 13,
+    borderWidth: 1, borderColor: '#fecaca',
+  },
+  logoutText: { fontSize: 14, fontWeight: '600', color: '#ef4444', fontFamily: AppTheme.fonts.labelMedium.fontFamily },
+});

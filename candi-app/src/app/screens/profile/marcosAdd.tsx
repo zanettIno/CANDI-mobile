@@ -1,255 +1,236 @@
-import * as React from 'react';
-import { View, Text, ScrollView, SafeAreaView, Alert } from 'react-native';
-import { PaperProvider } from 'react-native-paper';
-import styled from 'styled-components/native';
+import React, { useState } from 'react';
+import {
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  TextInput, Platform, StatusBar, ActivityIndicator, Switch,
+} from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AppTheme } from '../../../theme/index';
-import BackIconButton from '@/components/BackIconButton';
-import { MilestoneDescriptionInput } from '@/components/Inputs/inputCheckpointDescription';
-import { AddMilestoneButton } from '@/components/Buttons/addCheckpointButton'; 
+import { AppTheme } from '../../../theme';
 import { API_BASE_URL } from '../../../constants/api';
-import { DateInput } from '@/components/Inputs/FormInputSymptom/DateInput';
-import { CheckpointCompletedToggle } from '@/components/Toggle/CheckpointCompletedToggle'; 
+import { useToast } from '@/context/NotificationContext';
+import LoginSignupBackground from '../../../components/LoginSignupBackground';
 
-// Estilos mantidos da versão anterior
-const Container = styled(SafeAreaView)`
-  flex: 1;
-  background-color: ${AppTheme.colors.primary};
-`;
-
-const Header = styled(View)`
-  height: 40px;
-  justify-content: center;
-  padding-left: 16px;
-  top: 35px;
-`;
-
-const FormContainer = styled(View)`
-  flex: 1;
-  background-color: ${AppTheme.colors.cardBackground};
-  border-top-left-radius: 30px;
-  border-top-right-radius: 30px;
-  margin-top: 10px; 
-  padding: 32px 24px 24px 24px; 
-`;
-
-const FormScrollView = styled(ScrollView)`
-  flex: 1;
-`;
-
-const HeaderTitle = styled(Text)`
-  font-family: ${AppTheme.fonts.titleLarge.fontFamily};
-  font-size: ${AppTheme.fonts.titleLarge.fontSize}px;
-  font-weight: ${AppTheme.fonts.titleLarge.fontWeight};
-  color: ${AppTheme.colors.nameText};
-  margin-bottom: 8px;
-`;
-
-const HeaderSubtitle = styled(Text)`
-  font-family: ${AppTheme.fonts.bodyMedium.fontFamily};
-  font-size: ${AppTheme.fonts.bodyMedium.fontSize}px;
-  color: ${AppTheme.colors.tertinaryTextColor};
-  line-height: 20px;
-  margin-bottom: 24px;
-`;
-
-const BodyText = styled(Text)`
-  font-family: ${AppTheme.fonts.bodyMedium.fontFamily};
-  font-size: ${AppTheme.fonts.bodyMedium.fontSize}px;
-  color: ${AppTheme.colors.tertinaryTextColor};
-  line-height: 20px;
-  margin-bottom: 16px;
-`;
-
-const SmallText = styled(Text)`
-  font-family: ${AppTheme.fonts.bodySmall.fontFamily};
-  font-size: ${AppTheme.fonts.bodySmall.fontSize}px;
-  color: ${AppTheme.colors.tertinaryTextColor};
-  line-height: 18px;
-  margin-bottom: 24px;
-`;
-
-// Novo estilo para as labels dos inputs, baseado na imagem
-const InputLabel = styled(Text)`
-  font-family: ${AppTheme.fonts.bodyMedium.fontFamily};
-  font-size: ${AppTheme.fonts.bodyMedium.fontSize}px;
-  font-weight: bold;
-  color: ${AppTheme.colors.nameText}; /* Cor mais escura para destaque, AppTheme.colors.nameText parece ser a cor do título */
-  margin-bottom: 8px;
-  margin-left: 0; /* Removendo o marginLeft de 16px que estava na versão anterior */
-`;
-
+const STATUS_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 44;
 
 export default function MarcosAdd() {
-    const router = useRouter();
-    const userEndpoint = `${API_BASE_URL}/auth/me`;
+  const router = useRouter();
+  const toast = useToast();
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({ title: '', date: '', completed: false });
 
-    const [description, setDescription] = React.useState('');
-    const [milestoneDate, setMilestoneDate] = React.useState('');
-    const [loading, setLoading] = React.useState(false);
-    const [isCompleted, setIsCompleted] = React.useState(false); 
-    const [userUid, setUserUid] = React.useState('');
-
-    React.useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        console.log("entrou no try")
-        const token = await AsyncStorage.getItem('accessToken');
-
-        if (!token) {
-          console.log("nao achou token")
-          return;
-        }
-
-        const response = await fetch(userEndpoint, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-
-        if (response.ok) {
-          console.log("recebemos data")
-          const data = await response.json();
-          setUserUid(data.profile_id);
-        } else {
-          console.error("Erro ao buscar dados do usuário: ", response.status);
-        }
-      } catch (error) {
-        console.error("Erro de conexão ao buscar dados do usuário:", error);
-      }
-    };
-
-    fetchUserData();
-  }, []);
-
-    const handleDateSelect = () => {
-        // CORREÇÃO: Em um app React Native real, esta função deveria abrir um DatePicker
-        // e setar a data selecionada. Mantendo a lógica original para não quebrar o fluxo.
-        const today = new Date();
-        setMilestoneDate(today.toLocaleDateString('pt-BR'));
-        Alert.alert('Data Selecionada', `Data do marco definida para: ${today.toLocaleDateString('pt-BR')}`);
-    };
-
-    const handleAddMilestone = async () => {
-    if (!description.trim() || !milestoneDate) {
-        Alert.alert('Atenção', 'Por favor, preencha a descrição e a data do marco.');
-        return;
+  const handleSave = async () => {
+    if (!form.title.trim()) {
+      toast.error('Informe a descrição do marco.');
+      return;
     }
+    if (!form.date) {
+      toast.error('Informe a data do marco.');
+      return;
+    }
+    const parts = form.date.replace(/[^0-9]/g, '/').split('/');
+    if (parts.length !== 3 || parts[2]?.length !== 4) {
+      toast.error('Data inválida. Use o formato dd/mm/aaaa.');
+      return;
+    }
+    const isoDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
 
-    setLoading(true);
+    setSaving(true);
     try {
-        const token = await AsyncStorage.getItem('accessToken');
-        if (!token) {
-            Alert.alert("Erro de Autenticação", "Você não está autenticado.");
-            setLoading(false);
-            return;
-        }
+      const token = await AsyncStorage.getItem('accessToken');
+      const res = await fetch(`${API_BASE_URL}/milestones`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: form.title.trim(),
+          description: '',
+          date: isoDate,
+          type: form.completed ? 'fixed' : 'custom',
+          position: null,
+        }),
+      });
+      if (!res.ok) throw new Error((await res.json()).message || 'Erro');
+      toast.success('Marco registrado!');
+      if (router.canGoBack()) router.back();
+      else router.replace('/screens/profile/marcosView' as any);
+    } catch (e: any) {
+      toast.error(e.message || 'Não foi possível salvar.');
+    } finally { setSaving(false); }
+  };
 
-        const endpoint = `${API_BASE_URL}/milestones`;
+  return (
+    <>
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <View style={s.screen}>
+        <View style={s.header}>
+          <View style={s.headerBg}><LoginSignupBackground /></View>
+          <View style={[s.headerRow, { paddingTop: STATUS_TOP + 8 }]}>
+            <TouchableOpacity
+              onPress={() => router.canGoBack() ? router.back() : router.replace('/screens/profile/marcosView' as any)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <MaterialIcons name="arrow-back" size={24} color="#fff" />
+            </TouchableOpacity>
+            <Text style={s.headerTitle}>Novo Marco</Text>
+            <View style={{ width: 48 }} />
+          </View>
+        </View>
 
-        // Converter data de dd/MM/yyyy para ISO se necessário
-        const isoDate = convertToISO(milestoneDate); // Implemente esta função ou use new Date()
+        <ScrollView style={s.body} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
 
-        const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-                title: description.trim(),
-                description: '', 
-                date: isoDate, // ou milestoneDate se já estiver no formato correto
-                type: 'custom',
-                position: null,
-                profile_id: userUid,
-            }),
-        });
+          {/* Intro */}
+          <View style={s.introCard}>
+            <View style={s.introIconWrap}>
+              <MaterialIcons name="flag" size={20} color={AppTheme.colors.tertiary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.introTitle}>Registre sua conquista</Text>
+              <Text style={s.introText}>
+                Cada etapa da sua jornada merece ser celebrada. Registrar marcos é uma forma de reconhecer o quanto você já avançou.
+              </Text>
+            </View>
+          </View>
 
-        if (response.ok) {
-            const data = await response.json();
-            Alert.alert('Sucesso', data.message || 'Marco registrado com sucesso!');
-            router.back();
-        } else {
-            const errorData = await response.json();
-            Alert.alert('Erro', errorData.message || 'Não foi possível registrar o marco.');
-        }
-    } catch (error) {
-        console.error('Erro ao adicionar marco:', error);
-        Alert.alert('Erro', 'Ocorreu um erro de rede. Tente novamente.');
-    } finally {
-        setLoading(false);
-    }
-};
+          {/* Campos */}
+          <View style={s.section}>
+            <Text style={s.sectionLabel}>Informações do marco</Text>
+            <View style={s.card}>
+              <View style={s.fieldWrap}>
+                <Text style={s.fieldLabel}>Descrição</Text>
+                <TextInput
+                  style={s.input}
+                  value={form.title}
+                  onChangeText={v => setForm(p => ({ ...p, title: v }))}
+                  placeholder="Ex: Última quimioterapia do tratamento"
+                  placeholderTextColor={AppTheme.colors.placeholderText}
+                  maxLength={120}
+                />
+              </View>
+              <View style={s.divider} />
+              <View style={s.fieldWrap}>
+                <Text style={s.fieldLabel}>Data do marco</Text>
+                <TextInput
+                  style={s.input}
+                  value={form.date}
+                  onChangeText={v => setForm(p => ({ ...p, date: v }))}
+                  placeholder="dd/mm/aaaa"
+                  placeholderTextColor={AppTheme.colors.placeholderText}
+                  keyboardType="numeric"
+                  maxLength={10}
+                />
+              </View>
+              <View style={s.divider} />
+              <TouchableOpacity
+                style={s.toggleRow}
+                onPress={() => setForm(p => ({ ...p, completed: !p.completed }))}
+                activeOpacity={0.7}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.toggleLabel}>Marco já concluído</Text>
+                  <Text style={s.toggleSub}>Marque se este evento já aconteceu</Text>
+                </View>
+                <Switch
+                  value={form.completed}
+                  onValueChange={v => setForm(p => ({ ...p, completed: v }))}
+                  trackColor={{ false: AppTheme.colors.dotsColor, true: AppTheme.colors.tertiary + '88' }}
+                  thumbColor={form.completed ? AppTheme.colors.tertiary : '#f4f3f4'}
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
 
-const convertToISO = (dateStr: string) => {
-    const [day, month, year] = dateStr.split('/');
-    return new Date(Number(year), Number(month) - 1, Number(day)).toISOString();
-};
+          <View style={s.section}>
+            <TouchableOpacity style={s.saveBtn} onPress={handleSave} disabled={saving} activeOpacity={0.85}>
+              {saving
+                ? <ActivityIndicator color="#fff" size="small" />
+                : <><MaterialIcons name="check" size={18} color="#fff" /><Text style={s.saveBtnText}>Salvar marco</Text></>}
+            </TouchableOpacity>
+          </View>
 
-    const isFormValid = description.trim() !== '' && milestoneDate !== '';
-
-    return (
-        <PaperProvider>
-            <Container>
-                <Header>
-                    <BackIconButton
-                        color={AppTheme.colors.cardBackground}
-                        onPress={() => router.back()}/>
-                </Header>
-
-                <View style={{height: '5%'}}/>
-                <FormContainer>
-                    <HeaderTitle>NOVO MARCO NO TRATAMENTO!</HeaderTitle>
-
-                    <FormScrollView showsVerticalScrollIndicator={false}>
-
-                        <BodyText>
-                            Cada etapa da sua jornada é única e merece ser lembrada com carinho.
-                            Registrar seus marcos é uma forma de celebrar conquistas, reconhecer
-                            o quanto você já avançou e guardar momentos importantes do tratamento
-                        </BodyText>
-
-                        <SmallText>
-                            Preencha o formulário para cadastrar um novo marco no tratamento
-                        </SmallText>
-
-                        {/* Label para Descrição do Marco */}
-                        <InputLabel>Descrição do marco</InputLabel>
-                        <MilestoneDescriptionInput
-                            value={description}
-                            onChangeText={setDescription}
-                            placeholder="Última quimioterapia do tratamento"
-                            style={{ marginBottom: 24 }} // Aumentando a margem para separar do próximo item
-                        />
-
-                        {/* Label para Data do Marco */}
-                        <InputLabel>Data do marco</InputLabel>
-                        <DateInput
-                            value={milestoneDate}
-                            onPress={handleDateSelect}
-                            placeholder="25/10/2025"
-                            style={{ marginBottom: 24 }}
-                        />
-
-                        <CheckpointCompletedToggle
-                            value={isCompleted}
-                            onToggle={setIsCompleted}
-                            style={{ marginBottom: 24 }}
-                        />
-
-                        <AddMilestoneButton
-                            onPress={handleAddMilestone}
-                            disabled={!isFormValid || loading}
-                            loading={loading}
-                            style={{ marginTop: 24, marginBottom: 40 }}
-                        />
-                    </FormScrollView>
-                </FormContainer>
-            </Container>
-        </PaperProvider>
-    );
+        </ScrollView>
+      </View>
+    </>
+  );
 }
+
+const s = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: AppTheme.colors.background },
+  header: { height: 100, position: 'relative' },
+  headerBg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  headerRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 20, paddingBottom: 12, zIndex: 1,
+  },
+  headerTitle: {
+    flex: 1, textAlign: 'center',
+    fontSize: 17, fontWeight: '700', color: '#fff',
+    fontFamily: AppTheme.fonts.titleMedium.fontFamily,
+  },
+
+  body: { flex: 1 },
+
+  introCard: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 12,
+    backgroundColor: AppTheme.colors.cardBackground,
+    borderRadius: 16, padding: 16, margin: 16, marginBottom: 0,
+    borderWidth: 1, borderColor: AppTheme.colors.dotsColor,
+  },
+  introIconWrap: {
+    width: 36, height: 36, borderRadius: 10,
+    backgroundColor: AppTheme.colors.secondary,
+    alignItems: 'center', justifyContent: 'center',
+    flexShrink: 0, marginTop: 2,
+  },
+  introTitle: {
+    fontSize: 14, fontWeight: '700', color: AppTheme.colors.nameText,
+    fontFamily: AppTheme.fonts.labelLarge.fontFamily, marginBottom: 4,
+  },
+  introText: {
+    fontSize: 13, color: AppTheme.colors.placeholderText, lineHeight: 19,
+    fontFamily: AppTheme.fonts.bodySmall.fontFamily,
+  },
+
+  section: { paddingHorizontal: 16, marginTop: 18 },
+  sectionLabel: {
+    fontSize: 11, fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase',
+    color: AppTheme.colors.placeholderText,
+    fontFamily: AppTheme.fonts.labelSmall.fontFamily,
+    marginBottom: 8, paddingLeft: 2,
+  },
+  card: {
+    backgroundColor: AppTheme.colors.cardBackground,
+    borderRadius: 16, overflow: 'hidden',
+    borderWidth: 1, borderColor: AppTheme.colors.dotsColor,
+  },
+  divider: { height: 1, backgroundColor: AppTheme.colors.dotsColor, marginLeft: 16 },
+  fieldWrap: { paddingHorizontal: 16, paddingVertical: 12 },
+  fieldLabel: {
+    fontSize: 11.5, color: AppTheme.colors.placeholderText,
+    fontFamily: AppTheme.fonts.labelSmall.fontFamily, marginBottom: 4,
+  },
+  input: {
+    fontSize: 15, color: AppTheme.colors.textColor,
+    fontFamily: AppTheme.fonts.bodyMedium.fontFamily,
+    padding: 0,
+  },
+  toggleRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, paddingVertical: 14, gap: 12,
+  },
+  toggleLabel: {
+    fontSize: 14.5, fontWeight: '500', color: AppTheme.colors.textColor,
+    fontFamily: AppTheme.fonts.bodyMedium.fontFamily,
+  },
+  toggleSub: {
+    fontSize: 11.5, color: AppTheme.colors.placeholderText,
+    fontFamily: AppTheme.fonts.labelSmall.fontFamily, marginTop: 1,
+  },
+
+  saveBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: AppTheme.colors.tertiary,
+    borderRadius: 14, paddingVertical: 15,
+  },
+  saveBtnText: {
+    color: '#fff', fontSize: 15, fontWeight: '700',
+    fontFamily: AppTheme.fonts.labelLarge.fontFamily,
+  },
+});
