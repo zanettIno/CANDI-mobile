@@ -205,8 +205,6 @@ interface ProfileContextData {
 - `GET /auth/me` — dados do próprio usuário
 - `GET /auth/my-patients` — lista de pacientes vinculados (só para `support`)
 
-**URL do avatar:** Construída localmente como `${S3_BASE}/${profileId}.jpg` onde `S3_BASE = 'https://awscandi-image-uploads.s3.us-east-2.amazonaws.com/profile-images'`. Se a imagem falhar (404), o componente mostra fallback com iniciais.
-
 ---
 
 ### ChatContext (`src/context/ChatContext.tsx`)
